@@ -9,7 +9,7 @@
     <string name="timer_start">Start</string>
     <string name="timer_cancel">Cancel</string>
     <string name="timer_surprise_title">Time\'s Up!</string>
-    <string name="timer_surprise_message">The timer has finished. Surprise!</string>
+    <string name="timer_loading">Fetching your fact\u2026</string>
     <string name="timer_surprise_dismiss">OK</string>
     <string name="timer_coming_soon">Coming soon!</string>
 </resources>

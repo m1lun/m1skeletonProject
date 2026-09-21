@@ -25,9 +25,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -35,6 +37,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class TimerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,6 +57,33 @@ class TimerActivity : ComponentActivity() {
     }
 }
 
+private fun numberToColor(n: Long): Color {
+    val hue = ((n * 37L) % 360L).toFloat()
+    return Color.hsl(hue, 0.6f, 0.85f)
+}
+
+private suspend fun fetchNumberFact(number: Long): String = withContext(Dispatchers.IO) {
+    try {
+        val connection = (URL("https://en.wikipedia.org/api/rest_v1/page/summary/$number").openConnection() as HttpURLConnection).apply {
+            connectTimeout = 5_000
+            readTimeout = 5_000
+            setRequestProperty("User-Agent", "CPEN321Application/1.0")
+        }
+        if (connection.responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
+            return@withContext "No Wikipedia page exists for $number — but it's still your number!"
+        }
+        val body = connection.inputStream.bufferedReader().use { it.readText() }
+        val extract = org.json.JSONObject(body).optString("extract", "")
+        if (extract.isBlank()) {
+            "Wikipedia has a page for $number but no summary is available."
+        } else {
+            extract.substringBefore(". ").trimEnd('.') + "."
+        }
+    } catch (e: Exception) {
+        "Could not load a fact for $number right now."
+    }
+}
+
 @Composable
 fun TimerScreen(modifier: Modifier = Modifier) {
     var minutesInput by remember { mutableStateOf("0") }
@@ -57,7 +91,11 @@ fun TimerScreen(modifier: Modifier = Modifier) {
     var timeLeftMs by remember { mutableLongStateOf(0L) }
     var isRunning by remember { mutableStateOf(false) }
     var showSurprise by remember { mutableStateOf(false) }
+    var surpriseText by remember { mutableStateOf("") }
+    var surpriseBgColor by remember { mutableStateOf(Color.White) }
     var timer by remember { mutableStateOf<CountDownTimer?>(null) }
+    val scope = rememberCoroutineScope()
+    val loadingText = stringResource(R.string.timer_loading)
 
     DisposableEffect(Unit) {
         onDispose { timer?.cancel() }
@@ -68,6 +106,8 @@ fun TimerScreen(modifier: Modifier = Modifier) {
         val seconds = secondsInput.toLongOrNull() ?: 0L
         val totalMs = (minutes * 60 + seconds) * 1000L
         if (totalMs <= 0L) return
+
+        val totalSeconds = minutes * 60 + seconds
 
         timer?.cancel()
         timeLeftMs = totalMs
@@ -81,7 +121,12 @@ fun TimerScreen(modifier: Modifier = Modifier) {
             override fun onFinish() {
                 timeLeftMs = 0L
                 isRunning = false
+                surpriseBgColor = numberToColor(totalSeconds)
+                surpriseText = loadingText
                 showSurprise = true
+                scope.launch {
+                    surpriseText = fetchNumberFact(totalSeconds)
+                }
             }
         }.start()
     }
@@ -99,8 +144,9 @@ fun TimerScreen(modifier: Modifier = Modifier) {
     if (showSurprise) {
         AlertDialog(
             onDismissRequest = { showSurprise = false },
+            containerColor = surpriseBgColor,
             title = { Text(text = stringResource(R.string.timer_surprise_title)) },
-            text = { Text(text = stringResource(R.string.timer_surprise_message)) },
+            text = { Text(text = surpriseText) },
             confirmButton = {
                 TextButton(onClick = { showSurprise = false }) {
                     Text(text = stringResource(R.string.timer_surprise_dismiss))
