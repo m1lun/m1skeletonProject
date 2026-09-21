@@ -12,4 +12,7 @@
     <string name="timer_loading">Fetching your fact\u2026</string>
     <string name="timer_surprise_dismiss">OK</string>
     <string name="timer_coming_soon">Coming soon!</string>
+    <string name="btn_back">← Back</string>
+    <string name="status_signed_in">Signed in as %1$s</string>
+    <string name="status_signed_out">Not signed in</string>
 </resources>

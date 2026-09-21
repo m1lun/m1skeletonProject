@@ -1,5 +1,6 @@
 package com.example.cpen321application
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -12,19 +13,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
 import java.net.HttpURLConnection
 import java.net.URL
@@ -51,10 +59,24 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(apiBaseUrl: String, modifier: Modifier = Modifier) {
     var healthStatus by remember { mutableStateOf("Checking backend at $apiBaseUrl/health...") }
+    var signedInName by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(apiBaseUrl) {
         healthStatus = fetchHealthStatus(apiBaseUrl)
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                signedInName = context
+                    .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .getString(PREF_SIGNED_IN_NAME, null)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Column(
@@ -64,6 +86,20 @@ fun MainScreen(apiBaseUrl: String, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        val statusText = if (signedInName != null)
+            stringResource(R.string.status_signed_in, signedInName!!)
+        else
+            stringResource(R.string.status_signed_out)
+        val statusColor = if (signedInName != null) Color(0xFF2E7D32) else Color.Gray
+
+        Text(
+            text = statusText,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = statusColor,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
         Text(
             text = healthStatus,
             modifier = Modifier.padding(bottom = 32.dp)
@@ -71,7 +107,7 @@ fun MainScreen(apiBaseUrl: String, modifier: Modifier = Modifier) {
 
         Button(
             onClick = {
-                Toast.makeText(context, context.getString(R.string.timer_coming_soon), Toast.LENGTH_SHORT).show()
+                context.startActivity(Intent(context, LoginActivity::class.java))
             },
             modifier = Modifier
                 .fillMaxWidth()
