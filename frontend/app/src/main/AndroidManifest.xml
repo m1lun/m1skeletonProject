@@ -30,6 +30,11 @@
             android:exported="false"
             android:label="@string/timer_title"
             android:theme="@style/Theme.CPEN321Application" />
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false"
+            android:label="@string/btn_login"
+            android:theme="@style/Theme.CPEN321Application" />
     </application>
 
 </manifest>
