@@ -58,13 +58,13 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainScreen(apiBaseUrl: String, modifier: Modifier = Modifier) {
-    var healthStatus by remember { mutableStateOf("Checking backend at $apiBaseUrl/health...") }
+    var isBackendHealthy by remember { mutableStateOf<Boolean?>(null) }
     var signedInName by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(apiBaseUrl) {
-        healthStatus = fetchHealthStatus(apiBaseUrl)
+        isBackendHealthy = checkBackendHealth(apiBaseUrl)
     }
 
     DisposableEffect(lifecycleOwner) {
@@ -97,11 +97,25 @@ fun MainScreen(apiBaseUrl: String, modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = statusColor,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 4.dp)
         )
 
+        val backendStatusText = when (isBackendHealthy) {
+            true -> stringResource(R.string.backend_connected)
+            false -> stringResource(R.string.backend_offline)
+            null -> stringResource(R.string.backend_checking)
+        }
+        val backendStatusColor = when (isBackendHealthy) {
+            true -> Color(0xFF2E7D32)
+            false -> Color(0xFFC62828)
+            null -> Color.Gray
+        }
+
         Text(
-            text = healthStatus,
+            text = backendStatusText,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = backendStatusColor,
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
@@ -140,7 +154,7 @@ fun MainScreen(apiBaseUrl: String, modifier: Modifier = Modifier) {
     }
 }
 
-private suspend fun fetchHealthStatus(apiBaseUrl: String): String = withContext(Dispatchers.IO) {
+private suspend fun checkBackendHealth(apiBaseUrl: String): Boolean = withContext(Dispatchers.IO) {
     val healthUrl = "${apiBaseUrl.trimEnd('/')}/health"
     try {
         val connection = (URL(healthUrl).openConnection() as HttpURLConnection).apply {
@@ -148,18 +162,8 @@ private suspend fun fetchHealthStatus(apiBaseUrl: String): String = withContext(
             connectTimeout = 5_000
             readTimeout = 5_000
         }
-
-        when (val code = connection.responseCode) {
-            HttpURLConnection.HTTP_OK -> {
-                val body = connection.inputStream.bufferedReader().use { it.readText() }
-                "Backend healthy ($healthUrl): $body"
-            }
-            else -> {
-                val errorBody = connection.errorStream?.bufferedReader()?.use { it.readText() }
-                "Backend error ($healthUrl): HTTP $code${errorBody?.let { " — $it" } ?: ""}"
-            }
-        }
-    } catch (e: Exception) {
-        "Backend unreachable ($healthUrl): ${e.message ?: e.javaClass.simpleName}"
+        connection.responseCode == HttpURLConnection.HTTP_OK
+    } catch (_: Exception) {
+        false
     }
 }
