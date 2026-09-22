@@ -15,4 +15,7 @@
     <string name="btn_back">← Back</string>
     <string name="status_signed_in">Signed in as %1$s</string>
     <string name="status_signed_out">Not signed in</string>
+    <string name="backend_connected">Backend Connected</string>
+    <string name="backend_offline">Backend Offline</string>
+    <string name="backend_checking">Checking backend…</string>
 </resources>

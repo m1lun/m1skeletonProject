@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,25 +66,36 @@ private fun numberToColor(n: Long): Color {
 }
 
 private suspend fun fetchNumberFact(number: Long): String = withContext(Dispatchers.IO) {
-    try {
-        val connection = (URL("https://en.wikipedia.org/api/rest_v1/page/summary/$number").openConnection() as HttpURLConnection).apply {
+    fun queryWiki(target: String): String? = try {
+        val connection = (URL("https://en.wikipedia.org/api/rest_v1/page/summary/$target").openConnection() as HttpURLConnection).apply {
             connectTimeout = 5_000
             readTimeout = 5_000
             setRequestProperty("User-Agent", "CPEN321Application/1.0")
         }
-        if (connection.responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
-            return@withContext "No Wikipedia page exists for $number — but it's still your number!"
-        }
-        val body = connection.inputStream.bufferedReader().use { it.readText() }
-        val extract = org.json.JSONObject(body).optString("extract", "")
-        if (extract.isBlank()) {
-            "Wikipedia has a page for $number but no summary is available."
-        } else {
-            extract.substringBefore(". ").trimEnd('.') + "."
-        }
-    } catch (e: Exception) {
-        "Could not load a fact for $number right now."
+        if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            org.json.JSONObject(body).optString("extract", "")
+        } else null
+    } catch (_: Exception) {
+        null
     }
+
+    val rawExtract = queryWiki("${number}_(number)") ?: queryWiki("$number")
+    if (rawExtract.isNullOrBlank()) {
+        return@withContext "No Wikipedia summary exists for $number — but it's still your number!"
+    }
+
+    val sentences = rawExtract.split(". ").map { it.trim() }.filter { it.isNotEmpty() }
+    val insightful = sentences.filter { s ->
+        val lower = s.lowercase()
+        !((lower.contains("natural number") || lower.contains("cardinal number")) &&
+                (lower.contains("following") || lower.contains("preceding"))) &&
+                !lower.endsWith("most commonly refers to:") &&
+                !lower.endsWith("may refer to:")
+    }
+
+    val selected = if (insightful.isNotEmpty()) insightful.take(2).joinToString(". ") else rawExtract
+    if (selected.endsWith(".")) selected else "$selected."
 }
 
 @Composable
@@ -155,68 +169,84 @@ fun TimerScreen(modifier: Modifier = Modifier) {
         )
     }
 
-    Column(
+    val context = LocalContext.current
+    val activity = context as? ComponentActivity
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(24.dp)
     ) {
-        Text(
-            text = stringResource(R.string.timer_title),
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
-
-        Text(
-            text = "%02d:%02d".format(displayMinutes, displaySeconds),
-            fontSize = 64.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp)
-        )
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(bottom = 32.dp)
+        OutlinedButton(
+            onClick = { activity?.finish() },
+            modifier = Modifier.align(Alignment.TopStart)
         ) {
-            OutlinedTextField(
-                value = minutesInput,
-                onValueChange = { if (!isRunning) minutesInput = it.filter { c -> c.isDigit() } },
-                label = { Text(stringResource(R.string.timer_minutes_label)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                enabled = !isRunning,
-                modifier = Modifier.width(120.dp)
-            )
-
-            OutlinedTextField(
-                value = secondsInput,
-                onValueChange = { if (!isRunning) secondsInput = it.filter { c -> c.isDigit() } },
-                label = { Text(stringResource(R.string.timer_seconds_label)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                enabled = !isRunning,
-                modifier = Modifier.width(120.dp)
-            )
+            Text(text = stringResource(R.string.btn_back))
         }
 
-        if (!isRunning) {
-            Button(
-                onClick = { startTimer() },
-                modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .align(Alignment.Center),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(R.string.timer_title),
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 32.dp)
+            )
+
+            Text(
+                text = "%02d:%02d".format(displayMinutes, displaySeconds),
+                fontSize = 64.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp)
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(bottom = 32.dp)
             ) {
-                Text(text = stringResource(R.string.timer_start))
+                OutlinedTextField(
+                    value = minutesInput,
+                    onValueChange = { if (!isRunning) minutesInput = it.filter { c -> c.isDigit() } },
+                    label = { Text(stringResource(R.string.timer_minutes_label)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    enabled = !isRunning,
+                    modifier = Modifier.width(120.dp)
+                )
+
+                OutlinedTextField(
+                    value = secondsInput,
+                    onValueChange = { if (!isRunning) secondsInput = it.filter { c -> c.isDigit() } },
+                    label = { Text(stringResource(R.string.timer_seconds_label)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    enabled = !isRunning,
+                    modifier = Modifier.width(120.dp)
+                )
             }
-        } else {
-            Button(
-                onClick = { cancelTimer() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = stringResource(R.string.timer_cancel))
+
+            if (!isRunning) {
+                Button(
+                    onClick = { startTimer() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = stringResource(R.string.timer_start))
+                }
+            } else {
+                Button(
+                    onClick = { cancelTimer() },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = stringResource(R.string.timer_cancel))
+                }
             }
         }
     }
