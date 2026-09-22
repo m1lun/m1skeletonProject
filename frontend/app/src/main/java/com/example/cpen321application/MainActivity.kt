@@ -118,7 +118,7 @@ fun MainScreen(apiBaseUrl: String, modifier: Modifier = Modifier) {
 
         Button(
             onClick = {
-                Toast.makeText(context, context.getString(R.string.timer_coming_soon), Toast.LENGTH_SHORT).show()
+                context.startActivity(Intent(context, PixelArtActivity::class.java))
             },
             modifier = Modifier
                 .fillMaxWidth()
