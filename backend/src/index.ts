@@ -10,6 +10,7 @@ const server = app.listen(env.port, () => {
 
 const wss = new WebSocketServer({ server, path: '/pixels' });
 
+// Connection each time client clicks on 2nd button
 wss.on('connection', (clientSocket) => {
   const upstream = new WebSocket('wss://8.229.22.124', {
     rejectUnauthorized: false

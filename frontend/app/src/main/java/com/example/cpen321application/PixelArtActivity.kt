@@ -134,7 +134,8 @@ fun PixelArtScreen(apiBaseUrl: String, modifier: Modifier = Modifier) {
                         val index = y * 16 + x
                         val color = parseHexColor(colorHex)
                         val now = System.currentTimeMillis()
-                        activity?.runOnUiThread {
+                        activity?.runOnUiThread { 
+                            // clear grid once 3000ms has time gap detected
                             if (lastPixelTime > 0L && (now - lastPixelTime) > 3000L) {
                                 for (i in 0 until 256) {
                                     grid[i] = defaultColor
