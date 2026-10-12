@@ -77,15 +77,20 @@ flowchart LR
 
 ### **3.4. Use Case Description**
 
-- Authentication (baseline requirement, not counted as a feature)
-  1. **Sign in with Google**: The user signs in with their Google account and gains access to their saved posts and preferences.
-- Use cases for feature 1: Buyer Requests and Seller Listings
-  2. **Create buyer request**: A buyer creates a persistent request with hard requirements (category from a fixed list, maximum price, minimum condition, maximum dimensions, search radius), soft preferences (preferred brand and colour), a location, and optional reference photos. The buyer can later edit or close it.
-  3. **Create seller listing**: A seller creates a listing with category, price, condition, brand, dimensions, colour, location, and photos. The seller can later edit or close it.
-- Use cases for feature 2: Two-Sided Matching and Recommended Feeds
-  4. **Set preferences**: A user sets a typed address, a default search radius (1 to 50 km) for new requests, a travel mode (walk, bike, or drive), and the importance of price, condition, distance, and brand/colour match on a 0 to 5 scale, which the system turns into ranking weights.
-  5. **View ranked feed**: A buyer sees the listings that satisfy their request, and a seller sees the requests their listing satisfies, ranked by the viewer's importance weights, each with its travel time.
-  6. **Filter feed temporarily**: A user narrows or re-sorts the feed (maximum price, minimum condition, smaller radius, sort order) without changing the saved post, their hard requirements, or their weights.
+**Authentication** (baseline requirement, not counted as a feature)
+
+1. **Sign in with Google**: The user signs in with their Google account and gains access to their saved posts and preferences.
+
+**Feature 1: Buyer Requests and Seller Listings**
+
+2. **Create buyer request**: A buyer posts a persistent request with hard requirements (category, maximum price, minimum condition, maximum dimensions, search radius), soft preferences (brand, colour), a location, and optional photos. The buyer can later edit or close it.
+3. **Create seller listing**: A seller posts a listing with category, price, condition, brand, dimensions, colour, location, and photos. The seller can later edit or close it.
+
+**Feature 2: Two-Sided Matching and Recommended Feeds**
+
+4. **Set preferences**: A user sets their address, default search radius, travel mode, and how much price, condition, distance, and brand/colour match matter (0 to 5 each).
+5. **View ranked feed**: A buyer sees the listings that satisfy their request, and a seller sees the requests their listing satisfies, ordered by the viewer's weights and each with its travel time.
+6. **Filter feed temporarily**: A user narrows or re-sorts the feed (maximum price, minimum condition, smaller radius, sort order) without changing the saved post or their preferences.
 
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
 
@@ -321,13 +326,10 @@ _TODO: add after the team agrees on screen layout._
 7. **jsonwebtoken** (backend)
     - **Purpose**: Issues and verifies the backend's session tokens.
     - **Reason**: Standard JWT library for Node.js.
-8. **multer** (backend)
-    - **Purpose**: Parses multipart photo uploads and enforces file count and size limits.
-    - **Reason**: Standard multipart middleware for Express.
-9. **Coil** (frontend)
+8. **Coil** (frontend)
     - **Purpose**: Loads and caches post photos in Compose screens.
     - **Reason**: Kotlin-first image loader with Compose support.
-10. **Jest and supertest** (backend), **Compose testing and UI Automator** (frontend)
+9. **Jest and supertest** (backend), **Compose testing and UI Automator** (frontend)
     - **Purpose**: Required testing frameworks.
     - **Reason**: Required by the project.
 
@@ -459,11 +461,7 @@ sequenceDiagram
 ```
 
 ### **4.7. Design of Non-Functional Requirements**
-1. [**Feed ranking latency**](#nfr1)
-    - **Implementation**: Hard-filtering runs as an indexed MongoDB query (category, status, geospatial radius) so only plausible candidates are scored in memory; scoring is a pure function over at most a few hundred posts. A Jest NFR test seeds 500 candidates and asserts the 95th percentile.
-2. [**Graceful degradation without the routing service**](#nfr2)
-    - **Implementation**: Travel times are requested once per feed for the first page only, with a short timeout and a cache of recent results; any failure is caught inside Matching, which then returns the ranked list without travel times. A Jest NFR test forces the routing client to fail and asserts the feed is still returned within 3 seconds.
-
+TBD
 ---
 
 ## 5. Data Model (supporting detail)
