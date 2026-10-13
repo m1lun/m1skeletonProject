@@ -1,0 +1,39 @@
+name: Backend tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    env:
+      MONGODB_URI: mongodb://localhost:27017/cpen321-test
+      JWT_SECRET: ci-test-secret
+      CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Typecheck
+        working-directory: backend
+        run: npm run typecheck
+      - name: Backend interface tests (mock, no-mock, combined)
+        run: ./scripts/run-backend-interface-tests.sh
+      - name: Backend non-functional requirement tests
+        run: ./scripts/run-backend-nfr-tests.sh
+      - name: Upload coverage to Codacy
+        if: env.CODACY_PROJECT_TOKEN != ''
+        run: bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r backend/coverage/interface/lcov.info
