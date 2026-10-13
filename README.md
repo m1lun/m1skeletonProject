@@ -141,8 +141,6 @@ GitHub Actions runs on every push to `main` and on pull requests:
 - `.github/workflows/backend-tests.yml` runs the typecheck and the backend test scripts against a MongoDB service container.
 - `.github/workflows/frontend-build.yml` builds the debug APK, runs unit tests, and compiles the instrumented tests.
 
-To upload backend coverage to Codacy from CI, add a repository secret named `CODACY_PROJECT_TOKEN`. The upload step is skipped when the secret is not set.
-
 ## Code review (Codacy)
 
 Codacy is configured in its web UI, not in this repository:
