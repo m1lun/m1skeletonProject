@@ -16,7 +16,6 @@ jobs:
     env:
       MONGODB_URI: mongodb://localhost:27017/cpen321-test
       JWT_SECRET: ci-test-secret
-      CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -34,6 +33,3 @@ jobs:
         run: ./scripts/run-backend-interface-tests.sh
       - name: Backend non-functional requirement tests
         run: ./scripts/run-backend-nfr-tests.sh
-      - name: Upload coverage to Codacy
-        if: env.CODACY_PROJECT_TOKEN != ''
-        run: bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r backend/coverage/interface/lcov.info
