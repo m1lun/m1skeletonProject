@@ -1,11 +1,11 @@
 name: Deploy backend
 
-# Runs after the "Backend tests" workflow succeeds on main, or manually.
+# Runs after the "Backend tests" workflow succeeds on any branch or pull
+# request, or manually. The VM always deploys origin/main, never PR code.
 on:
   workflow_run:
     workflows: ["Backend tests"]
     types: [completed]
-    branches: [main]
   workflow_dispatch:
 
 # Never run two deploys at once.
