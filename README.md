@@ -138,8 +138,8 @@ Backend tests use Jest. Frontend tests use the Jetpack Compose testing APIs and 
 
 GitHub Actions runs on every push to `main` and on pull requests:
 
-- `.github/workflows/backend-tests.yml` runs the typecheck and the backend test scripts against a MongoDB service container.
-- `.github/workflows/frontend-build.yml` builds the debug APK, runs unit tests, and compiles the instrumented tests.
+- `.github/workflows/backend-tests.yml` runs the typecheck and the backend test scripts.
+- `.github/workflows/frontend-build.yml` builds the debug APK.
 
 ## Code review (Codacy)
 

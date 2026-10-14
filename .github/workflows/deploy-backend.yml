@@ -1,11 +1,12 @@
 name: Deploy backend
 
-# Runs after the "Backend tests" workflow succeeds on any branch or pull
-# request, or manually. The VM always deploys origin/main, never PR code.
+# Runs after the "Backend tests" workflow succeeds on a push to main, or
+# manually. Never runs for pull requests or other branches automatically.
 on:
   workflow_run:
     workflows: ["Backend tests"]
     types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 # Never run two deploys at once.
@@ -16,7 +17,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-24.04
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     env:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
