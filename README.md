@@ -121,6 +121,30 @@ Set at least:
    docker compose down
    ```
 
-## Additional Setup
+## Testing
 
-_Please specify any other additional setup steps non-specific to either frontend nor backend_
+Run these from the project root.
+
+| What | Command |
+| --- | --- |
+| Backend interface tests (mock, no-mock, and combined, with coverage) | `./scripts/run-backend-interface-tests.sh` |
+| Backend non-functional requirement tests | `./scripts/run-backend-nfr-tests.sh` |
+| Frontend end-to-end tests (needs an emulator or device with the app signed in) | `./scripts/run-frontend-e2e-tests.sh` |
+| Frontend non-functional requirement tests | `./scripts/run-frontend-nfr-tests.sh` |
+
+Backend tests use Jest. Frontend tests use the Jetpack Compose testing APIs and UI Automator.
+
+## Continuous integration
+
+GitHub Actions runs on every push to `main` and on pull requests:
+
+- `.github/workflows/backend-tests.yml` runs the typecheck and the backend test scripts.
+- `.github/workflows/frontend-build.yml` builds the debug APK.
+
+## Code review (Codacy)
+
+Codacy is configured in its web UI, not in this repository:
+
+1. Sign in at https://www.codacy.com with GitHub and add this repository.
+2. On the "Code patterns" page, keep only detekt (Kotlin), ESLint (TypeScript), and Trivy (Kotlin and TypeScript) enabled.
+3. Point Codacy at the existing `detekt.yml` and `.eslintrc.json` in the repository root, and enable all Trivy patterns. Do not edit those two files.
