@@ -1,9 +1,6 @@
 # Path to your Android SDK. Android Studio usually writes this for you.
 sdk.dir=/path/to/Android/sdk
 
-# Backend base URL baked into the APK at build time.
-API_BASE_URL=http://10.0.2.2:3000
-
 # Google OAuth client ID.
 GOOGLE_CLIENT_ID=
 
