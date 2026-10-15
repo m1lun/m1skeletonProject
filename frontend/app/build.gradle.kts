@@ -34,11 +34,6 @@ android {
         // OAuth IDs in source. Emulator reaches the host via 10.0.2.2, not localhost.
         buildConfigField(
             "String",
-            "API_BASE_URL",
-            "\"${localProperty("API_BASE_URL", "http://10.0.2.2:3000")}\""
-        )
-        buildConfigField(
-            "String",
             "GOOGLE_CLIENT_ID",
             "\"${localProperty("GOOGLE_CLIENT_ID")}\""
         )

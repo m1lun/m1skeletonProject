@@ -15,7 +15,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CPEN321Application">
         <activity
-            android:name=".MainActivity"
+            android:name=".LoginActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.CPEN321Application">
@@ -26,19 +26,8 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".TimerActivity"
+            android:name=".MainActivity"
             android:exported="false"
-            android:label="@string/timer_title"
-            android:theme="@style/Theme.CPEN321Application" />
-        <activity
-            android:name=".LoginActivity"
-            android:exported="false"
-            android:label="@string/btn_login"
-            android:theme="@style/Theme.CPEN321Application" />
-        <activity
-            android:name=".PixelArtActivity"
-            android:exported="false"
-            android:label="@string/btn_live_updates"
             android:theme="@style/Theme.CPEN321Application" />
     </application>
 
