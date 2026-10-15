@@ -1,21 +1,5 @@
 <resources>
     <string name="app_name">CPEN321 Application</string>
-    <string name="btn_login">Login + Server</string>
-    <string name="btn_live_updates">Live Updates</string>
-    <string name="btn_timer">Timer</string>
-    <string name="timer_title">Timer</string>
-    <string name="timer_minutes_label">Minutes</string>
-    <string name="timer_seconds_label">Seconds</string>
-    <string name="timer_start">Start</string>
-    <string name="timer_cancel">Cancel</string>
-    <string name="timer_surprise_title">Time\'s Up!</string>
-    <string name="timer_loading">Fetching your fact\u2026</string>
-    <string name="timer_surprise_dismiss">OK</string>
-    <string name="timer_coming_soon">Coming soon!</string>
+    <string name="btn_login">Login</string>
     <string name="btn_back">← Back</string>
-    <string name="status_signed_in">Signed in as %1$s</string>
-    <string name="status_signed_out">Not signed in</string>
-    <string name="backend_connected">Backend Connected</string>
-    <string name="backend_offline">Backend Offline</string>
-    <string name="backend_checking">Checking backend…</string>
 </resources>
