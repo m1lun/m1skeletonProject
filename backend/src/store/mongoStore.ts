@@ -14,13 +14,13 @@ function toDoc<T extends { id: string }>(stored: Stored<T>): T {
 }
 
 // Drops Mongo's _id so option and field documents match their model types.
-function withoutId<T>(stored: Document): T {
-  const copy: Document = { ...stored };
+function withoutId<T>(stored: Record<string, unknown>): T {
+  const copy: Record<string, unknown> = { ...stored };
   delete copy._id;
   return copy as T;
 }
 
-function withoutIds<T>(found: Document[]): T[] {
+function withoutIds<T>(found: Record<string, unknown>[]): T[] {
   const results: T[] = [];
   for (const stored of found) {
     results.push(withoutId<T>(stored));
@@ -70,7 +70,10 @@ class MongoOptionRepo implements OptionRepo {
   constructor(private readonly collection: Collection<Document>) {}
 
   async list(field: string): Promise<Option[]> {
-    const found = await this.collection.find({ field }).sort({ label: 1 }).toArray();
+    const found = (await this.collection
+      .find({ field })
+      .sort({ label: 1 })
+      .toArray()) as unknown as Record<string, unknown>[];
     return withoutIds<Option>(found);
   }
 
@@ -79,7 +82,7 @@ class MongoOptionRepo implements OptionRepo {
     if (found === null) {
       return null;
     }
-    return withoutId<Option>(found);
+    return withoutId<Option>(found as unknown as Record<string, unknown>);
   }
 
   async ensure(option: Option): Promise<Option> {
@@ -96,7 +99,10 @@ class MongoFieldRepo implements FieldRepo {
   constructor(private readonly collection: Collection<Document>) {}
 
   async list(ownerId: string): Promise<FieldDefinition[]> {
-    const found = await this.collection.find({ ownerId }).toArray();
+    const found = (await this.collection.find({ ownerId }).toArray()) as unknown as Record<
+      string,
+      unknown
+    >[];
     return withoutIds<FieldDefinition>(found);
   }
 
