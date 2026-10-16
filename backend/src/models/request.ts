@@ -16,9 +16,3 @@ export interface BuyerRequest {
   createdAt: Date;
   updatedAt: Date;
 }
-
-export const requestIndexes = [
-  { key: { location: '2dsphere' } },
-  { key: { status: 1, category: 1 } },
-  { key: { ownerId: 1, status: 1 } },
-] as const;

@@ -1,8 +1,6 @@
 // Open pick-lists: category, brand, colour and every custom text field.
 export const OPTIONS_COLLECTION = 'options';
 
-export const BUILTIN_OPTION_FIELDS = ['category', 'brand', 'colour'] as const;
-
 export interface Option {
   field: string;
   key: string;

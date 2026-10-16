@@ -1,6 +1,3 @@
-// Shared building blocks for requests and listings
-// (see .claude/Feature1_Plan.md, "Data model").
-
 export const MAX_PHOTOS = 10;
 export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 export const MAX_CUSTOM_FIELDS = 10;
@@ -46,11 +43,15 @@ export interface Requirement extends Attribute {
   importance?: number;
 }
 
+// Indexes shared by listings and requests: radius search for the feed, plus
+// category browsing and "My posts" (newest first) lookups.
+export const postIndexes = [
+  { key: { location: '2dsphere' } },
+  { key: { status: 1, category: 1 } },
+  { key: { ownerId: 1, createdAt: -1 } },
+] as const;
+
 // Lower-cases, trims and collapses whitespace so "IKEA" and " ikea " are one key.
 export function normaliseKey(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-export function conditionRank(condition: Condition): number {
-  return CONDITIONS.indexOf(condition);
 }

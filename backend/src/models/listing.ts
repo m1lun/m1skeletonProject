@@ -19,10 +19,3 @@ export interface Listing {
   createdAt: Date;
   updatedAt: Date;
 }
-
-// Indexes: radius search for the feed, plus "My posts" lookups.
-export const listingIndexes = [
-  { key: { location: '2dsphere' } },
-  { key: { status: 1, category: 1 } },
-  { key: { ownerId: 1, status: 1 } },
-] as const;

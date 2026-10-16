@@ -15,7 +15,6 @@ export interface PostRepo<T extends PostDoc> {
   listByOwner(ownerId: string): Promise<T[]>;
   replace(doc: T): Promise<void>;
   remove(id: string): Promise<void>;
-  countByCategory(category: string): Promise<number>;
 }
 
 export interface OptionRepo {
@@ -23,6 +22,8 @@ export interface OptionRepo {
   find(field: string, key: string): Promise<Option | null>;
   // Inserts if missing and returns the stored option either way.
   ensure(option: Option): Promise<Option>;
+  // Inserts every missing option in a single round trip; existing ones are untouched.
+  ensureMany(options: Option[]): Promise<void>;
 }
 
 export interface FieldRepo {

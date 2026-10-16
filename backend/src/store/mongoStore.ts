@@ -1,9 +1,10 @@
 import { MongoClient, ObjectId, type Collection, type Db, type Document } from 'mongodb';
 
 import { FIELD_DEFINITIONS_COLLECTION, type FieldDefinition } from '../models/fieldDefinition';
-import { LISTINGS_COLLECTION, listingIndexes, type Listing } from '../models/listing';
+import { postIndexes } from '../models/common';
+import { LISTINGS_COLLECTION, type Listing } from '../models/listing';
 import { OPTIONS_COLLECTION, type Option } from '../models/option';
-import { REQUESTS_COLLECTION, requestIndexes, type BuyerRequest } from '../models/request';
+import { REQUESTS_COLLECTION, type BuyerRequest } from '../models/request';
 import type { FieldRepo, OptionRepo, PostDoc, PostRepo, Store } from './types';
 
 type Stored<T> = Omit<T, 'id'> & { _id: ObjectId };
@@ -59,11 +60,6 @@ class MongoPostRepo<T extends PostDoc & { category: string }> implements PostRep
   async remove(id: string): Promise<void> {
     await this.collection.deleteOne({ _id: new ObjectId(id) });
   }
-
-  async countByCategory(category: string): Promise<number> {
-    const count: number = await this.collection.countDocuments({ category });
-    return count;
-  }
 }
 
 class MongoOptionRepo implements OptionRepo {
@@ -86,12 +82,28 @@ class MongoOptionRepo implements OptionRepo {
   }
 
   async ensure(option: Option): Promise<Option> {
-    await this.collection.updateOne(
+    const stored = await this.collection.findOneAndUpdate(
       { field: option.field, key: option.key },
       { $setOnInsert: option },
-      { upsert: true },
+      { upsert: true, returnDocument: 'after' },
     );
-    return (await this.find(option.field, option.key)) ?? option;
+    return stored === null ? option : withoutId<Option>(stored as unknown as Record<string, unknown>);
+  }
+
+  async ensureMany(options: Option[]): Promise<void> {
+    if (options.length === 0) {
+      return;
+    }
+    await this.collection.bulkWrite(
+      options.map((option) => ({
+        updateOne: {
+          filter: { field: option.field, key: option.key },
+          update: { $setOnInsert: option },
+          upsert: true,
+        },
+      })),
+      { ordered: false },
+    );
   }
 }
 
@@ -122,14 +134,12 @@ class MongoFieldRepo implements FieldRepo {
 }
 
 async function createIndexes(db: Db): Promise<void> {
-  await db.collection(LISTINGS_COLLECTION).createIndexes([...listingIndexes]);
-  await db.collection(REQUESTS_COLLECTION).createIndexes([...requestIndexes]);
-  await db
-    .collection(OPTIONS_COLLECTION)
-    .createIndex({ field: 1, key: 1 }, { unique: true });
-  await db
-    .collection(FIELD_DEFINITIONS_COLLECTION)
-    .createIndex({ ownerId: 1, key: 1 }, { unique: true });
+  await Promise.all([
+    db.collection(LISTINGS_COLLECTION).createIndexes([...postIndexes]),
+    db.collection(REQUESTS_COLLECTION).createIndexes([...postIndexes]),
+    db.collection(OPTIONS_COLLECTION).createIndex({ field: 1, key: 1 }, { unique: true }),
+    db.collection(FIELD_DEFINITIONS_COLLECTION).createIndex({ ownerId: 1, key: 1 }, { unique: true }),
+  ]);
 }
 
 export async function createMongoStore(uri: string, dbName: string): Promise<Store> {
