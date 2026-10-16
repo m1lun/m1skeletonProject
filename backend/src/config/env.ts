@@ -10,14 +10,14 @@ if (Number.isNaN(port) || port < 1 || port > 65535) {
   throw new Error(`Invalid PORT: ${rawPort}`);
 }
 
-function optional(name: string): string | undefined {
-  const value = process.env[name]?.trim();
+function optional(raw: string | undefined): string | undefined {
+  const value = raw?.trim();
   return value === undefined || value === '' ? undefined : value;
 }
 
 export const env = {
   port,
-  // When unset the server runs against an in-memory store (dev only).
-  mongoUri: optional('MONGODB_URI'),
-  mongoDb: optional('MONGODB_DB') ?? 'matchmarket',
+  // MongoDB connection string; required once the server wires up the store.
+  mongoUri: optional(process.env.MONGODB_URI),
+  mongoDb: optional(process.env.MONGODB_DB) ?? 'matchmarket',
 } as const;

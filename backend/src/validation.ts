@@ -136,9 +136,9 @@ export interface OptionUse {
 }
 
 export interface ParsedAttributes {
-  items: Array<Attribute | Requirement>;
+  items: (Attribute | Requirement)[];
   optionUses: OptionUse[];
-  customDefs: Array<{ key: string; label: string; type: FieldType }>;
+  customDefs: { key: string; label: string; type: FieldType }[];
 }
 
 const RESERVED_KEYS = new Set(['category', 'price', 'condition', 'dimensions', 'radiusKm', 'brand', 'colour']);
@@ -196,7 +196,7 @@ export function parseRows(
       }
     } else {
       key = typeof row.key === 'string' ? row.key : '';
-      const spec = builtins[key];
+      const spec = Object.entries(builtins).find(([name]) => name === key)?.[1];
       if (spec === undefined) {
         errors.push(`${at}.key "${key}" is not a known field`);
         return;

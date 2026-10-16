@@ -13,6 +13,13 @@ function toDoc<T extends { id: string }>(stored: Stored<T>): T {
   return { ...rest, id: _id.toHexString() } as unknown as T;
 }
 
+// Drops Mongo's _id so option and field documents match their model types.
+function withoutId<T>(stored: Document): T {
+  const copy: Document = { ...stored };
+  delete copy._id;
+  return copy as T;
+}
+
 class MongoPostRepo<T extends PostDoc & { category: string }> implements PostRepo<T> {
   constructor(private readonly collection: Collection<Document>) {}
 
@@ -32,7 +39,8 @@ class MongoPostRepo<T extends PostDoc & { category: string }> implements PostRep
 
   async listByOwner(ownerId: string): Promise<T[]> {
     const found = await this.collection.find({ ownerId }).sort({ createdAt: -1 }).toArray();
-    return found.map((d) => toDoc<T>(d as unknown as Stored<T>));
+    const stored = found as unknown as Stored<T>[];
+    return stored.map((d) => toDoc<T>(d));
   }
 
   async replace(doc: T): Promise<void> {
@@ -45,7 +53,8 @@ class MongoPostRepo<T extends PostDoc & { category: string }> implements PostRep
   }
 
   async countByCategory(category: string): Promise<number> {
-    return this.collection.countDocuments({ category });
+    const count: number = await this.collection.countDocuments({ category });
+    return count;
   }
 }
 
@@ -54,7 +63,7 @@ class MongoOptionRepo implements OptionRepo {
 
   async list(field: string): Promise<Option[]> {
     const found = await this.collection.find({ field }).sort({ label: 1 }).toArray();
-    return found.map(({ _id, ...rest }) => rest as unknown as Option);
+    return found.map((d) => withoutId<Option>(d));
   }
 
   async find(field: string, key: string): Promise<Option | null> {
@@ -62,8 +71,7 @@ class MongoOptionRepo implements OptionRepo {
     if (found === null) {
       return null;
     }
-    const { _id, ...rest } = found;
-    return rest as unknown as Option;
+    return withoutId<Option>(found);
   }
 
   async ensure(option: Option): Promise<Option> {
@@ -81,7 +89,7 @@ class MongoFieldRepo implements FieldRepo {
 
   async list(ownerId: string): Promise<FieldDefinition[]> {
     const found = await this.collection.find({ ownerId }).toArray();
-    return found.map(({ _id, ...rest }) => rest as unknown as FieldDefinition);
+    return found.map((d) => withoutId<FieldDefinition>(d));
   }
 
   async upsert(def: FieldDefinition): Promise<FieldDefinition> {
@@ -120,6 +128,8 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Sto
     requests: new MongoPostRepo<BuyerRequest>(db.collection(REQUESTS_COLLECTION)),
     options: new MongoOptionRepo(db.collection(OPTIONS_COLLECTION)),
     fields: new MongoFieldRepo(db.collection(FIELD_DEFINITIONS_COLLECTION)),
-    close: () => client.close(),
+    close: async () => {
+      await client.close();
+    },
   };
 }
