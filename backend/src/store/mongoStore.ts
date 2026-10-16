@@ -20,6 +20,14 @@ function withoutId<T>(stored: Document): T {
   return copy as T;
 }
 
+function withoutIds<T>(found: Document[]): T[] {
+  const results: T[] = [];
+  for (const stored of found) {
+    results.push(withoutId<T>(stored));
+  }
+  return results;
+}
+
 class MongoPostRepo<T extends PostDoc & { category: string }> implements PostRepo<T> {
   constructor(private readonly collection: Collection<Document>) {}
 
@@ -63,7 +71,7 @@ class MongoOptionRepo implements OptionRepo {
 
   async list(field: string): Promise<Option[]> {
     const found = await this.collection.find({ field }).sort({ label: 1 }).toArray();
-    return found.map((d) => withoutId<Option>(d));
+    return withoutIds<Option>(found);
   }
 
   async find(field: string, key: string): Promise<Option | null> {
@@ -89,7 +97,7 @@ class MongoFieldRepo implements FieldRepo {
 
   async list(ownerId: string): Promise<FieldDefinition[]> {
     const found = await this.collection.find({ ownerId }).toArray();
-    return found.map((d) => withoutId<FieldDefinition>(d));
+    return withoutIds<FieldDefinition>(found);
   }
 
   async upsert(def: FieldDefinition): Promise<FieldDefinition> {
