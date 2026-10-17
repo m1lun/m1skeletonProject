@@ -71,16 +71,31 @@ cp backend/.env.example backend/.env
 
 Set at least:
 - `GOOGLE_CLIENT_ID` (required): the **Web** OAuth client ID. The backend verifies every Google ID token against it and will not start without it. Must match `GOOGLE_CLIENT_ID` in `frontend/local.properties`.
-- `JWT_SECRET`: a long random string used to sign auth tokens.
-- `MONGODB_URI`: only needed for local development (default in `.env.example` assumes MongoDB on `localhost:27017`). Ignored when running via Docker Compose.
+- `JWT_SECRET` (required): signs the backend's session tokens; at least 32 characters, and the server will not start without it. Generate one per server with `openssl rand -base64 48` and never commit it: anyone holding it can sign in as any user.
+- `MONGODB_URI` (required): where sessions (and listings) are stored. The default in `.env.example` assumes MongoDB on `localhost:27017`; Docker Compose overrides it with its own `mongo` service. The server waits for MongoDB before it starts listening.
 - `PORT` (optional): defaults to `3000` if unset.
 - `ENABLE_HTTPS` (optional): `true` serves HTTPS using `backend/certs/server.crt` and `backend/certs/server.key` (see [HTTPS](#https)). Leave unset for local HTTP.
 
 ### API
 
-Data routes go behind the `requireGoogleAuth` middleware (`backend/src/googleAuth.ts`), which requires the Google ID token from sign-in as `Authorization: Bearer <token>`; without a valid one the server answers `401`.
+Google is asked only once, at sign-in. The backend then issues its own tokens (`backend/src/sessions.ts`):
 
-- `POST /api/auth/google`: body `{ "idToken": "..." }`. Verifies the token with Google and answers `{ "firstName", "lastName", "email" }`. `400` with no token, `401` if it fails verification.
+- **Session token**: a JWT signed with `JWT_SECRET`, valid for 15 minutes. Sent as `Authorization: Bearer <session token>` on every data request.
+- **Refresh token**: 256 random bits, valid for 30 days. Only its SHA-256 hash is stored, in the `sessions` collection; MongoDB deletes it once expired. Each refresh replaces it with a new one, and presenting an already-used refresh token revokes every token from that sign-in (it means two parties hold it).
+
+Data routes go behind the `requireAuth` middleware, which answers `401` without a valid session token. Read the user in a handler with `currentUser(res)`:
+
+```ts
+app.get('/api/listings/mine', requireAuth, (req, res) => {
+  const { id, email } = currentUser(res); // id is the Google account id
+});
+```
+
+On the app side, call `SessionManager.get(context).authorizedRequest(...)` (`frontend/.../auth/SessionManager.kt`). It attaches the session token, refreshes it when it expires or the backend answers `401`, and throws `SessionExpiredException` when the user has to sign in again.
+
+- `POST /api/auth/google`: body `{ "idToken": "..." }`. Verifies the token with Google and starts a session: `{ "firstName", "lastName", "email", "sessionToken", "sessionExpiresIn", "refreshToken" }`. `400` with no token, `401` if it fails verification.
+- `POST /api/auth/refresh`: body `{ "refreshToken": "..." }`. Same response as sign-in, with new tokens; the old refresh token stops working. Google is not called. `401` means the user has to sign in again.
+- `POST /api/auth/logout`: body `{ "refreshToken": "..." }`. Revokes every token from that sign-in. `204`, even if it was already gone.
 - `GET /health`: open, used by the run script and health checks.
 
 
