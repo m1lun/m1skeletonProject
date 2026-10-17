@@ -45,8 +45,6 @@ function start(store: Store): void {
   }
 }
 
-// Sessions and posts live in MongoDB, so the server only starts once it is
-// reachable and its built-in options are in place.
 createMongoStore(env.mongoUri, env.mongoDb)
   .then(async (store) => {
     await seedOptions(store);

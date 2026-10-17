@@ -11,7 +11,6 @@ import type { SessionRepo, Store } from './store/types';
 
 export interface AppDeps {
   sessions: SessionRepo;
-  // Without a store only the health check and the auth routes are served.
   store?: Store;
 }
 

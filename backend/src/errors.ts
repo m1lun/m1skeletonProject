@@ -12,9 +12,11 @@ export class BadRequestError extends Error {
 // MongoDB's code for a document that fails the collection's $jsonSchema.
 const DOCUMENT_VALIDATION_FAILED = 121;
 
-// Express only treats a function with four parameters as an error handler.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, next) => {
+  if (res.headersSent) {
+    next(error);
+    return;
+  }
   if (error instanceof BadRequestError) {
     res.status(400).json({ error: 'Invalid request', details: error.details });
     return;
