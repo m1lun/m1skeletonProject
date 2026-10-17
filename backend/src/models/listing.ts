@@ -1,4 +1,4 @@
-import type { Attribute, Condition, GeoPoint, PostStatus } from './common';
+import type { PostField, Condition, GeoPoint, PostStatus } from './common';
 
 export const LISTINGS_COLLECTION = 'listings';
 
@@ -12,7 +12,7 @@ export interface Listing {
   address: string;
   location: GeoPoint;
   photoUrls: string[];
-  attributes: Attribute[];
+  listingFields: PostField[];
   status: PostStatus;
   createdAt: Date;
   updatedAt: Date;

@@ -1,14 +1,14 @@
 import { MongoClient, ObjectId, type Collection, type Db, type Document } from 'mongodb';
 
-import { FIELD_DEFINITIONS_COLLECTION, type FieldDefinition } from '../models/fieldDefinition';
+import { CUSTOM_FIELDS_COLLECTION, type CustomField } from '../models/customField';
 import { postIndexes } from '../models/common';
 import { normaliseListing, normaliseRequest } from '../models/normalise';
 import { LISTINGS_COLLECTION, type Listing } from '../models/listing';
 import { OPTIONS_COLLECTION, type Option } from '../models/option';
 import { REQUESTS_COLLECTION, type BuyerRequest } from '../models/request';
 import { SESSIONS_COLLECTION, type RefreshSession } from '../models/session';
-import { fieldDefinitionSchema, listingSchema, optionSchema, requestSchema, sessionSchema } from '../models/schema';
-import type { FieldRepo, OptionRepo, PostDoc, PostRepo, SessionRepo, Store } from './types';
+import { customFieldSchema, listingSchema, optionSchema, requestSchema, sessionSchema } from '../models/schema';
+import type { CustomFieldCollection, OptionCollection, PostDoc, PostCollection, SessionRepo, Store } from './types';
 
 type Stored<T> = Omit<T, 'id'> & { _id: ObjectId };
 
@@ -17,13 +17,13 @@ function toDoc<T extends { id: string }>(stored: Stored<T>): T {
   return { ...rest, id: _id.toHexString() } as unknown as T;
 }
 
-// Options and field definitions have no id of their own, so Mongo leaves _id out.
+// Options and custom fields have no id of their own, so Mongo leaves _id out.
 const WITHOUT_ID = { projection: { _id: 0 } };
 
-class MongoPostRepo<T extends PostDoc & { category: string }> implements PostRepo<T> {
+class MongoPostCollection<T extends PostDoc & { category: string }> implements PostCollection<T> {
   constructor(
     private readonly collection: Collection<Document>,
-    // Tidies a post (lower-case keys, trimmed text, no duplicate rows) before it is saved.
+    // Tidies a post (lower-case keys, trimmed text, no duplicate fields) before it is saved.
     private readonly normalise: (doc: Omit<T, 'id'>) => Omit<T, 'id'>,
   ) {}
 
@@ -48,9 +48,11 @@ class MongoPostRepo<T extends PostDoc & { category: string }> implements PostRep
     return stored.map((d) => toDoc<T>(d));
   }
 
-  async replace(doc: T): Promise<void> {
+  async replace(doc: T): Promise<T> {
     const { id, ...rest } = doc;
-    await this.collection.replaceOne({ _id: new ObjectId(id) }, this.normalise(rest));
+    const clean = this.normalise(rest);
+    await this.collection.replaceOne({ _id: new ObjectId(id) }, clean);
+    return { ...clean, id } as T;
   }
 
   async remove(id: string): Promise<void> {
@@ -58,7 +60,7 @@ class MongoPostRepo<T extends PostDoc & { category: string }> implements PostRep
   }
 }
 
-class MongoOptionRepo implements OptionRepo {
+class MongoOptionCollection implements OptionCollection {
   constructor(private readonly collection: Collection<Document>) {}
 
   async list(field: string): Promise<Option[]> {
@@ -97,15 +99,15 @@ class MongoOptionRepo implements OptionRepo {
   }
 }
 
-class MongoFieldRepo implements FieldRepo {
+class MongoCustomFieldCollection implements CustomFieldCollection {
   constructor(private readonly collection: Collection<Document>) {}
 
-  async list(ownerId: string): Promise<FieldDefinition[]> {
+  async list(ownerId: string): Promise<CustomField[]> {
     const found = await this.collection.find({ ownerId }, WITHOUT_ID).toArray();
-    return found as unknown as FieldDefinition[];
+    return found as unknown as CustomField[];
   }
 
-  async upsert(def: FieldDefinition): Promise<FieldDefinition> {
+  async upsert(def: CustomField): Promise<CustomField> {
     await this.collection.updateOne(
       { ownerId: def.ownerId, key: def.key },
       { $set: def },
@@ -162,14 +164,14 @@ async function setupCollections(db: Db): Promise<void> {
     applySchema(db, LISTINGS_COLLECTION, listingSchema),
     applySchema(db, REQUESTS_COLLECTION, requestSchema),
     applySchema(db, OPTIONS_COLLECTION, optionSchema),
-    applySchema(db, FIELD_DEFINITIONS_COLLECTION, fieldDefinitionSchema),
+    applySchema(db, CUSTOM_FIELDS_COLLECTION, customFieldSchema),
     applySchema(db, SESSIONS_COLLECTION, sessionSchema),
   ]);
   await Promise.all([
     db.collection(LISTINGS_COLLECTION).createIndexes([...postIndexes]),
     db.collection(REQUESTS_COLLECTION).createIndexes([...postIndexes]),
     db.collection(OPTIONS_COLLECTION).createIndex({ field: 1, key: 1 }, { unique: true }),
-    db.collection(FIELD_DEFINITIONS_COLLECTION).createIndex({ ownerId: 1, key: 1 }, { unique: true }),
+    db.collection(CUSTOM_FIELDS_COLLECTION).createIndex({ ownerId: 1, key: 1 }, { unique: true }),
     db.collection(SESSIONS_COLLECTION).createIndexes([
       { key: { tokenHash: 1 }, unique: true },
       { key: { familyId: 1 } },
@@ -185,10 +187,10 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Sto
   const db = client.db(dbName);
   await setupCollections(db);
   return {
-    listings: new MongoPostRepo<Listing>(db.collection(LISTINGS_COLLECTION), normaliseListing),
-    requests: new MongoPostRepo<BuyerRequest>(db.collection(REQUESTS_COLLECTION), normaliseRequest),
-    options: new MongoOptionRepo(db.collection(OPTIONS_COLLECTION)),
-    fields: new MongoFieldRepo(db.collection(FIELD_DEFINITIONS_COLLECTION)),
+    listings: new MongoPostCollection<Listing>(db.collection(LISTINGS_COLLECTION), normaliseListing),
+    requests: new MongoPostCollection<BuyerRequest>(db.collection(REQUESTS_COLLECTION), normaliseRequest),
+    options: new MongoOptionCollection(db.collection(OPTIONS_COLLECTION)),
+    customFields: new MongoCustomFieldCollection(db.collection(CUSTOM_FIELDS_COLLECTION)),
     sessions: new MongoSessionRepo(db.collection(SESSIONS_COLLECTION)),
     close: async () => {
       await client.close();

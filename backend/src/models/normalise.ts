@@ -1,23 +1,25 @@
-import { normaliseKey, type Attribute } from './common';
+import { normaliseKey, type PostField } from './common';
 import type { Listing } from './listing';
 import type { BuyerRequest } from './request';
 
+export class DuplicateFieldError extends Error {}
+
 // Brand, colour and custom text values are chosen from the saved options, so they are
 // lower-cased to match the stored option.
-function isOptionText(row: Attribute, key: string): boolean {
-  return row.type === 'text' && (row.kind === 'custom' || key === 'brand' || key === 'colour');
+function isOptionText(field: PostField, key: string): boolean {
+  return field.type === 'text' && (field.kind === 'custom' || key === 'brand' || key === 'colour');
 }
 
-function normaliseRows<R extends Attribute>(rows: R[]): R[] {
+function normaliseFields<R extends PostField>(fields: R[]): R[] {
   const seen = new Set<string>();
-  return rows.map((row) => {
-    const key = normaliseKey(row.key);
+  return fields.map((field) => {
+    const key = normaliseKey(field.key);
     if (seen.has(key)) {
-      throw new Error(`Duplicate field "${key}"`);
+      throw new DuplicateFieldError(`Duplicate field "${key}"`);
     }
     seen.add(key);
-    const value = isOptionText(row, key) && typeof row.value === 'string' ? normaliseKey(row.value) : row.value;
-    return { ...row, key, label: row.label.trim(), value };
+    const value = isOptionText(field, key) && typeof field.value === 'string' ? normaliseKey(field.value) : field.value;
+    return { ...field, key, label: field.label.trim(), value };
   });
 }
 
@@ -34,9 +36,9 @@ function tidyPost<T extends { category: string; description: string; address: st
 }
 
 export function normaliseListing(doc: NewPost<Listing>): NewPost<Listing> {
-  return { ...tidyPost(doc), attributes: normaliseRows(doc.attributes) };
+  return { ...tidyPost(doc), listingFields: normaliseFields(doc.listingFields) };
 }
 
 export function normaliseRequest(doc: NewPost<BuyerRequest>): NewPost<BuyerRequest> {
-  return { ...tidyPost(doc), requirements: normaliseRows(doc.requirements) };
+  return { ...tidyPost(doc), requestFields: normaliseFields(doc.requestFields) };
 }

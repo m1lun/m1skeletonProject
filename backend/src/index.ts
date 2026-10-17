@@ -6,6 +6,7 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { describe } from './googleAuth';
 import { createMongoStore } from './store/mongoStore';
+import { seedOptions } from './store/seed';
 import type { Store } from './store/types';
 
 // Certificate paths are string literals so Codacy's
@@ -13,7 +14,7 @@ import type { Store } from './store/types';
 // the backend directory, the working directory for `npm start` and the
 // Docker image's WORKDIR.
 function start(store: Store): void {
-  const app = createApp({ sessions: store.sessions });
+  const app = createApp({ sessions: store.sessions, store });
   const server = env.httpsEnabled
     ? createHttpsServer(
         {
@@ -44,8 +45,12 @@ function start(store: Store): void {
   }
 }
 
-// Sessions live in MongoDB, so the server only starts once it is reachable.
-createMongoStore(env.mongoUri, env.mongoDb).then(start, (cause: unknown) => {
-  console.error(`Could not connect to MongoDB: ${describe(cause)}`);
-  process.exitCode = 1;
-});
+createMongoStore(env.mongoUri, env.mongoDb)
+  .then(async (store) => {
+    await seedOptions(store);
+    return store;
+  })
+  .then(start, (cause: unknown) => {
+    console.error(`Could not set up MongoDB: ${describe(cause)}`);
+    process.exitCode = 1;
+  });

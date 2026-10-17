@@ -3,8 +3,8 @@ export const MAX_DESCRIPTION_LENGTH = 2000;
 export const MAX_ADDRESS_LENGTH = 200;
 export const MAX_LABEL_LENGTH = 60;
 export const MAX_TEXT_VALUE_LENGTH = 100;
-// Up to 6 built-in rows plus 10 custom fields.
-export const MAX_ROWS = 16;
+// Up to 6 built-in fields plus 10 custom fields.
+export const MAX_FIELDS = 16;
 
 // Keys used by built-in fields; custom fields can't take them. Already normalised.
 export const RESERVED_KEYS = ['category', 'price', 'condition', 'dimensions', 'radiuskm', 'brand', 'colour'] as const;
@@ -34,18 +34,18 @@ export interface GeoPoint {
   coordinates: [longitude: number, latitude: number];
 }
 
-export type AttributeValue = string | number | boolean | Dimensions;
+export type FieldValue = string | number | boolean | Dimensions;
 
-export interface Attribute {
+export interface PostField {
   key: string;
   label: string;
   kind: 'builtin' | 'custom';
   type: FieldType | 'dimensions';
-  value: AttributeValue;
+  value: FieldValue;
 }
 
-// importance is omitted when hard: a hard requirement is a must-have.
-export interface Requirement extends Attribute {
+// importance is omitted when hard: a hard field is a must-have.
+export interface RequestField extends PostField {
   hard: boolean;
   importance?: number;
 }
