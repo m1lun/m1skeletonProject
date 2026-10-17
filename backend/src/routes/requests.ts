@@ -7,7 +7,7 @@ import { createPostRouter } from './posts';
 
 export function createRequestsRouter(store: Store): Router {
   return createPostRouter<BuyerRequest>(store, {
-    repo: store.requests,
+    collection: store.requests,
     builtins: {
       price: { label: 'Max price', type: 'number' },
       condition: { label: 'Min condition', type: 'text' },
@@ -16,13 +16,13 @@ export function createRequestsRouter(store: Store): Router {
       brand: { label: 'Brand', type: 'text' },
       colour: { label: 'Colour', type: 'text' },
     },
-    rowsField: 'requirements',
+    fieldsKey: 'requestFields',
     minPhotos: 0,
-    parseExtra(_body, rows, errors) {
-      if (!rows.some((row) => row.kind === 'builtin' && row.key === 'price')) {
-        errors.push('a price requirement (max price) is required');
+    parseExtra(_body, fields, errors) {
+      if (!fields.some((field) => field.kind === 'builtin' && field.key === 'price')) {
+        errors.push('a max price is required');
       }
-      const condition = rows.find((row) => row.kind === 'builtin' && row.key === 'condition');
+      const condition = fields.find((field) => field.kind === 'builtin' && field.key === 'condition');
       if (
         condition !== undefined &&
         (typeof condition.value !== 'string' || !(CONDITIONS as readonly string[]).includes(condition.value))

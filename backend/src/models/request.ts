@@ -1,4 +1,4 @@
-import type { GeoPoint, PostStatus, Requirement } from './common';
+import type { GeoPoint, PostStatus, RequestField } from './common';
 
 export const REQUESTS_COLLECTION = 'requests';
 
@@ -10,7 +10,7 @@ export interface BuyerRequest {
   address: string;
   location: GeoPoint;
   photoUrls: string[];
-  requirements: Requirement[];
+  requestFields: RequestField[];
   status: PostStatus;
   createdAt: Date;
   updatedAt: Date;

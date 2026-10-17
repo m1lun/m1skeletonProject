@@ -106,7 +106,7 @@ Listings (what sellers offer) and requests (what buyers want) share the same rou
 - `PATCH /api/listings/:id`, `PATCH /api/requests/:id`: change any fields, or `{ "status": "closed" }` to close a post.
 - `DELETE /api/listings/:id`, `DELETE /api/requests/:id`: `204`.
 - `GET /api/options?field=brand`, `POST /api/options` with `{ "field", "label" }`: the saved options for category, brand, colour and custom text fields. Saving a post adds any new category, brand or colour (and new custom field values) to these lists, so the app does not have to add them first.
-- `GET /api/fields`, `POST /api/fields` with `{ "label", "type" }`, `DELETE /api/fields/:key`: your saved custom fields (`text`, `number` or `bool`).
+- `GET /api/custom-fields`, `POST /api/custom-fields` with `{ "label", "type" }`, `DELETE /api/custom-fields/:key`: your saved custom fields (`text`, `number` or `bool`).
 
 
 ### Option 1: Run locally

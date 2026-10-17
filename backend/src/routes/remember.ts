@@ -1,4 +1,4 @@
-import { FIELD_TYPES, normaliseKey, type Attribute, type FieldType } from '../models/common';
+import { FIELD_TYPES, normaliseKey, type PostField, type FieldType } from '../models/common';
 import type { Option } from '../models/option';
 import type { Store } from '../store/types';
 
@@ -18,8 +18,8 @@ export function newOption(field: string, text: string, ownerId: string): Option 
   };
 }
 
-function textValue(row: Attribute): string | null {
-  return row.type === 'text' && typeof row.value === 'string' && row.value.trim() !== '' ? row.value : null;
+function textValue(field: PostField): string | null {
+  return field.type === 'text' && typeof field.value === 'string' && field.value.trim() !== '' ? field.value : null;
 }
 
 // After a post is saved, remembers the new values it used so they are offered next time:
@@ -29,16 +29,16 @@ export async function rememberNewValues(
   store: Store,
   ownerId: string,
   category: string,
-  rows: Attribute[],
+  fields: PostField[],
 ): Promise<void> {
   const saves: Promise<unknown>[] = [store.options.ensure(newOption('category', category, ownerId))];
-  for (const row of rows) {
-    const key = normaliseKey(row.key);
-    const value = textValue(row);
-    if (row.kind === 'custom' && (FIELD_TYPES as readonly string[]).includes(row.type)) {
-      saves.push(store.fields.upsert({ ownerId, key, label: row.label.trim(), type: row.type as FieldType }));
+  for (const field of fields) {
+    const key = normaliseKey(field.key);
+    const value = textValue(field);
+    if (field.kind === 'custom' && (FIELD_TYPES as readonly string[]).includes(field.type)) {
+      saves.push(store.customFields.upsert({ ownerId, key, label: field.label.trim(), type: field.type as FieldType }));
     }
-    if (value !== null && (row.kind === 'custom' || OPTION_FIELDS.includes(key))) {
+    if (value !== null && (field.kind === 'custom' || OPTION_FIELDS.includes(key))) {
       saves.push(store.options.ensure(newOption(key, value, ownerId)));
     }
   }

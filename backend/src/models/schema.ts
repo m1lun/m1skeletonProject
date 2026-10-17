@@ -9,7 +9,7 @@ import {
   MAX_DESCRIPTION_LENGTH,
   MAX_LABEL_LENGTH,
   MAX_PHOTOS,
-  MAX_ROWS,
+  MAX_FIELDS,
   MAX_TEXT_VALUE_LENGTH,
   NORMALISED_PATTERN,
   POST_STATUSES,
@@ -55,7 +55,7 @@ const photoUrls = (minItems: number): Document => ({
   items: { bsonType: 'string', pattern: '^https?://' },
 });
 
-const rowProperties = {
+const fieldProperties = {
   key,
   label,
   kind: { enum: ['builtin', 'custom'] },
@@ -65,15 +65,15 @@ const rowProperties = {
   },
 };
 
-// A row is either built-in, or custom with a key that no built-in field uses.
-const rowRule = {
+// A field is either built-in, or custom with a key that no built-in field uses.
+const fieldRule = {
   anyOf: [
     { properties: { kind: { enum: ['builtin'] } } },
     { properties: { kind: { enum: ['custom'] }, key: { not: { enum: [...RESERVED_KEYS] } } } },
   ],
 };
 
-const rows = (item: Document): Document => ({ bsonType: 'array', maxItems: MAX_ROWS, items: item });
+const fieldList = (item: Document): Document => ({ bsonType: 'array', maxItems: MAX_FIELDS, items: item });
 
 const postProperties = {
   ownerId: text(),
@@ -91,18 +91,18 @@ export const listingSchema = object({
   price: { bsonType: 'number', minimum: 0 },
   condition: { enum: [...CONDITIONS] },
   photoUrls: photoUrls(1),
-  attributes: rows(object(rowProperties, [], rowRule)),
+  listingFields: fieldList(object(fieldProperties, [], fieldRule)),
 });
 
-// Requests may have no photos, and a hard requirement has no importance.
+// Requests may have no photos, and a hard field has no importance.
 export const requestSchema = object({
   ...postProperties,
   photoUrls: photoUrls(0),
-  requirements: rows(
+  requestFields: fieldList(
     object(
-      { ...rowProperties, hard: { bsonType: 'bool' }, importance: { bsonType: 'int', minimum: 1, maximum: 5 } },
+      { ...fieldProperties, hard: { bsonType: 'bool' }, importance: { bsonType: 'int', minimum: 1, maximum: 5 } },
       ['importance'],
-      rowRule,
+      fieldRule,
     ),
   ),
 });
@@ -116,7 +116,7 @@ export const optionSchema = object({
   createdAt: date,
 });
 
-export const fieldDefinitionSchema = object({
+export const customFieldSchema = object({
   ownerId: text(),
   key,
   label,

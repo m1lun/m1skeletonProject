@@ -1,5 +1,5 @@
 import type { GeoPoint } from '../models/common';
-import type { FieldDefinition } from '../models/fieldDefinition';
+import type { CustomField } from '../models/customField';
 import type { Option } from '../models/option';
 import type { RefreshSession } from '../models/session';
 
@@ -12,7 +12,7 @@ export interface PostDoc {
 }
 
 // Posts (listings or requests) are stored without an id; the store assigns one.
-export interface PostRepo<T extends PostDoc> {
+export interface PostCollection<T extends PostDoc> {
   insert(doc: Omit<T, 'id'>): Promise<T>;
   findById(id: string): Promise<T | null>;
   listByOwner(ownerId: string): Promise<T[]>;
@@ -20,7 +20,7 @@ export interface PostRepo<T extends PostDoc> {
   remove(id: string): Promise<void>;
 }
 
-export interface OptionRepo {
+export interface OptionCollection {
   list(field: string): Promise<Option[]>;
   find(field: string, key: string): Promise<Option | null>;
   // Inserts if missing and returns the stored option either way.
@@ -29,9 +29,9 @@ export interface OptionRepo {
   ensureMany(options: Option[]): Promise<void>;
 }
 
-export interface FieldRepo {
-  list(ownerId: string): Promise<FieldDefinition[]>;
-  upsert(def: FieldDefinition): Promise<FieldDefinition>;
+export interface CustomFieldCollection {
+  list(ownerId: string): Promise<CustomField[]>;
+  upsert(def: CustomField): Promise<CustomField>;
   remove(ownerId: string, key: string): Promise<boolean>;
 }
 
@@ -45,10 +45,10 @@ export interface SessionRepo {
 }
 
 export interface Store {
-  listings: PostRepo<import('../models/listing').Listing>;
-  requests: PostRepo<import('../models/request').BuyerRequest>;
-  options: OptionRepo;
-  fields: FieldRepo;
+  listings: PostCollection<import('../models/listing').Listing>;
+  requests: PostCollection<import('../models/request').BuyerRequest>;
+  options: OptionCollection;
+  customFields: CustomFieldCollection;
   sessions: SessionRepo;
   close(): Promise<void>;
 }

@@ -7,11 +7,11 @@ import type { Store } from '../store/types';
 import { isObject, isText } from './checks';
 import { handle } from './handle';
 
-export function createFieldsRouter(store: Store): Router {
+export function createCustomFieldsRouter(store: Store): Router {
   const router = Router();
 
   router.get('/', handle(async (req, res) => {
-    res.json(await store.fields.list(currentUser(res).id));
+    res.json(await store.customFields.list(currentUser(res).id));
   }));
 
   router.post('/', handle(async (req, res) => {
@@ -31,11 +31,11 @@ export function createFieldsRouter(store: Store): Router {
     if (errors.length > 0 || type === undefined) {
       throw new BadRequestError(errors);
     }
-    res.status(201).json(await store.fields.upsert({ ownerId: currentUser(res).id, key, label, type }));
+    res.status(201).json(await store.customFields.upsert({ ownerId: currentUser(res).id, key, label, type }));
   }));
 
   router.delete('/:key', handle(async (req, res) => {
-    const removed = await store.fields.remove(currentUser(res).id, normaliseKey(String(req.params.key)));
+    const removed = await store.customFields.remove(currentUser(res).id, normaliseKey(String(req.params.key)));
     if (!removed) {
       res.status(404).json({ error: 'Not Found' });
       return;
