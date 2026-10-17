@@ -1,4 +1,4 @@
-// Open pick-lists: category, brand, colour and every custom text field.
+// Options users can choose from or add to: category, brand, colour and every custom text field.
 export const OPTIONS_COLLECTION = 'options';
 
 export interface Option {

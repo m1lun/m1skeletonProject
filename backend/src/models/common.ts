@@ -1,9 +1,16 @@
 export const MAX_PHOTOS = 10;
-export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
-export const MAX_CUSTOM_FIELDS = 10;
 export const MAX_DESCRIPTION_LENGTH = 2000;
+export const MAX_ADDRESS_LENGTH = 200;
 export const MAX_LABEL_LENGTH = 60;
 export const MAX_TEXT_VALUE_LENGTH = 100;
+// Up to 6 built-in rows plus 10 custom fields.
+export const MAX_ROWS = 16;
+
+// Keys used by built-in fields; custom fields can't take them. Already normalised.
+export const RESERVED_KEYS = ['category', 'price', 'condition', 'dimensions', 'radiuskm', 'brand', 'colour'] as const;
+
+// A normalised key: lower-case words separated by single spaces, no edge spaces.
+export const NORMALISED_PATTERN = '^[^A-Z\\s]+( [^A-Z\\s]+)*$';
 
 // Ordered best to worst. Condition is a fixed scale, not a user-extendable list.
 export const CONDITIONS = ['new', 'like new', 'good', 'fair', 'poor'] as const;
