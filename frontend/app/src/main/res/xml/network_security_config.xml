@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Every request to the backend carries the user's Google ID token, so plain
+  HTTP is only allowed for local development hosts. Everything else must use
+  HTTPS and is checked against the platform's normal CA trust.
+-->
+<network-security-config>
+
+    <!-- Deployed backend (Google Cloud VM, static IP). HTTPS only, with its
+         self-signed certificate (M1 permits one) pinned from
+         res/raw/server_cert.pem. Regenerating the certificate or moving to
+         another IP means replacing that file and this <domain>. See README. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="false">34.168.1.92</domain>
+        <trust-anchors>
+            <certificates src="@raw/server_cert" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Local development. 10.0.2.2 is the emulator's alias for the host
+         machine. For a physical device on the same Wi-Fi, add your computer's
+         LAN IP here as another <domain>. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+
+    <base-config cleartextTrafficPermitted="false" />
+
+</network-security-config>
