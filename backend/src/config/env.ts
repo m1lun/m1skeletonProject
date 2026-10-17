@@ -20,8 +20,27 @@ function required(name: string, raw: string | undefined): string {
 
 const mongoDb = process.env.MONGODB_DB?.trim();
 
+// M1 requires the app to reach the backend over HTTPS. Set ENABLE_HTTPS=true
+// with a certificate and key in backend/certs/ (see README); local development
+// stays on plain HTTP.
+const httpsEnabled = process.env.ENABLE_HTTPS?.trim().toLowerCase() === 'true';
+
+// The Web OAuth client ID that Google ID tokens must be issued to. The server
+// rejects any token minted for a different client, so it refuses to start
+// without one. Not a secret: the same value ships inside the APK.
+const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim();
+
+if (googleClientId === undefined || googleClientId === '') {
+  throw new Error(
+    'GOOGLE_CLIENT_ID is not set. Copy backend/.env.example to backend/.env ' +
+      'and set it to the Web OAuth client ID (see README).'
+  );
+}
+
 export const env = {
   port,
   mongoUri: required('MONGODB_URI', process.env.MONGODB_URI),
   mongoDb: mongoDb === undefined || mongoDb === '' ? 'matchmarket' : mongoDb,
+  httpsEnabled,
+  googleClientId,
 } as const;
