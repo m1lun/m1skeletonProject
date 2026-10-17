@@ -79,6 +79,10 @@ android {
         compose = true
         buildConfig = true
     }
+    // Lets JVM unit tests run code that logs with android.util.Log.
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 // Pins the JDK used to compile Kotlin and Java so the build does not depend on
@@ -102,6 +106,8 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation(libs.junit)
+    // Android only ships a stub of org.json; JVM unit tests need the real one.
+    testImplementation("org.json:json:20240303")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

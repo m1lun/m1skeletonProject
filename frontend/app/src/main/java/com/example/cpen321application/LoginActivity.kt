@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +21,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,36 +40,18 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
+import com.example.cpen321application.auth.AuthSession
+import com.example.cpen321application.auth.SessionManager
 import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONException
-import org.json.JSONObject
-
-const val PREFS_NAME = "cpen321_prefs"
-const val PREF_SIGNED_IN_NAME = "signed_in_name"
 
 private const val TAG = "LoginActivity"
-private const val HTTP_TIMEOUT_MS = 5_000
-private const val MAX_ERROR_CHARS = 200
-
-// The signed-in account as the backend verified it from the ID token.
-data class VerifiedUser(
-    val firstName: String,
-    val lastName: String,
-    val email: String
-) {
-    // Full name, or the email when the account has no name on it.
-    val displayName: String
-        get() = "$firstName $lastName".trim().ifEmpty { email }
-}
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,7 +61,7 @@ class LoginActivity : ComponentActivity() {
             CPEN321ApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     LoginScreen(
-                        apiBaseUrl = BuildConfig.API_BASE_URL,
+                        sessions = SessionManager.get(this),
                         googleClientId = BuildConfig.GOOGLE_CLIENT_ID,
                         modifier = Modifier.padding(innerPadding)
                     )
@@ -96,70 +80,96 @@ private data class SignInUiState(
 
 // The outcome of one tap on "Sign in with Google".
 private sealed interface SignInResult {
-    data class Success(val user: VerifiedUser) : SignInResult
+    data class Success(val session: AuthSession) : SignInResult
     data object Cancelled : SignInResult
     data object NoAccount : SignInResult
     data class Failure(val message: String) : SignInResult
 }
 
 @Composable
-fun LoginScreen(apiBaseUrl: String, googleClientId: String, modifier: Modifier = Modifier) {
-    var user by remember { mutableStateOf<VerifiedUser?>(null) }
+fun LoginScreen(sessions: SessionManager, googleClientId: String, modifier: Modifier = Modifier) {
+    // A returning user's stored session is renewed first, so they skip the
+    // Google prompt until their refresh token runs out or is revoked.
+    var restoring by remember { mutableStateOf(sessions.session != null) }
+    var signedIn by remember { mutableStateOf<AuthSession?>(null) }
     var uiState by remember { mutableStateOf(SignInUiState()) }
 
     val context = LocalContext.current
     val activity = context as? ComponentActivity
     val scope = rememberCoroutineScope()
 
-    val signedInUser = user
-    if (signedInUser == null) {
-        SignInScreen(
+    LaunchedEffect(Unit) {
+        if (restoring) {
+            signedIn = sessions.restore()
+            restoring = false
+        }
+    }
+
+    val user = signedIn
+    when {
+        restoring -> Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        user == null -> SignInScreen(
             state = uiState,
             onSignIn = {
-                if (googleClientId.isBlank()) {
-                    uiState = SignInUiState(
-                        errorMessage = "GOOGLE_CLIENT_ID is not set. Add it to frontend/local.properties."
-                    )
-                } else {
-                    uiState = SignInUiState(isLoading = true)
-                    scope.launch {
-                        uiState = when (val result = signInWithGoogle(context, apiBaseUrl, googleClientId)) {
-                            is SignInResult.Success -> {
-                                user = result.user
-                                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                                    .edit().putString(PREF_SIGNED_IN_NAME, result.user.displayName).apply()
-                                SignInUiState()
-                            }
-                            SignInResult.Cancelled -> SignInUiState()
-                            SignInResult.NoAccount -> SignInUiState(needsAccount = true)
-                            is SignInResult.Failure -> SignInUiState(errorMessage = result.message)
-                        }
-                    }
+                scope.launchSignIn(context, sessions, googleClientId, onState = { uiState = it }) {
+                    signedIn = it
                 }
             },
             onAddAccount = { context.startActivity(addGoogleAccountIntent()) },
             onBack = { activity?.finish() },
             modifier = modifier
         )
-    } else {
-        SignedInScreen(
-            userDisplayName = signedInUser.displayName,
-            userEmail = signedInUser.email,
+        else -> SignedInScreen(
+            userDisplayName = user.displayName,
+            userEmail = user.email,
             onSignOut = {
-                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                    .edit().remove(PREF_SIGNED_IN_NAME).apply()
-                activity?.finish()
+                scope.launch {
+                    sessions.signOut()
+                    activity?.finish()
+                }
             },
             modifier = modifier
         )
     }
 }
 
-// Gets a Google ID token from the device, then has the backend verify it. The
-// user only counts as signed in once the server has accepted the token.
+// Runs when "Sign in with Google" is tapped: reports progress through
+// onState, and hands over the session once the backend has accepted the user.
+private fun CoroutineScope.launchSignIn(
+    context: Context,
+    sessions: SessionManager,
+    googleClientId: String,
+    onState: (SignInUiState) -> Unit,
+    onSignedIn: (AuthSession) -> Unit
+) {
+    if (googleClientId.isBlank()) {
+        onState(SignInUiState(errorMessage = "GOOGLE_CLIENT_ID is not set. Add it to frontend/local.properties."))
+        return
+    }
+    onState(SignInUiState(isLoading = true))
+    launch {
+        val result = signInWithGoogle(context, sessions, googleClientId)
+        if (result is SignInResult.Success) {
+            onSignedIn(result.session)
+        }
+        onState(
+            when (result) {
+                is SignInResult.Success, SignInResult.Cancelled -> SignInUiState()
+                SignInResult.NoAccount -> SignInUiState(needsAccount = true)
+                is SignInResult.Failure -> SignInUiState(errorMessage = result.message)
+            }
+        )
+    }
+}
+
+// Gets a Google ID token from the device, then has the backend verify it and
+// start a session. The user only counts as signed in once the server has
+// accepted the token.
 private suspend fun signInWithGoogle(
     context: Context,
-    apiBaseUrl: String,
+    sessions: SessionManager,
     googleClientId: String
 ): SignInResult {
     return try {
@@ -174,7 +184,7 @@ private suspend fun signInWithGoogle(
             SignInResult.Failure("Unexpected credential type: ${credential.type}")
         } else {
             val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
-            SignInResult.Success(authenticate(apiBaseUrl, idToken))
+            SignInResult.Success(sessions.signIn(idToken))
         }
     } catch (_: GetCredentialCancellationException) {
         SignInResult.Cancelled
@@ -330,45 +340,6 @@ private fun SignedInScreen(
             Text(text = "Sign Out")
         }
     }
-}
-
-// Sends the Google ID token to the backend, which verifies it with Google and
-// answers with the account it belongs to. Throws IOException if rejected.
-private suspend fun authenticate(apiBaseUrl: String, idToken: String): VerifiedUser =
-    withContext(Dispatchers.IO) {
-        val conn = (URL("${apiBaseUrl.trimEnd('/')}/api/auth/google").openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = HTTP_TIMEOUT_MS
-            readTimeout = HTTP_TIMEOUT_MS
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json")
-        }
-        val body = JSONObject().put("idToken", idToken).toString()
-        conn.outputStream.use { it.write(body.toByteArray()) }
-
-        val json = conn.readJson()
-        VerifiedUser(
-            firstName = json.optString("firstName"),
-            lastName = json.optString("lastName"),
-            email = json.optString("email")
-        )
-    }
-
-// Reads a JSON response, or throws with the backend's own error message
-// (sent on the error stream for 4xx/5xx) so it can be shown on screen.
-private fun HttpURLConnection.readJson(): JSONObject = try {
-    val ok = responseCode in HttpURLConnection.HTTP_OK until HttpURLConnection.HTTP_MULT_CHOICE
-    val text = (if (ok) inputStream else errorStream)
-        ?.bufferedReader()?.use { it.readText() }.orEmpty()
-
-    if (!ok) {
-        val detail = runCatching { JSONObject(text).getString("error") }
-            .getOrDefault(text.take(MAX_ERROR_CHARS))
-        throw IOException(if (detail.isBlank()) "HTTP $responseCode" else "HTTP $responseCode: $detail")
-    }
-    JSONObject(text)
-} finally {
-    disconnect()
 }
 
 // Opens Android's add-account screen, filtered to Google accounts.
