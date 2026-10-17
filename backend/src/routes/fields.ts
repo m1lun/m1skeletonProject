@@ -5,15 +5,16 @@ import { BadRequestError } from '../errors';
 import { FIELD_TYPES, MAX_LABEL_LENGTH, RESERVED_KEYS, normaliseKey } from '../models/common';
 import type { Store } from '../store/types';
 import { isObject, isText } from './checks';
+import { handle } from './handle';
 
 export function createFieldsRouter(store: Store): Router {
   const router = Router();
 
-  router.get('/', async (req, res) => {
+  router.get('/', handle(async (req, res) => {
     res.json(await store.fields.list(currentUser(res).id));
-  });
+  }));
 
-  router.post('/', async (req, res) => {
+  router.post('/', handle(async (req, res) => {
     const body = isObject(req.body) ? req.body : {};
     const errors: string[] = [];
     const label = isText(body.label) ? body.label.trim() : '';
@@ -31,16 +32,16 @@ export function createFieldsRouter(store: Store): Router {
       throw new BadRequestError(errors);
     }
     res.status(201).json(await store.fields.upsert({ ownerId: currentUser(res).id, key, label, type }));
-  });
+  }));
 
-  router.delete('/:key', async (req, res) => {
+  router.delete('/:key', handle(async (req, res) => {
     const removed = await store.fields.remove(currentUser(res).id, normaliseKey(String(req.params.key)));
     if (!removed) {
       res.status(404).json({ error: 'Not Found' });
       return;
     }
     res.status(204).end();
-  });
+  }));
 
   return router;
 }

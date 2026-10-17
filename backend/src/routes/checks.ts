@@ -1,4 +1,3 @@
-// A JSON object whose values are not checked yet, such as a request body: { price: 100, ... }.
 export type Body = Record<string, unknown>;
 
 export function isObject(value: unknown): value is Body {

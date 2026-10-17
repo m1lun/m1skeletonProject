@@ -23,7 +23,10 @@ export function createRequestsRouter(store: Store): Router {
         errors.push('a price requirement (max price) is required');
       }
       const condition = rows.find((row) => row.kind === 'builtin' && row.key === 'condition');
-      if (condition !== undefined && !(CONDITIONS as readonly string[]).includes(String(condition.value))) {
+      if (
+        condition !== undefined &&
+        (typeof condition.value !== 'string' || !(CONDITIONS as readonly string[]).includes(condition.value))
+      ) {
         errors.push(`min condition must be one of: ${CONDITIONS.join(', ')}`);
       }
       return {};
