@@ -1,3 +1,4 @@
+import type { GeoPoint } from '../models/common';
 import type { FieldDefinition } from '../models/fieldDefinition';
 import type { Option } from '../models/option';
 import type { RefreshSession } from '../models/session';
@@ -6,6 +7,7 @@ export interface PostDoc {
   id: string;
   ownerId: string;
   status: 'open' | 'closed';
+  location: GeoPoint;
   updatedAt: Date;
 }
 
@@ -14,7 +16,7 @@ export interface PostRepo<T extends PostDoc> {
   insert(doc: Omit<T, 'id'>): Promise<T>;
   findById(id: string): Promise<T | null>;
   listByOwner(ownerId: string): Promise<T[]>;
-  replace(doc: T): Promise<void>;
+  replace(doc: T): Promise<T>;
   remove(id: string): Promise<void>;
 }
 

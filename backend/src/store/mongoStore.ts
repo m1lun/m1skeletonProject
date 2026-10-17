@@ -48,9 +48,11 @@ class MongoPostRepo<T extends PostDoc & { category: string }> implements PostRep
     return stored.map((d) => toDoc<T>(d));
   }
 
-  async replace(doc: T): Promise<void> {
+  async replace(doc: T): Promise<T> {
     const { id, ...rest } = doc;
-    await this.collection.replaceOne({ _id: new ObjectId(id) }, this.normalise(rest));
+    const clean = this.normalise(rest);
+    await this.collection.replaceOne({ _id: new ObjectId(id) }, clean);
+    return { ...clean, id } as T;
   }
 
   async remove(id: string): Promise<void> {

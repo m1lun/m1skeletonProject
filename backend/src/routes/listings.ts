@@ -1,0 +1,29 @@
+import type { Router } from 'express';
+
+import { CONDITIONS } from '../models/common';
+import type { Listing } from '../models/listing';
+import type { Store } from '../store/types';
+import { isNumber } from './checks';
+import { createPostRouter } from './posts';
+
+export function createListingsRouter(store: Store): Router {
+  return createPostRouter<Listing>(store, {
+    repo: store.listings,
+    builtins: {
+      brand: { label: 'Brand', type: 'text' },
+      colour: { label: 'Colour', type: 'text' },
+      dimensions: { label: 'Size', type: 'dimensions' },
+    },
+    rowsField: 'attributes',
+    minPhotos: 1,
+    parseExtra(body, _rows, errors) {
+      if (!isNumber(body.price) || body.price < 0) {
+        errors.push('price must be a number of at least 0');
+      }
+      if (typeof body.condition !== 'string' || !(CONDITIONS as readonly string[]).includes(body.condition)) {
+        errors.push(`condition must be one of: ${CONDITIONS.join(', ')}`);
+      }
+      return { price: body.price, condition: body.condition };
+    },
+  });
+}

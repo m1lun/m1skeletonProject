@@ -2,6 +2,8 @@ import { normaliseKey, type Attribute } from './common';
 import type { Listing } from './listing';
 import type { BuyerRequest } from './request';
 
+export class DuplicateFieldError extends Error {}
+
 // Brand, colour and custom text values are chosen from the saved options, so they are
 // lower-cased to match the stored option.
 function isOptionText(row: Attribute, key: string): boolean {
@@ -13,7 +15,7 @@ function normaliseRows<R extends Attribute>(rows: R[]): R[] {
   return rows.map((row) => {
     const key = normaliseKey(row.key);
     if (seen.has(key)) {
-      throw new Error(`Duplicate field "${key}"`);
+      throw new DuplicateFieldError(`Duplicate field "${key}"`);
     }
     seen.add(key);
     const value = isOptionText(row, key) && typeof row.value === 'string' ? normaliseKey(row.value) : row.value;

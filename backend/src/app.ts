@@ -1,18 +1,25 @@
 import express, { type Express, type Response } from 'express';
 
+import { errorHandler } from './errors';
 import { describe, verifyGoogleIdToken } from './googleAuth';
-import { endSession, refreshSession, startSession, type AuthResponse } from './sessions';
-import type { SessionRepo } from './store/types';
+import { createFieldsRouter } from './routes/fields';
+import { createListingsRouter } from './routes/listings';
+import { createOptionsRouter } from './routes/options';
+import { createRequestsRouter } from './routes/requests';
+import { endSession, refreshSession, requireAuth, startSession, type AuthResponse } from './sessions';
+import type { SessionRepo, Store } from './store/types';
 
 export interface AppDeps {
   sessions: SessionRepo;
+  // Without a store only the health check and the auth routes are served.
+  store?: Store;
 }
 
-export function createApp({ sessions }: AppDeps): Express {
+export function createApp({ sessions, store }: AppDeps): Express {
   const app = express();
 
-  // Only the auth routes have a body; the limit rejects oversized ones early.
-  app.use(express.json({ limit: '4kb' }));
+  // The auth routes have tiny bodies; the limit rejects oversized ones early.
+  app.use('/api/auth', express.json({ limit: '4kb' }));
 
   // Stays off the /api prefix: scripts/run-backend.sh and the Docker health
   // check poll /health directly.
@@ -74,9 +81,20 @@ export function createApp({ sessions }: AppDeps): Express {
     );
   });
 
+  // Posts carry photo URLs and field rows, so they get a larger body limit.
+  if (store !== undefined) {
+    const posts = [express.json({ limit: '1mb' }), requireAuth];
+    app.use('/api/listings', ...posts, createListingsRouter(store));
+    app.use('/api/requests', ...posts, createRequestsRouter(store));
+    app.use('/api/options', ...posts, createOptionsRouter(store));
+    app.use('/api/fields', ...posts, createFieldsRouter(store));
+  }
+
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not Found' });
   });
+
+  app.use(errorHandler);
 
   return app;
 }
