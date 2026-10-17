@@ -33,6 +33,13 @@ Install the following before the frontend or backend setup steps:
    ```
    Set at least:
    - `sdk.dir`: path to your Android SDK. Android Studio usually writes this the first time you open `frontend/`. On Mac it is often `sdk.dir=/Users/<username>/Library/Android/sdk`.
+   - `API_BASE_URL`: backend URL baked into the APK. The example file points at the deployed backend, `https\://34.168.1.92\:3000` (colons are escaped in properties files). To run against a backend on your own machine, use `http://10.0.2.2:3000` for the emulator (`10.0.2.2` is the host machine). For a physical device on the same Wi-Fi, use `http://<your-lan-ip>:3000` and add that IP as a `<domain>` in the local-development block of `frontend/app/src/main/res/xml/network_security_config.xml` (plain HTTP is blocked for every other host).
+   - `GOOGLE_CLIENT_ID`: the **Web** OAuth client ID from Google Cloud Console. Must be the same value as `GOOGLE_CLIENT_ID` in `backend/.env`.
+6. **Google sign-in**: the SHA-1 of the key that signs the APK must be registered on an **Android** OAuth client (package `com.example.matchmarket`) in the same Google Cloud project as the Web client. Both debug and release builds are signed with `~/.android/debug.keystore` by default; print its SHA-1 with:
+   ```bash
+   keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android | grep SHA1
+   ```
+   The emulator also needs a Google account (Settings → Passwords & accounts); the app offers to open that screen if there is none.
 
 
 ### Build and Run
@@ -63,9 +70,18 @@ cp backend/.env.example backend/.env
 ```
 
 Set at least:
+- `GOOGLE_CLIENT_ID` (required): the **Web** OAuth client ID. The backend verifies every Google ID token against it and will not start without it. Must match `GOOGLE_CLIENT_ID` in `frontend/local.properties`.
 - `JWT_SECRET`: a long random string used to sign auth tokens.
 - `MONGODB_URI`: only needed for local development (default in `.env.example` assumes MongoDB on `localhost:27017`). Ignored when running via Docker Compose.
 - `PORT` (optional): defaults to `3000` if unset.
+- `ENABLE_HTTPS` (optional): `true` serves HTTPS using `backend/certs/server.crt` and `backend/certs/server.key` (see [HTTPS](#https)). Leave unset for local HTTP.
+
+### API
+
+Data routes go behind the `requireGoogleAuth` middleware (`backend/src/googleAuth.ts`), which requires the Google ID token from sign-in as `Authorization: Bearer <token>`; without a valid one the server answers `401`.
+
+- `POST /api/auth/google`: body `{ "idToken": "..." }`. Verifies the token with Google and answers `{ "firstName", "lastName", "email" }`. `400` with no token, `401` if it fails verification.
+- `GET /health`: open, used by the run script and health checks.
 
 
 ### Option 1: Run locally
@@ -119,6 +135,28 @@ Set at least:
    ```bash
    docker compose down
    ```
+
+### HTTPS
+
+M1 requires the app to reach the backend over HTTPS. The deployed backend runs on a Google Cloud VM at `https://34.168.1.92:3000` (static IP) with `ENABLE_HTTPS=true` and a self-signed certificate in `/opt/cpen321/backend/certs/`. The app pins that certificate (`frontend/app/src/main/res/raw/server_cert.pem`, trusted for that IP only by `res/xml/network_security_config.xml`), and the deploy workflow checks `/health` against it.
+
+`backend/certs/` is gitignored and excluded from the Docker image (Compose mounts it read-only), so the private key is never committed. Deploys run `git reset --hard`, which leaves the untracked `certs/` and `.env` in place. To generate a self-signed certificate for a server at `<PUBLIC_IP>` (for example when the certificate expires or the IP changes):
+
+```bash
+mkdir -p backend/certs
+openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout backend/certs/server.key -out backend/certs/server.crt \
+  -days 365 -subj "/CN=<PUBLIC_IP>" \
+  -addext "subjectAltName=IP:<PUBLIC_IP>"
+```
+
+The IP must be in `subjectAltName` or Android rejects the certificate. Then set `ENABLE_HTTPS=true` in `backend/.env`, and in the app:
+
+1. Copy `backend/certs/server.crt` to `frontend/app/src/main/res/raw/server_cert.pem` (the public certificate only, never the key).
+2. In `frontend/app/src/main/res/xml/network_security_config.xml`, put `<PUBLIC_IP>` in the deployed-backend `<domain>`.
+3. Set `API_BASE_URL=https\://<PUBLIC_IP>\:3000` in `frontend/local.properties.example` and your own `frontend/local.properties`.
+
+`scripts/run-backend.sh` reads `ENABLE_HTTPS` from `backend/.env` and probes `https://localhost:<PORT>/health` when it is on.
 
 ## Testing
 
