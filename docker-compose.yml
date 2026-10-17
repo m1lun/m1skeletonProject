@@ -5,6 +5,8 @@ name: cpen321-project
 services:
   backend:
     build: ./backend
+    # Brings the API back after an instance reboot or a Docker restart.
+    restart: unless-stopped
     # Published on all interfaces so a physical Android device on the same Wi-Fi
     # can reach it. Emulators use http://10.0.2.2:3000/api/ either way.
     ports:
@@ -13,6 +15,10 @@ services:
       - path: ./backend/.env
     environment:
       MONGODB_URI: mongodb://mongo:27017/cpen321
+    # Mounted read-only rather than copied into the image, so the private key
+    # never ends up in a built artifact. Only read when ENABLE_HTTPS=true.
+    volumes:
+      - ./backend/certs:/app/certs:ro
     depends_on:
       mongo:
         condition: service_healthy
