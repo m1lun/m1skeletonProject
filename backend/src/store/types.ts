@@ -1,5 +1,6 @@
 import type { FieldDefinition } from '../models/fieldDefinition';
 import type { Option } from '../models/option';
+import type { RefreshSession } from '../models/session';
 
 export interface PostDoc {
   id: string;
@@ -32,10 +33,20 @@ export interface FieldRepo {
   remove(ownerId: string, key: string): Promise<boolean>;
 }
 
+export interface SessionRepo {
+  insert(session: RefreshSession): Promise<void>;
+  // Marks an unused, unexpired token as used and returns it, in one atomic
+  // step so two concurrent refreshes cannot both succeed. Null otherwise.
+  consume(tokenHash: string, now: Date): Promise<RefreshSession | null>;
+  find(tokenHash: string): Promise<RefreshSession | null>;
+  revokeFamily(familyId: string): Promise<void>;
+}
+
 export interface Store {
   listings: PostRepo<import('../models/listing').Listing>;
   requests: PostRepo<import('../models/request').BuyerRequest>;
   options: OptionRepo;
   fields: FieldRepo;
+  sessions: SessionRepo;
   close(): Promise<void>;
 }

@@ -2,4 +2,6 @@
     <string name="app_name">CPEN321 Application</string>
     <string name="btn_login">Login</string>
     <string name="btn_back">← Back</string>
+    <string name="login_no_account">No Google account on this device yet. Add one, then sign in again.</string>
+    <string name="btn_add_account">Add Google account</string>
 </resources>

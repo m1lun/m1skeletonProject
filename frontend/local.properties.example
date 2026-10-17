@@ -1,7 +1,15 @@
 # Path to your Android SDK. Android Studio usually writes this for you.
 sdk.dir=/path/to/Android/sdk
 
-# Google OAuth client ID.
+# Backend base URL baked into the APK at build time. The deployed backend is
+# below; colons are escaped because this is a Java properties file. To use a
+# backend on your own machine instead, set http\://10.0.2.2\:3000 (10.0.2.2
+# is the emulator's alias for the host).
+API_BASE_URL=https\://34.168.1.92\:3000
+
+# Web OAuth client ID (the "Web application" client, not the Android one).
+# Must match GOOGLE_CLIENT_ID in backend/.env, or the backend rejects every
+# sign-in as issued to the wrong audience. Not a secret: it ships in the APK.
 GOOGLE_CLIENT_ID=
 
 # Other API keys, secrets, and configurations
