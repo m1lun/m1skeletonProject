@@ -8,6 +8,26 @@ import { isNumber, isObject, isText, type Body } from './checks';
 import { handle } from './handle';
 import { rememberNewValues } from './remember';
 
+// What parsePost returns. The rows are saved under `attributes` (listing) or `requirements`
+// (request). `extra` is the price and condition of a listing
+//
+// A listing:  { category: 'Furniture', address: '6335 Thunderbird Cres', description: '', location: {...},
+//               photoUrls: ['https://...'], rows: [{ kind: 'builtin', key: 'brand', value: 'ikea', ... }],
+//               extra: { price: 10, condition: 'new' } }
+//
+// A request:  { category: 'Furniture', address: '6335 Thunderbird Cres', description: '', location: {...},
+//               photoUrls: [], rows: [{ kind: 'builtin', key: 'price', value: 120, hard: true, ... }],
+//               extra: {} }
+interface ParsedPost {
+  category: string;
+  address: string;
+  description: string;
+  location: GeoPoint;
+  photoUrls: string[];
+  rows: Attribute[];
+  extra: Body;
+}
+
 interface BuiltinField {
   label: string;
   type: Attribute['type'];
@@ -21,12 +41,6 @@ export interface PostKind<T extends PostDoc> {
   rowsField: 'attributes' | 'requirements';
   minPhotos: number;
   parseExtra(body: Body, rows: Attribute[], errors: string[]): Body;
-}
-
-interface ParsedPost {
-  fields: Body;
-  category: string;
-  rows: Attribute[];
 }
 
 // Set by the server; never taken from a PATCH body.
@@ -102,34 +116,40 @@ function parseRows(value: unknown, builtins: Builtins, name: string, errors: str
 }
 
 // Checks the common mistakes with clear messages; the schema checks the rest.
+//
+// CREATE:  request body ──parsePost──▶ ParsedPost ──toPost──▶ post to save
+// PATCH:    stored post ──toBody──▶ body, with the changes merged in ──parsePost──▶ ParsedPost ──toPost──▶ post to save
 function parsePost<T extends PostDoc>(kind: PostKind<T>, body: unknown): ParsedPost {
   if (!isObject(body)) {
     throw new BadRequestError(['request body must be a JSON object']);
   }
   const errors: string[] = [];
-  if (!isText(body.category)) {
+  const category = isText(body.category) ? body.category : '';
+  if (category === '') {
     errors.push('category is required');
   }
-  if (!isText(body.address)) {
+  const address = isText(body.address) ? body.address : '';
+  if (address === '') {
     errors.push('address is required');
   }
   if (body.description !== undefined && typeof body.description !== 'string') {
     errors.push('description must be a string');
   }
+  const description = typeof body.description === 'string' ? body.description : '';
+  const location = parseLocation(body.location, errors);
+  const photoUrls = parsePhotos(body.photoUrls ?? [], kind.minPhotos, errors);
   const rows = parseRows(body[kind.rowsField], kind.builtins, kind.rowsField, errors);
-  const fields: Body = {
-    category: body.category,
-    address: body.address,
-    description: body.description ?? '',
-    location: parseLocation(body.location, errors),
-    photoUrls: parsePhotos(body.photoUrls ?? [], kind.minPhotos, errors),
-    [kind.rowsField]: rows,
-    ...kind.parseExtra(body, rows, errors),
-  };
+  const extra = kind.parseExtra(body, rows, errors);
   if (errors.length > 0) {
     throw new BadRequestError(errors);
   }
-  return { fields, category: String(body.category), rows };
+  return { category, address, description, location, photoUrls, rows, extra };
+}
+
+// The post to save.
+function toPost<T extends PostDoc>(kind: PostKind<T>, parsed: ParsedPost): Body {
+  const { rows, extra, ...common } = parsed;
+  return { ...common, ...extra, [kind.rowsField]: rows };
 }
 
 // A stored post as a client would send it, so a PATCH can merge changes over it.
@@ -159,16 +179,16 @@ export function createPostRouter<T extends PostDoc>(store: Store, kind: PostKind
 
   router.post('/', handle(async (req, res) => {
     const ownerId = currentUser(res).id;
-    const { fields, category, rows } = parsePost(kind, req.body);
+    const parsed = parsePost(kind, req.body);
     const now = new Date();
     const created = await kind.repo.insert({
-      ...fields,
+      ...toPost(kind, parsed),
       ownerId,
       status: 'open',
       createdAt: now,
       updatedAt: now,
     } as unknown as Omit<T, 'id'>);
-    await rememberNewValues(store, ownerId, category, rows);
+    await rememberNewValues(store, ownerId, parsed.category, parsed.rows);
     res.status(201).json(created);
   }));
 
@@ -195,9 +215,9 @@ export function createPostRouter<T extends PostDoc>(store: Store, kind: PostKind
     if (status !== 'open' && status !== 'closed') {
       throw new BadRequestError(['status must be "open" or "closed"']);
     }
-    const { fields, category, rows } = parsePost(kind, { ...toBody(post), ...changes });
-    const updated = await kind.repo.replace({ ...post, ...fields, status, updatedAt: new Date() } as T);
-    await rememberNewValues(store, post.ownerId, category, rows);
+    const parsed = parsePost(kind, { ...toBody(post), ...changes });
+    const updated = await kind.repo.replace({ ...post, ...toPost(kind, parsed), status, updatedAt: new Date() } as T);
+    await rememberNewValues(store, post.ownerId, parsed.category, parsed.rows);
     res.json(updated);
   }));
 
