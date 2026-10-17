@@ -34,7 +34,15 @@ $BackendPort = '3000'
 if ($backendPortLine) {
     $BackendPort = ($backendPortLine -replace '^PORT=', '').Trim(' ', '"')
 }
-$BackendHealthUrl = if ($env:BACKEND_HEALTH_URL) { $env:BACKEND_HEALTH_URL } else { "http://localhost:$BackendPort/health" }
+$httpsLine = Get-Content 'backend\.env' | Where-Object { $_ -match '^ENABLE_HTTPS=' } | Select-Object -First 1
+$HttpsEnabled = $httpsLine -and (($httpsLine -replace '^ENABLE_HTTPS=', '').Trim(' ', '"').ToLower() -eq 'true')
+
+# With ENABLE_HTTPS=true the backend only speaks HTTPS. Its self-signed
+# certificate names the server's public IP, not localhost, so this local
+# probe skips certificate verification (-k); it only reads /health.
+$Scheme = if ($HttpsEnabled) { 'https' } else { 'http' }
+$CurlTlsOpts = if ($HttpsEnabled) { @('-k') } else { @() }
+$BackendHealthUrl = if ($env:BACKEND_HEALTH_URL) { $env:BACKEND_HEALTH_URL } else { "${Scheme}://localhost:$BackendPort/health" }
 
 # ---------------------------------------------------------------------------
 # Backend
@@ -47,7 +55,7 @@ if ($LASTEXITCODE -ne 0) { Die "docker compose failed." }
 Info "Waiting for $BackendHealthUrl ..."
 $healthy = $false
 for ($i = 0; $i -lt 120; $i++) {
-    curl.exe -sf $BackendHealthUrl *> $null
+    curl.exe -sf @CurlTlsOpts $BackendHealthUrl *> $null
     if ($LASTEXITCODE -eq 0) { $healthy = $true; break }
     Start-Sleep -Seconds 1
 }

@@ -43,6 +43,15 @@ jobs:
           ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
             "cd '${DEPLOY_PATH:-/opt/cpen321}' && git fetch origin main && git reset --hard origin/main && ./scripts/run-backend.sh"
 
+      # The certificate the app pins, so this check fails if the VM ever
+      # serves a different one than the app trusts.
+      - name: Check out the pinned certificate
+        if: env.DEPLOY_HOST != ''
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: frontend/app/src/main/res/raw/server_cert.pem
+          sparse-checkout-cone-mode: false
+
       - name: Check the deployed backend
         if: env.DEPLOY_HOST != ''
-        run: curl --fail --silent --show-error --retry 10 --retry-delay 5 --retry-connrefused "http://$DEPLOY_HOST:3000/health"
+        run: curl --fail --silent --show-error --retry 10 --retry-delay 5 --retry-connrefused --cacert frontend/app/src/main/res/raw/server_cert.pem "https://$DEPLOY_HOST:3000/health"

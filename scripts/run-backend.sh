@@ -20,7 +20,18 @@ command -v curl >/dev/null 2>&1    || die "curl not found."
 [[ -f backend/.env ]] || die "Missing backend/.env — follow the student setup guide first."
 
 BACKEND_PORT="$(grep -E '^PORT=' backend/.env | head -1 | cut -d= -f2- | tr -d ' "' || true)"
-BACKEND_HEALTH_URL="${BACKEND_HEALTH_URL:-http://localhost:${BACKEND_PORT:-3000}/health}"
+ENABLE_HTTPS="$(grep -E '^ENABLE_HTTPS=' backend/.env | head -1 | cut -d= -f2- | tr -d ' "' | tr '[:upper:]' '[:lower:]' || true)"
+
+# With ENABLE_HTTPS=true the backend only speaks HTTPS. Its self-signed
+# certificate names the server's public IP, not localhost, so this local
+# probe skips certificate verification (-k); it only reads /health.
+if [[ "$ENABLE_HTTPS" == "true" ]]; then
+  BACKEND_HEALTH_URL="${BACKEND_HEALTH_URL:-https://localhost:${BACKEND_PORT:-3000}/health}"
+  CURL_INSECURE="-k"
+else
+  BACKEND_HEALTH_URL="${BACKEND_HEALTH_URL:-http://localhost:${BACKEND_PORT:-3000}/health}"
+  CURL_INSECURE=""
+fi
 
 # ---------------------------------------------------------------------------
 # Backend
@@ -31,10 +42,10 @@ docker compose up --build -d
 
 info "Waiting for $BACKEND_HEALTH_URL ..."
 for _ in $(seq 1 120); do
-  curl -sf "$BACKEND_HEALTH_URL" >/dev/null 2>&1 && break
+  curl -sf ${CURL_INSECURE:+"$CURL_INSECURE"} "$BACKEND_HEALTH_URL" >/dev/null 2>&1 && break
   sleep 1
 done
-curl -sf "$BACKEND_HEALTH_URL" >/dev/null 2>&1 || die "Backend not healthy. Try: docker compose logs backend"
+curl -sf ${CURL_INSECURE:+"$CURL_INSECURE"} "$BACKEND_HEALTH_URL" >/dev/null 2>&1 || die "Backend not healthy. Try: docker compose logs backend"
 
 echo
 info "Backend is up. Stop with: docker compose down"
