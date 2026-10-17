@@ -2,6 +2,7 @@ import type { GeoPoint } from '../models/common';
 import type { CustomField } from '../models/customField';
 import type { Option } from '../models/option';
 import type { RefreshSession } from '../models/session';
+import type { PhotoStorage } from '../photos/storage';
 
 export interface PostDoc {
   id: string;
@@ -50,5 +51,6 @@ export interface Store {
   options: OptionCollection;
   customFields: CustomFieldCollection;
   sessions: SessionRepo;
+  photos: PhotoStorage;
   close(): Promise<void>;
 }
