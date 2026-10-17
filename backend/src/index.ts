@@ -32,9 +32,12 @@ function start(store: Store): void {
 
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.on(signal, () => {
+      // Once the server and the MongoDB connection are closed nothing is left
+      // running, so Node exits on its own.
       server.close(() => {
-        void store.close().finally(() => {
-          process.exit(0);
+        store.close().catch((cause: unknown) => {
+          console.error(`Could not close MongoDB cleanly: ${describe(cause)}`);
+          process.exitCode = 1;
         });
       });
     });

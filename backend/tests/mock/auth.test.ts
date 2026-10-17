@@ -54,10 +54,6 @@ async function signIn(): Promise<AuthBody> {
   return response.body as AuthBody;
 }
 
-function refresh(refreshToken: string) {
-  return request(app).post('/api/auth/refresh').send({ refreshToken });
-}
-
 // Interface POST /api/auth/google
 describe('Mocked: POST /api/auth/google', () => {
   // Mocked behavior: Google accepts the token
@@ -147,7 +143,7 @@ describe('Mocked: POST /api/auth/refresh', () => {
     const first = await signIn();
     mockVerifyIdToken.mockClear();
 
-    const response = await refresh(first.refreshToken);
+    const response = await request(app).post('/api/auth/refresh').send({ refreshToken: first.refreshToken });
 
     expect(response.status).toBe(200);
     const body = response.body as AuthBody;
@@ -165,13 +161,14 @@ describe('Mocked: POST /api/auth/refresh', () => {
   // Expected output: { error: "Invalid or expired refresh token" }
   test('Reused refresh token', async () => {
     const first = await signIn();
-    const second = (await refresh(first.refreshToken)).body as AuthBody;
+    const renewed = await request(app).post('/api/auth/refresh').send({ refreshToken: first.refreshToken });
+    const second = renewed.body as AuthBody;
 
-    const reuse = await refresh(first.refreshToken);
+    const reuse = await request(app).post('/api/auth/refresh').send({ refreshToken: first.refreshToken });
 
     expect(reuse.status).toBe(401);
     expect(reuse.body).toEqual({ error: 'Invalid or expired refresh token' });
-    expect((await refresh(second.refreshToken)).status).toBe(401);
+    expect((await request(app).post('/api/auth/refresh').send({ refreshToken: second.refreshToken })).status).toBe(401);
     expect(sessions.rows).toHaveLength(0);
   });
 
@@ -184,10 +181,10 @@ describe('Mocked: POST /api/auth/refresh', () => {
   test('Reuse only revokes its own sign-in', async () => {
     const phone = await signIn();
     const tablet = await signIn();
-    await refresh(phone.refreshToken);
+    await request(app).post('/api/auth/refresh').send({ refreshToken: phone.refreshToken });
 
-    expect((await refresh(phone.refreshToken)).status).toBe(401);
-    expect((await refresh(tablet.refreshToken)).status).toBe(200);
+    expect((await request(app).post('/api/auth/refresh').send({ refreshToken: phone.refreshToken })).status).toBe(401);
+    expect((await request(app).post('/api/auth/refresh').send({ refreshToken: tablet.refreshToken })).status).toBe(200);
   });
 
   // Mocked behavior: Google accepted the original sign-in
@@ -201,7 +198,7 @@ describe('Mocked: POST /api/auth/refresh', () => {
       row.expiresAt = new Date(Date.now() - 1000);
     }
 
-    const response = await refresh(first.refreshToken);
+    const response = await request(app).post('/api/auth/refresh').send({ refreshToken: first.refreshToken });
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ error: 'Invalid or expired refresh token' });
@@ -215,7 +212,7 @@ describe('Mocked: POST /api/auth/refresh', () => {
   test('Session store failure', async () => {
     jest.spyOn(sessions, 'consume').mockRejectedValue(new Error('connection lost'));
 
-    const response = await refresh('some-refresh-token');
+    const response = await request(app).post('/api/auth/refresh').send({ refreshToken: 'some-refresh-token' });
 
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ error: 'Internal Server Error' });
@@ -232,12 +229,13 @@ describe('Mocked: POST /api/auth/logout', () => {
   // Expected output: empty body
   test('Valid refresh token', async () => {
     const first = await signIn();
-    const second = (await refresh(first.refreshToken)).body as AuthBody;
+    const renewed = await request(app).post('/api/auth/refresh').send({ refreshToken: first.refreshToken });
+    const second = renewed.body as AuthBody;
 
     const response = await request(app).post('/api/auth/logout').send({ refreshToken: second.refreshToken });
 
     expect(response.status).toBe(204);
-    expect((await refresh(second.refreshToken)).status).toBe(401);
+    expect((await request(app).post('/api/auth/refresh').send({ refreshToken: second.refreshToken })).status).toBe(401);
     expect(sessions.rows).toHaveLength(0);
   });
 
@@ -283,7 +281,8 @@ describe('Mocked: requireAuth', () => {
   // Expected output: the signed-in user's id and email
   test('Session token from refresh', async () => {
     const first = await signIn();
-    const { sessionToken } = (await refresh(first.refreshToken)).body as AuthBody;
+    const renewed = await request(app).post('/api/auth/refresh').send({ refreshToken: first.refreshToken });
+    const { sessionToken } = renewed.body as AuthBody;
 
     const response = await request(protectedApp).get('/protected').set('Authorization', `Bearer ${sessionToken}`);
 

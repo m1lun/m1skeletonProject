@@ -91,10 +91,6 @@ describe('Unmocked: requireAuth', () => {
     res.json({ ok: true });
   });
 
-  function getWithToken(token: string) {
-    return request(protectedApp).get('/protected').set('Authorization', `Bearer ${token}`);
-  }
-
   const claims = { email: 'ada@example.com' };
   const valid = { subject: '1234567890', issuer: 'matchmarket-backend', audience: 'matchmarket-app' };
 
@@ -124,7 +120,7 @@ describe('Unmocked: requireAuth', () => {
   // Expected behavior: token fails verification; route is not reached
   // Expected output: { error: "Invalid or expired session token" }
   test('Malformed token', async () => {
-    const response = await getWithToken('not-a-real-token');
+    const response = await request(protectedApp).get('/protected').set('Authorization', 'Bearer not-a-real-token');
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ error: 'Invalid or expired session token' });
@@ -137,7 +133,7 @@ describe('Unmocked: requireAuth', () => {
   test('Expired token', async () => {
     const expired = jwt.sign({ ...claims, exp: Math.floor(Date.now() / 1000) - 60 }, JWT_SECRET, valid);
 
-    const response = await getWithToken(expired);
+    const response = await request(protectedApp).get('/protected').set('Authorization', `Bearer ${expired}`);
 
     expect(response.status).toBe(401);
     expect(response.body).toEqual({ error: 'Invalid or expired session token' });
@@ -150,7 +146,7 @@ describe('Unmocked: requireAuth', () => {
   test('Forged signature', async () => {
     const forged = jwt.sign(claims, 'some-other-secret-that-is-at-least-32-chars', { ...valid, expiresIn: 60 });
 
-    expect((await getWithToken(forged)).status).toBe(401);
+    expect((await request(protectedApp).get('/protected').set('Authorization', `Bearer ${forged}`)).status).toBe(401);
   });
 
   // Input: GET request with an unsigned ("alg": "none") token
@@ -160,7 +156,7 @@ describe('Unmocked: requireAuth', () => {
   test('Unsigned token', async () => {
     const unsigned = jwt.sign(claims, '', { ...valid, algorithm: 'none', expiresIn: 60 });
 
-    expect((await getWithToken(unsigned)).status).toBe(401);
+    expect((await request(protectedApp).get('/protected').set('Authorization', `Bearer ${unsigned}`)).status).toBe(401);
   });
 
   // Input: GET request with a token issued for a different audience
@@ -170,6 +166,6 @@ describe('Unmocked: requireAuth', () => {
   test('Wrong audience', async () => {
     const other = jwt.sign(claims, JWT_SECRET, { ...valid, audience: 'some-other-app', expiresIn: 60 });
 
-    expect((await getWithToken(other)).status).toBe(401);
+    expect((await request(protectedApp).get('/protected').set('Authorization', `Bearer ${other}`)).status).toBe(401);
   });
 });
