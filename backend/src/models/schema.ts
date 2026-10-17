@@ -122,3 +122,15 @@ export const fieldDefinitionSchema = object({
   label,
   type: { enum: [...FIELD_TYPES] },
 });
+
+export const sessionSchema = object({
+  tokenHash: { bsonType: 'string', pattern: '^[0-9a-f]{64}$' },
+  familyId: text(),
+  userId: text(),
+  email: { bsonType: 'string' },
+  firstName: { bsonType: 'string' },
+  lastName: { bsonType: 'string' },
+  createdAt: date,
+  expiresAt: date,
+  usedAt: { bsonType: ['date', 'null'] },
+});

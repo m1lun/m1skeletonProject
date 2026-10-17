@@ -37,10 +37,23 @@ if (googleClientId === undefined || googleClientId === '') {
   );
 }
 
+// Signs the backend's own session tokens (see src/sessions.ts). Anyone holding
+// it can mint a session for any user, so it is a real secret: generate one per
+// server (`openssl rand -base64 48`) and never commit it.
+const jwtSecret = process.env.JWT_SECRET?.trim() ?? '';
+
+if (jwtSecret.length < 32) {
+  throw new Error(
+    'JWT_SECRET must be at least 32 characters. Generate one with ' +
+      '`openssl rand -base64 48` and put it in backend/.env (see README).'
+  );
+}
+
 export const env = {
   port,
   mongoUri: required('MONGODB_URI', process.env.MONGODB_URI),
   mongoDb: mongoDb === undefined || mongoDb === '' ? 'matchmarket' : mongoDb,
   httpsEnabled,
   googleClientId,
+  jwtSecret,
 } as const;

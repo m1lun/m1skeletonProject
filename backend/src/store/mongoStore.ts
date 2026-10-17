@@ -3,11 +3,12 @@ import { MongoClient, ObjectId, type Collection, type Db, type Document } from '
 import { FIELD_DEFINITIONS_COLLECTION, type FieldDefinition } from '../models/fieldDefinition';
 import { postIndexes } from '../models/common';
 import { normaliseListing, normaliseRequest } from '../models/normalise';
-import { fieldDefinitionSchema, listingSchema, optionSchema, requestSchema } from '../models/schema';
 import { LISTINGS_COLLECTION, type Listing } from '../models/listing';
 import { OPTIONS_COLLECTION, type Option } from '../models/option';
 import { REQUESTS_COLLECTION, type BuyerRequest } from '../models/request';
-import type { FieldRepo, OptionRepo, PostDoc, PostRepo, Store } from './types';
+import { SESSIONS_COLLECTION, type RefreshSession } from '../models/session';
+import { fieldDefinitionSchema, listingSchema, optionSchema, requestSchema, sessionSchema } from '../models/schema';
+import type { FieldRepo, OptionRepo, PostDoc, PostRepo, SessionRepo, Store } from './types';
 
 type Stored<T> = Omit<T, 'id'> & { _id: ObjectId };
 
@@ -119,6 +120,32 @@ class MongoFieldRepo implements FieldRepo {
   }
 }
 
+class MongoSessionRepo implements SessionRepo {
+  constructor(private readonly collection: Collection<Document>) {}
+
+  async insert(session: RefreshSession): Promise<void> {
+    await this.collection.insertOne({ ...session });
+  }
+
+  async consume(tokenHash: string, now: Date): Promise<RefreshSession | null> {
+    const found = await this.collection.findOneAndUpdate(
+      { tokenHash, usedAt: null, expiresAt: { $gt: now } },
+      { $set: { usedAt: now } },
+      { returnDocument: 'after', ...WITHOUT_ID },
+    );
+    return found as RefreshSession | null;
+  }
+
+  async find(tokenHash: string): Promise<RefreshSession | null> {
+    const found = await this.collection.findOne({ tokenHash }, WITHOUT_ID);
+    return found as RefreshSession | null;
+  }
+
+  async revokeFamily(familyId: string): Promise<void> {
+    await this.collection.deleteMany({ familyId });
+  }
+}
+
 // Creates the collection with its validator, or updates the validator if it already exists.
 async function applySchema(db: Db, name: string, jsonSchema: Document): Promise<void> {
   const validator = { $jsonSchema: jsonSchema };
@@ -136,12 +163,19 @@ async function setupCollections(db: Db): Promise<void> {
     applySchema(db, REQUESTS_COLLECTION, requestSchema),
     applySchema(db, OPTIONS_COLLECTION, optionSchema),
     applySchema(db, FIELD_DEFINITIONS_COLLECTION, fieldDefinitionSchema),
+    applySchema(db, SESSIONS_COLLECTION, sessionSchema),
   ]);
   await Promise.all([
     db.collection(LISTINGS_COLLECTION).createIndexes([...postIndexes]),
     db.collection(REQUESTS_COLLECTION).createIndexes([...postIndexes]),
     db.collection(OPTIONS_COLLECTION).createIndex({ field: 1, key: 1 }, { unique: true }),
     db.collection(FIELD_DEFINITIONS_COLLECTION).createIndex({ ownerId: 1, key: 1 }, { unique: true }),
+    db.collection(SESSIONS_COLLECTION).createIndexes([
+      { key: { tokenHash: 1 }, unique: true },
+      { key: { familyId: 1 } },
+      // MongoDB deletes each row once its refresh token has expired.
+      { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+    ]),
   ]);
 }
 
@@ -155,6 +189,7 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Sto
     requests: new MongoPostRepo<BuyerRequest>(db.collection(REQUESTS_COLLECTION), normaliseRequest),
     options: new MongoOptionRepo(db.collection(OPTIONS_COLLECTION)),
     fields: new MongoFieldRepo(db.collection(FIELD_DEFINITIONS_COLLECTION)),
+    sessions: new MongoSessionRepo(db.collection(SESSIONS_COLLECTION)),
     close: async () => {
       await client.close();
     },

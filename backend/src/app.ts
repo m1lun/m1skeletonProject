@@ -1,11 +1,17 @@
-import express, { type Express, type Request, type Response } from 'express';
+import express, { type Express, type Response } from 'express';
 
 import { describe, verifyGoogleIdToken } from './googleAuth';
+import { endSession, refreshSession, startSession, type AuthResponse } from './sessions';
+import type { SessionRepo } from './store/types';
 
-export function createApp(): Express {
+export interface AppDeps {
+  sessions: SessionRepo;
+}
+
+export function createApp({ sessions }: AppDeps): Express {
   const app = express();
 
-  // Only the sign-in route has a body; the limit rejects oversized ones early.
+  // Only the auth routes have a body; the limit rejects oversized ones early.
   app.use(express.json({ limit: '4kb' }));
 
   // Stays off the /api prefix: scripts/run-backend.sh and the Docker health
@@ -14,7 +20,59 @@ export function createApp(): Express {
     res.json({ status: 'ok' });
   });
 
-  app.post('/api/auth/google', handleGoogleSignIn);
+  // Handlers return void rather than a promise so they can be passed straight
+  // to Express.
+
+  // POST /api/auth/google — verifies `{ idToken }` with Google and starts a
+  // session. 400 if no token was sent, 401 if Google rejects it.
+  app.post('/api/auth/google', (req, res) => {
+    const { idToken } = (req.body ?? {}) as { idToken?: unknown };
+    if (!isNonEmptyString(idToken)) {
+      res.status(400).json({ error: 'Request body must contain an idToken' });
+      return;
+    }
+
+    verifyGoogleIdToken(idToken).then(
+      (user) => {
+        sendAuth(res, startSession(sessions, user));
+      },
+      (cause: unknown) => {
+        console.error(`Google sign-in rejected: ${describe(cause)}`);
+        res.status(401).json({ error: 'Invalid or expired Google ID token' });
+      }
+    );
+  });
+
+  // POST /api/auth/refresh — trades `{ refreshToken }` for a new session token
+  // and refresh token, without calling Google. 401 means sign in again.
+  app.post('/api/auth/refresh', (req, res) => {
+    const { refreshToken } = (req.body ?? {}) as { refreshToken?: unknown };
+    if (!isNonEmptyString(refreshToken)) {
+      res.status(400).json({ error: 'Request body must contain a refreshToken' });
+      return;
+    }
+
+    sendAuth(res, refreshSession(sessions, refreshToken));
+  });
+
+  // POST /api/auth/logout — revokes `{ refreshToken }` and every token from
+  // the same sign-in. 204 even if it was already gone.
+  app.post('/api/auth/logout', (req, res) => {
+    const { refreshToken } = (req.body ?? {}) as { refreshToken?: unknown };
+    if (!isNonEmptyString(refreshToken)) {
+      res.status(400).json({ error: 'Request body must contain a refreshToken' });
+      return;
+    }
+
+    endSession(sessions, refreshToken).then(
+      () => {
+        res.status(204).end();
+      },
+      (cause: unknown) => {
+        sendServerError(res, cause);
+      }
+    );
+  });
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not Found' });
@@ -23,28 +81,28 @@ export function createApp(): Express {
   return app;
 }
 
-// POST /api/auth/google — verifies `{ idToken }` and responds with the account it
-// belongs to. 400 if no token was sent, 401 if Google rejects it. Returns void
-// rather than a promise so it can be passed straight to Express.
-function handleGoogleSignIn(req: Request, res: Response): void {
-  const { idToken } = (req.body ?? {}) as { idToken?: unknown };
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
+}
 
-  if (typeof idToken !== 'string' || idToken.trim() === '') {
-    res.status(400).json({ error: 'Request body must contain an idToken' });
-    return;
-  }
-
-  verifyGoogleIdToken(idToken).then(
-    (user) => {
-      res.json({
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-      });
+// 200 with the tokens, 401 if the refresh token was rejected (null), or 500
+// if the session store failed.
+function sendAuth(res: Response, pending: Promise<AuthResponse | null>): void {
+  pending.then(
+    (result) => {
+      if (result === null) {
+        res.status(401).json({ error: 'Invalid or expired refresh token' });
+      } else {
+        res.json(result);
+      }
     },
     (cause: unknown) => {
-      console.error(`Google sign-in rejected: ${describe(cause)}`);
-      res.status(401).json({ error: 'Invalid or expired Google ID token' });
+      sendServerError(res, cause);
     }
   );
+}
+
+function sendServerError(res: Response, cause: unknown): void {
+  console.error(`Session store failed: ${describe(cause)}`);
+  res.status(500).json({ error: 'Internal Server Error' });
 }
