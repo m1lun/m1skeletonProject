@@ -22,7 +22,10 @@ android {
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.example.cpen321application"
+        // Distinct from the Kotlin namespace above: the app ID is what Google
+        // OAuth clients are registered against, and each package name + SHA-1
+        // pair can belong to only one Google Cloud project.
+        applicationId = "com.example.matchmarket"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
@@ -34,13 +37,33 @@ android {
         // OAuth IDs in source. Emulator reaches the host via 10.0.2.2, not localhost.
         buildConfigField(
             "String",
+            "API_BASE_URL",
+            "\"${localProperty("API_BASE_URL", "http://10.0.2.2:3000")}\""
+        )
+        buildConfigField(
+            "String",
             "GOOGLE_CLIENT_ID",
             "\"${localProperty("GOOGLE_CLIENT_ID")}\""
         )
     }
 
+    // Google sign-in only works when the APK's signing-key SHA-1 is registered
+    // on the Android OAuth client. Signing release with the debug keystore keeps
+    // that one registered SHA-1 valid for both build types. Point
+    // RELEASE_KEYSTORE at a real key in local.properties to use that instead.
+    signingConfigs {
+        create("release") {
+            val debugKeystore = "${System.getProperty("user.home")}/.android/debug.keystore"
+            storeFile = file(localProperty("RELEASE_KEYSTORE", debugKeystore))
+            storePassword = localProperty("RELEASE_STORE_PASSWORD", "android")
+            keyAlias = localProperty("RELEASE_KEY_ALIAS", "androiddebugkey")
+            keyPassword = localProperty("RELEASE_KEY_PASSWORD", "android")
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
