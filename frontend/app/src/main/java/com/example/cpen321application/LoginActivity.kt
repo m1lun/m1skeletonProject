@@ -30,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -42,6 +43,8 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.example.cpen321application.auth.AuthSession
 import com.example.cpen321application.auth.SessionManager
+import com.example.cpen321application.feed.FeedActivity
+import com.example.cpen321application.feed.FeedTags
 import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -332,6 +335,19 @@ private fun SignedInScreen(
         )
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        // One button per feature page.
+        val context = LocalContext.current
+        OutlinedButton(
+            onClick = { context.startActivity(Intent(context, FeedActivity::class.java)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(FeedTags.OPEN)
+        ) {
+            Text(text = stringResource(R.string.btn_view_feed))
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedButton(
             onClick = onSignOut,

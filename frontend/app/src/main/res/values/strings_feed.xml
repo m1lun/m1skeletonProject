@@ -1,0 +1,9 @@
+<resources>
+    <string name="btn_view_feed">View feed</string>
+    <string name="feed_title">Listings</string>
+    <string name="feed_empty">No listings yet. Check back soon.</string>
+    <string name="feed_error">Couldn\'t load listings. Check your connection and try again.</string>
+    <string name="feed_condition">Condition: %1$s</string>
+    <string name="btn_retry">Retry</string>
+    <string name="btn_refresh">Refresh</string>
+</resources>
