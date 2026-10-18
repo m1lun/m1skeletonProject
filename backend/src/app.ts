@@ -4,6 +4,7 @@ import { errorHandler } from './errors';
 import { describe, verifyGoogleIdToken } from './googleAuth';
 import { createCustomFieldsRouter } from './routes/customFields';
 import { createListingsRouter } from './routes/listings';
+import { createPhotosRouter } from './routes/photos';
 import { createOptionsRouter } from './routes/options';
 import { createRequestsRouter } from './routes/requests';
 import { endSession, refreshSession, requireAuth, startSession, type AuthResponse } from './sessions';
@@ -80,13 +81,14 @@ export function createApp({ sessions, store }: AppDeps): Express {
     );
   });
 
-  // Posts carry photo URLs and fields, so they get a larger body limit.
+  // Posts carry photo ids and fields, so they get a larger body limit.
   if (store !== undefined) {
     const posts = [express.json({ limit: '1mb' }), requireAuth];
     app.use('/api/listings', ...posts, createListingsRouter(store));
     app.use('/api/requests', ...posts, createRequestsRouter(store));
     app.use('/api/options', ...posts, createOptionsRouter(store));
     app.use('/api/custom-fields', ...posts, createCustomFieldsRouter(store));
+    app.use('/api/photos', createPhotosRouter(store.photos));
   }
 
   app.use((_req, res) => {
