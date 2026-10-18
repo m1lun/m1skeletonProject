@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from 'express';
 
 import { currentUser } from '../sessions';
 import { BadRequestError } from '../errors';
-import { MAX_PHOTOS, RESERVED_KEYS, normaliseKey, type PostField, type GeoPoint } from '../models/common';
+import { MAX_PHOTOS, PHOTO_ID, RESERVED_KEYS, normaliseKey, type PostField, type GeoPoint } from '../models/common';
 import type { PostDoc, PostCollection, Store } from '../store/types';
 import { isNumber, isObject, isText, type Body } from './checks';
 import { handle } from './handle';
@@ -12,18 +12,18 @@ import { rememberNewValues } from './remember';
 // (request). `extra` is the price and condition of a listing
 //
 // A listing:  { category: 'Furniture', address: '6335 Thunderbird Cres', description: '', location: {...},
-//               photoUrls: ['https://...'], fields: [{ kind: 'builtin', key: 'brand', value: 'ikea', ... }],
+//               photoIds: ['6ad40b88e74dd3678bfef8f3'], fields: [{ kind: 'builtin', key: 'brand', value: 'ikea', ... }],
 //               extra: { price: 10, condition: 'new' } }
 //
 // A request:  { category: 'Furniture', address: '6335 Thunderbird Cres', description: '', location: {...},
-//               photoUrls: [], fields: [{ kind: 'builtin', key: 'price', value: 120, hard: true, ... }],
+//               photoIds: [], fields: [{ kind: 'builtin', key: 'price', value: 120, hard: true, ... }],
 //               extra: {} }
 interface ParsedPost {
   category: string;
   address: string;
   description: string;
   location: GeoPoint;
-  photoUrls: string[];
+  photoIds: string[];
   fields: PostField[];
   extra: Body;
 }
@@ -59,8 +59,8 @@ function parseLocation(value: unknown, errors: string[]): GeoPoint {
 }
 
 function parsePhotos(value: unknown, minPhotos: number, errors: string[]): string[] {
-  if (!Array.isArray(value) || value.some((url) => typeof url !== 'string')) {
-    errors.push('photoUrls must be an array of URLs');
+  if (!Array.isArray(value) || value.some((id) => typeof id !== 'string' || !PHOTO_ID.test(id))) {
+    errors.push('photoIds must be an array of ids returned by POST /api/photos');
     return [];
   }
   if (value.length < minPhotos) {
@@ -137,13 +137,13 @@ function parsePost<T extends PostDoc>(postType: PostType<T>, body: unknown): Par
   }
   const description = typeof body.description === 'string' ? body.description : '';
   const location = parseLocation(body.location, errors);
-  const photoUrls = parsePhotos(body.photoUrls ?? [], postType.minPhotos, errors);
+  const photoIds = parsePhotos(body.photoIds ?? [], postType.minPhotos, errors);
   const fields = parseFields(body[postType.fieldsKey], postType.builtins, postType.fieldsKey, errors);
   const extra = postType.parseExtra(body, fields, errors);
   if (errors.length > 0) {
     throw new BadRequestError(errors);
   }
-  return { category, address, description, location, photoUrls, fields, extra };
+  return { category, address, description, location, photoIds, fields, extra };
 }
 
 // The post to save.

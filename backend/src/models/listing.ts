@@ -11,7 +11,7 @@ export interface Listing {
   description: string;
   address: string;
   location: GeoPoint;
-  photoUrls: string[];
+  photoIds: string[];
   listingFields: PostField[];
   status: PostStatus;
   createdAt: Date;

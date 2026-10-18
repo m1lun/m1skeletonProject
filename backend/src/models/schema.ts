@@ -12,6 +12,7 @@ import {
   MAX_FIELDS,
   MAX_TEXT_VALUE_LENGTH,
   NORMALISED_PATTERN,
+  PHOTO_ID,
   POST_STATUSES,
   RESERVED_KEYS,
 } from './common';
@@ -48,11 +49,11 @@ const location = object({
   },
 });
 
-const photoUrls = (minItems: number): Document => ({
+const photoIds = (minItems: number): Document => ({
   bsonType: 'array',
   minItems,
   maxItems: MAX_PHOTOS,
-  items: { bsonType: 'string', pattern: '^https?://' },
+  items: { bsonType: 'string', pattern: PHOTO_ID.source },
 });
 
 const fieldProperties = {
@@ -90,14 +91,14 @@ export const listingSchema = object({
   ...postProperties,
   price: { bsonType: 'number', minimum: 0 },
   condition: { enum: [...CONDITIONS] },
-  photoUrls: photoUrls(1),
+  photoIds: photoIds(1),
   listingFields: fieldList(object(fieldProperties, [], fieldRule)),
 });
 
 // Requests may have no photos, and a hard field has no importance.
 export const requestSchema = object({
   ...postProperties,
-  photoUrls: photoUrls(0),
+  photoIds: photoIds(0),
   requestFields: fieldList(
     object(
       { ...fieldProperties, hard: { bsonType: 'bool' }, importance: { bsonType: 'int', minimum: 1, maximum: 5 } },
