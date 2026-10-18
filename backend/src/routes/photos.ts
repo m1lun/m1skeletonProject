@@ -12,7 +12,7 @@ const MULTIPART_OVERHEAD_BYTES = 64 * 1024;
 export function createPhotosRouter(photos: PhotoStorage): Router {
   const router = Router();
 
-  // Public, so the app's image loader can fetch a photo URL without a token.
+  // Public, so the app's image loader can fetch a photo without a token.
   router.get(
     '/:id',
     handle(async (req: Request, res: Response) => {
@@ -49,8 +49,7 @@ export function createPhotosRouter(photos: PhotoStorage): Router {
       }
       const ownerId = currentUser(res).id;
       const ids = await Promise.all(files.map((f) => photos.save(f.data, f.mimeType, ownerId)));
-      const origin = `${req.protocol}://${req.get('host') ?? ''}`;
-      res.status(201).json({ urls: ids.map((id) => `${origin}/api/photos/${id}`) });
+      res.status(201).json({ ids });
     }),
   );
 

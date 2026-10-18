@@ -9,7 +9,7 @@ export interface BuyerRequest {
   description: string;
   address: string;
   location: GeoPoint;
-  photoUrls: string[];
+  photoIds: string[];
   requestFields: RequestField[];
   status: PostStatus;
   createdAt: Date;

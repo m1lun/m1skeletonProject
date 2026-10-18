@@ -81,7 +81,7 @@ export function createApp({ sessions, store }: AppDeps): Express {
     );
   });
 
-  // Posts carry photo URLs and fields, so they get a larger body limit.
+  // Posts carry photo ids and fields, so they get a larger body limit.
   if (store !== undefined) {
     const posts = [express.json({ limit: '1mb' }), requireAuth];
     app.use('/api/listings', ...posts, createListingsRouter(store));
