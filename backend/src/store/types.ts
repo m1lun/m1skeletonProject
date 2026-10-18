@@ -19,6 +19,9 @@ export interface PostCollection<T extends PostDoc> {
   listByOwner(ownerId: string): Promise<T[]>;
   replace(doc: T): Promise<T>;
   remove(id: string): Promise<void>;
+  // Open posts from everyone except excludeOwnerId, newest first. With `before`
+  // (a post id), only posts older than that one, so a page starts where the last ended.
+  listOpen(excludeOwnerId: string, limit: number, before?: string): Promise<T[]>;
 }
 
 export interface OptionCollection {

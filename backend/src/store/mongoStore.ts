@@ -49,6 +49,17 @@ class MongoPostCollection<T extends PostDoc & { category: string }> implements P
     return stored.map((d) => toDoc<T>(d));
   }
 
+  // Sorted by _id, which grows with insertion time and is unique, so pages never overlap.
+  async listOpen(excludeOwnerId: string, limit: number, before?: string): Promise<T[]> {
+    const filter: Document = { status: 'open', ownerId: { $ne: excludeOwnerId } };
+    if (before !== undefined) {
+      filter._id = { $lt: new ObjectId(before) };
+    }
+    const found = await this.collection.find(filter).sort({ _id: -1 }).limit(limit).toArray();
+    const stored = found as Stored<T>[];
+    return stored.map((d) => toDoc<T>(d));
+  }
+
   async replace(doc: T): Promise<T> {
     const { id, ...rest } = doc;
     const clean = this.normalise(rest);

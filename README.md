@@ -108,6 +108,10 @@ Listings (what sellers offer) and requests (what buyers want) share the same rou
 - `GET /api/options?field=brand`, `POST /api/options` with `{ "field", "label" }`: the saved options for category, brand, colour and custom text fields. Saving a post adds any new category, brand or colour (and new custom field values) to these lists, so the app does not have to add them first.
 - `GET /api/custom-fields`, `POST /api/custom-fields` with `{ "label", "type" }`, `DELETE /api/custom-fields/:key`: your saved custom fields (`text`, `number` or `bool`).
 
+The feed shows other users' posts. It needs the session token too.
+
+- `GET /api/feed/listings?limit=20&before=<id>`: open listings from everyone except you, newest first: `{ "listings": [...], "nextCursor" }`. `limit` is 1 to 50 (default 20). To get the next page, pass the `nextCursor` you got back as `before`; it is `null` on the last page. A bad `limit` or `before` is a `400` with `{ "error", "details": [...] }`.
+
 
 ### Option 1: Run locally
 
