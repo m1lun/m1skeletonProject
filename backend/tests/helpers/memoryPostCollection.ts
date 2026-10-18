@@ -58,7 +58,7 @@ export function newListing(ownerId: string, overrides: Partial<Omit<Listing, 'id
     description: 'A sturdy desk',
     address: '6335 Thunderbird Cres',
     location: { type: 'Point', coordinates: [-123.25, 49.26] },
-    photoUrls: ['https://example.com/desk.jpg'],
+    photoIds: ['6ad40b88e74dd3678bfef8f3'],
     listingFields: [],
     status: 'open',
     createdAt: now,
