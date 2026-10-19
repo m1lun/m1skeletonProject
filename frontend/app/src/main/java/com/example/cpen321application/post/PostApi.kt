@@ -160,12 +160,6 @@ class PostApi(
         }
     }
 
-    /** Adds an option; adding an existing one is harmless. */
-    suspend fun addOption(field: String, label: String) {
-        val body = JSONObject().put("field", field).put("label", label)
-        call("/options") { post(body.toString().toRequestBody(json)) }
-    }
-
     suspend fun fields(): List<FieldDef> {
         val array = JSONArray(call("/custom-fields"))
         return (0 until array.length()).map {
@@ -186,18 +180,5 @@ class PostApi(
         val body: RequestBody = form.build()
         val array = JSONObject(call("/photos") { post(body) }).getJSONArray("ids")
         return (0 until array.length()).map { array.getString(it) }
-    }
-
-    /** New brand, colour, category and custom text values are added to the saved options first. */
-    suspend fun addNewOptions(body: JSONObject) {
-        addOption("category", body.getString("category"))
-        val rowsJson = body.optJSONArray("requestFields") ?: body.optJSONArray("listingFields") ?: return
-        for (i in 0 until rowsJson.length()) {
-            val row = rowsJson.getJSONObject(i)
-            val key = row.optString("key")
-            if (row.optString("kind") == "builtin" && (key == "brand" || key == "colour")) {
-                addOption(key, row.getString("value"))
-            }
-        }
     }
 }
