@@ -279,7 +279,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
             saving = true
             try {
                 val body = buildBody()
-                ensureOptions(body)
+                api.addNewOptions(body)
                 val id = editingId
                 if (id == null) api.createPost(mode, body) else api.updatePost(mode, id, body)
                 optionCache.clear()
@@ -327,63 +327,8 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         }
         body.put(if (seller) "listingFields" else "requestFields", rowsJson)
 
-        val uploaded = if (photos.isNotEmpty()) api.uploadPhotos(readPhotos()) else emptyList()
+        val uploaded = if (photos.isNotEmpty()) api.uploadPhotos(readPhotos(getApplication<Application>().contentResolver, photos)) else emptyList()
         body.put("photoIds", JSONArray(existingPhotoIds + uploaded))
         return body
-    }
-
-    private fun rowToJson(row: RowState, seller: Boolean): JSONObject {
-        val json = JSONObject().put("kind", row.kind)
-        if (row.isCustom) json.put("label", row.label).put("type", row.type) else json.put("key", row.key)
-        when (row.type) {
-            "number" -> json.put(
-                "value",
-                row.value.trim().toDoubleOrNull() ?: throw ApiException("${row.label} must be a number"),
-            )
-            "bool" -> json.put("value", row.boolValue)
-            "dimensions" -> {
-                val dims = listOf(row.width, row.height, row.depth).map { it.trim().toDoubleOrNull() }
-                if (dims.any { it == null }) throw ApiException("${row.label}: fill width, height and depth")
-                json.put(
-                    "value",
-                    JSONObject().put("width", dims[0]).put("height", dims[1]).put("depth", dims[2]),
-                )
-            }
-            else -> json.put("value", row.value.trim())
-        }
-        if (!seller) {
-            json.put("hard", row.hard)
-            if (!row.hard) json.put("importance", row.importance)
-        }
-        return json
-    }
-
-    /** New brand, colour, category and custom text values are added to the saved options first. */
-    private suspend fun ensureOptions(body: JSONObject) {
-        api.addOption("category", body.getString("category"))
-        val rowsJson = body.optJSONArray("requestFields") ?: body.optJSONArray("listingFields") ?: return
-        for (i in 0 until rowsJson.length()) {
-            val row = rowsJson.getJSONObject(i)
-            val key = row.optString("key")
-            if (row.optString("kind") == "builtin" && (key == "brand" || key == "colour")) {
-                api.addOption(key, row.getString("value"))
-            }
-        }
-    }
-
-    private suspend fun readPhotos(): List<PhotoData> = withContext(Dispatchers.IO) {
-        val resolver = getApplication<Application>().contentResolver
-        photos.map { uri ->
-            val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
-                ?: throw ApiException("Could not read a selected photo")
-            if (bytes.size > MAX_PHOTO_BYTES) throw ApiException("Each photo must be at most 10 MB")
-            val mime = resolver.getType(uri) ?: "image/jpeg"
-            var name = "photo"
-            resolver.query(uri, null, null, null, null)?.use { c ->
-                val col = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (col >= 0 && c.moveToFirst()) name = c.getString(col)
-            }
-            PhotoData(name, mime, bytes)
-        }
     }
 }

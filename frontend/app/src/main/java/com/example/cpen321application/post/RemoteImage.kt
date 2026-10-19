@@ -27,20 +27,28 @@ private object ImageCache {
     }
 }
 
+private const val MAX_DECODE_WIDTH = 1600
+
+private fun decode(bytes: ByteArray): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    var sample = 1
+    while (bounds.outWidth / sample > MAX_DECODE_WIDTH) sample *= 2
+    val options = BitmapFactory.Options().apply { inSampleSize = sample }
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+}
+
+private fun download(url: String): Bitmap? =
+    ImageCache.client.newCall(Request.Builder().url(url).build()).execute().use { response ->
+        val bytes = response.body?.bytes()
+        if (response.isSuccessful && bytes != null) decode(bytes) else null
+    }
+
 private suspend fun load(url: String): Bitmap? {
     ImageCache.cache.get(url)?.let { return it }
     return withContext(Dispatchers.IO) {
         try {
-            ImageCache.client.newCall(Request.Builder().url(url).build()).execute().use { response ->
-                val bytes = response.body?.bytes() ?: return@use null
-                if (!response.isSuccessful) return@use null
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-                var sample = 1
-                while (bounds.outWidth / sample > 1600) sample *= 2
-                val options = BitmapFactory.Options().apply { inSampleSize = sample }
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
-            }?.also { ImageCache.cache.put(url, it) }
+            download(url)?.also { ImageCache.cache.put(url, it) }
         } catch (e: java.io.IOException) {
             null
         }

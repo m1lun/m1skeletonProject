@@ -19,6 +19,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
@@ -54,7 +55,6 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun PostDetailScreen(post: PostSummary, mode: Mode, viewModel: PostViewModel, padding: PaddingValues) {
     var confirmDelete by remember { mutableStateOf(false) }
-    val detail = post.detail
 
     Column(
         modifier = Modifier
@@ -63,153 +63,182 @@ fun PostDetailScreen(post: PostSummary, mode: Mode, viewModel: PostViewModel, pa
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(start = 4.dp, end = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = { viewModel.selected = null }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                if (mode == Mode.BUYING) "Request" else "Listing",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f),
-            )
-            StatusChip(post.status)
-        }
-
-        if (detail.photoIds.isNotEmpty()) {
-            val pager = rememberPagerState { detail.photoIds.size }
-            HorizontalPager(state = pager, modifier = Modifier.fillMaxWidth().height(260.dp)) { page ->
-                RemoteImage(detail.photoIds[page], Modifier.fillMaxSize())
-            }
-            if (detail.photoIds.size > 1) {
-                Text(
-                    "${pager.currentPage + 1} / ${detail.photoIds.size}",
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            }
-        }
-
+        DetailHeader(post, mode, onBack = { viewModel.selected = null })
+        PhotoPager(post.detail.photoIds)
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                detail.category,
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-            )
-            detail.price?.let {
+            DetailSummary(post.detail)
+            DetailRows(post.detail, mode)
+            if (post.detail.createdAt.isNotBlank()) {
                 Text(
-                    it,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            detail.condition?.let {
-                Text(
-                    "Condition: $it",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    Icons.Filled.LocationOn,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    detail.address,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (detail.description.isNotBlank()) {
-                Text(detail.description, style = MaterialTheme.typography.bodyLarge)
-            }
-
-            if (detail.rows.isNotEmpty()) {
-                Text(
-                    (if (mode == Mode.BUYING) "Requirements" else "Attributes").uppercase(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    detail.rows.forEach { DetailLine(it) }
-                }
-            }
-
-            if (detail.createdAt.isNotBlank()) {
-                Text(
-                    "Posted ${detail.createdAt}",
+                    "Posted ${post.detail.createdAt}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 24.dp),
-            ) {
-                Button(onClick = { viewModel.startEditing(post) }, modifier = Modifier.weight(1f).height(48.dp)) {
-                    Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Edit")
-                }
-                FilledTonalButton(onClick = { viewModel.toggleStatus(post) }, modifier = Modifier.weight(1f).height(48.dp)) {
-                    val open = post.status == "open"
-                    Icon(
-                        if (open) Icons.Filled.Close else Icons.Filled.Check,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (open) "Close" else "Reopen")
-                }
-                IconButton(
-                    onClick = { confirmDelete = true },
-                    colors = androidx.compose.material3.IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                    ),
-                ) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Delete")
-                }
-            }
+            DetailActions(post, viewModel, onDelete = { confirmDelete = true })
         }
     }
 
     if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete this post?") },
-            text = { Text("This can't be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmDelete = false
-                    viewModel.delete(post)
-                }) { Text("Delete") }
+        DeleteDialog(
+            onConfirm = {
+                confirmDelete = false
+                viewModel.delete(post)
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+            onDismiss = { confirmDelete = false },
         )
     }
+}
+
+@Composable
+private fun DetailHeader(post: PostSummary, mode: Mode, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier.padding(start = 4.dp, end = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        }
+        Text(
+            if (mode == Mode.BUYING) "Request" else "Listing",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.weight(1f),
+        )
+        StatusChip(post.status)
+    }
+}
+
+@Composable
+private fun PhotoPager(photoIds: List<String>) {
+    if (photoIds.isEmpty()) return
+    val pager = rememberPagerState { photoIds.size }
+    HorizontalPager(state = pager, modifier = Modifier.fillMaxWidth().height(260.dp)) { page ->
+        RemoteImage(photoIds[page], Modifier.fillMaxSize())
+    }
+    if (photoIds.size > 1) {
+        Text(
+            "${pager.currentPage + 1} / ${photoIds.size}",
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+    }
+}
+
+@Composable
+private fun DetailSummary(detail: PostDetail) {
+    Text(
+        detail.category,
+        style = MaterialTheme.typography.headlineLarge,
+        fontWeight = FontWeight.Bold,
+    )
+    detail.price?.let {
+        Text(
+            it,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+    detail.condition?.let {
+        Text(
+            "Condition: $it",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    AddressBadge(detail.address)
+    if (detail.description.isNotBlank()) {
+        Text(detail.description, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun AddressBadge(address: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Filled.LocationOn,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            address,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun DetailRows(detail: PostDetail, mode: Mode) {
+    if (detail.rows.isEmpty()) return
+    Text(
+        (if (mode == Mode.BUYING) "Requirements" else "Attributes").uppercase(),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        letterSpacing = 1.sp,
+        modifier = Modifier.padding(top = 8.dp),
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        detail.rows.forEach { DetailLine(it) }
+    }
+}
+
+@Composable
+private fun DetailActions(post: PostSummary, viewModel: PostViewModel, onDelete: () -> Unit) {
+    val open = post.status == "open"
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 24.dp),
+    ) {
+        Button(onClick = { viewModel.startEditing(post) }, modifier = Modifier.weight(1f).height(48.dp)) {
+            Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Edit")
+        }
+        FilledTonalButton(onClick = { viewModel.toggleStatus(post) }, modifier = Modifier.weight(1f).height(48.dp)) {
+            Icon(
+                if (open) Icons.Filled.Close else Icons.Filled.Check,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(if (open) "Close" else "Reopen")
+        }
+        IconButton(
+            onClick = onDelete,
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            ),
+        ) {
+            Icon(Icons.Filled.Delete, contentDescription = "Delete")
+        }
+    }
+}
+
+@Composable
+private fun DeleteDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete this post?") },
+        text = { Text("This can't be undone.") },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Delete") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

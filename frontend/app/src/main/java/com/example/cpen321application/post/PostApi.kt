@@ -187,4 +187,17 @@ class PostApi(
         val array = JSONObject(call("/photos") { post(body) }).getJSONArray("ids")
         return (0 until array.length()).map { array.getString(it) }
     }
+
+    /** New brand, colour, category and custom text values are added to the saved options first. */
+    suspend fun addNewOptions(body: JSONObject) {
+        addOption("category", body.getString("category"))
+        val rowsJson = body.optJSONArray("requestFields") ?: body.optJSONArray("listingFields") ?: return
+        for (i in 0 until rowsJson.length()) {
+            val row = rowsJson.getJSONObject(i)
+            val key = row.optString("key")
+            if (row.optString("kind") == "builtin" && (key == "brand" || key == "colour")) {
+                addOption(key, row.getString("value"))
+            }
+        }
+    }
 }

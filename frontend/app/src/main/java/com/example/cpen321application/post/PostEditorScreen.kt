@@ -47,14 +47,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PostEditorScreen(viewModel: PostViewModel, padding: PaddingValues) {
     val seller = viewModel.mode == Mode.SELLING
     var showAddField by remember { mutableStateOf(false) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) {
-        viewModel.addPhotos(it)
-    }
 
     Column(
         modifier = Modifier
@@ -64,82 +60,15 @@ fun PostEditorScreen(viewModel: PostViewModel, padding: PaddingValues) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = viewModel::stopEditing) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            val noun = if (seller) "listing" else "request"
-            Text(
-                if (viewModel.editingId == null) viewModel.mode.newLabel else "Edit $noun",
-                style = MaterialTheme.typography.titleLarge,
-            )
-        }
-
+        EditorHeader(viewModel, seller)
         SuggestField(
             label = "Category *",
             value = viewModel.category,
             onValueChange = { viewModel.category = it },
             options = viewModel.categories,
         )
-
-        if (seller) {
-            OutlinedTextField(
-                value = viewModel.price,
-                onValueChange = { viewModel.price = it },
-                label = { Text("Price *") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text("Condition *", style = MaterialTheme.typography.labelLarge)
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                CONDITIONS.forEach { c ->
-                    val selected = viewModel.condition == c
-                    OutlinedButton(onClick = { viewModel.condition = c }) {
-                        Text(if (selected) "● ${c.titleCase()}" else c.titleCase())
-                    }
-                }
-            }
-        }
-
-        OutlinedTextField(
-            value = viewModel.address,
-            onValueChange = viewModel::onAddressChange,
-            label = { Text("Address *") },
-            singleLine = true,
-            isError = viewModel.showAddressError,
-            supportingText = {
-                when {
-                    viewModel.showAddressError ->
-                        Text("Choose your address from the suggestions list")
-                    viewModel.addressConfirmed -> Text("✓ Address confirmed")
-                    viewModel.addressSuggestions.isNotEmpty() -> Text("Pick your address from the list below")
-                    else -> Text("Start typing your address, then pick it from the list")
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (viewModel.addressSuggestions.isNotEmpty()) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column {
-                    viewModel.addressSuggestions.forEach { suggestion ->
-                        TextButton(
-                            onClick = { viewModel.pickAddress(suggestion) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                "📍 ${suggestion.label}",
-                                modifier = Modifier.fillMaxWidth(),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        if (seller) SellerFields(viewModel)
+        AddressField(viewModel)
         OutlinedTextField(
             value = viewModel.description,
             onValueChange = { viewModel.description = it },
@@ -147,57 +76,10 @@ fun PostEditorScreen(viewModel: PostViewModel, padding: PaddingValues) {
             minLines = 2,
             modifier = Modifier.fillMaxWidth(),
         )
-
-        Text(
-            "Photos ${viewModel.photos.size + viewModel.existingPhotoIds.size}/$MAX_PHOTOS" +
-                if (seller) " *" else "",
-            style = MaterialTheme.typography.labelLarge,
-        )
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedButton(onClick = { picker.launch("image/*") }) { Text("+ Add") }
-            viewModel.existingPhotoIds.forEachIndexed { index, _ ->
-                OutlinedButton(onClick = { viewModel.removeExistingPhoto(index) }) {
-                    Text("Photo ${index + 1} ✕")
-                }
-            }
-            viewModel.photos.forEachIndexed { index, uri ->
-                OutlinedButton(onClick = { viewModel.removePhoto(index) }) {
-                    Text("${uri.lastPathSegment?.takeLast(8) ?: "photo"} ✕")
-                }
-            }
-        }
-
-        Text(
-            if (seller) "Attributes" else "Requirements",
-            style = MaterialTheme.typography.titleMedium,
-        )
-        viewModel.rows.forEachIndexed { index, row ->
-            RowEditor(
-                row = row,
-                seller = seller,
-                viewModel = viewModel,
-                onChange = { viewModel.updateRow(index, it) },
-                onRemove = if (row.isCustom) ({ viewModel.removeRow(index) }) else null,
-            )
-        }
-
+        PhotoRow(viewModel, seller)
+        FieldRows(viewModel, seller)
         OutlinedButton(onClick = { showAddField = true }) { Text("+ Add field") }
-
-        Button(
-            onClick = viewModel::submit,
-            enabled = !viewModel.saving,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            if (viewModel.saving) {
-                CircularProgressIndicator(modifier = Modifier.padding(2.dp))
-            } else {
-                val create = if (seller) "Create listing" else "Create request"
-                Text(if (viewModel.editingId == null) create else "Save changes")
-            }
-        }
+        SubmitButton(viewModel, seller)
     }
 
     if (showAddField) {
@@ -212,7 +94,147 @@ fun PostEditorScreen(viewModel: PostViewModel, padding: PaddingValues) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditorHeader(viewModel: PostViewModel, seller: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = viewModel::stopEditing) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        }
+        val noun = if (seller) "listing" else "request"
+        Text(
+            if (viewModel.editingId == null) viewModel.mode.newLabel else "Edit $noun",
+            style = MaterialTheme.typography.titleLarge,
+        )
+    }
+}
+
+@Composable
+private fun SellerFields(viewModel: PostViewModel) {
+    OutlinedTextField(
+        value = viewModel.price,
+        onValueChange = { viewModel.price = it },
+        label = { Text("Price *") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Text("Condition *", style = MaterialTheme.typography.labelLarge)
+    ConditionChoices(selected = viewModel.condition, onSelect = { viewModel.condition = it })
+}
+
+@Composable
+private fun ConditionChoices(selected: String, onSelect: (String) -> Unit) {
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        CONDITIONS.forEach { c ->
+            OutlinedButton(onClick = { onSelect(c) }) {
+                Text(if (selected == c) "● ${c.titleCase()}" else c.titleCase())
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddressField(viewModel: PostViewModel) {
+    OutlinedTextField(
+        value = viewModel.address,
+        onValueChange = viewModel::onAddressChange,
+        label = { Text("Address *") },
+        singleLine = true,
+        isError = viewModel.showAddressError,
+        supportingText = { Text(addressHint(viewModel)) },
+        modifier = Modifier.fillMaxWidth(),
+    )
+    if (viewModel.addressSuggestions.isNotEmpty()) {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column {
+                viewModel.addressSuggestions.forEach { suggestion ->
+                    TextButton(
+                        onClick = { viewModel.pickAddress(suggestion) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            "📍 ${suggestion.label}",
+                            modifier = Modifier.fillMaxWidth(),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun addressHint(viewModel: PostViewModel): String = when {
+    viewModel.showAddressError -> "Choose your address from the suggestions list"
+    viewModel.addressConfirmed -> "✓ Address confirmed"
+    viewModel.addressSuggestions.isNotEmpty() -> "Pick your address from the list below"
+    else -> "Start typing your address, then pick it from the list"
+}
+
+@Composable
+private fun PhotoRow(viewModel: PostViewModel, seller: Boolean) {
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) {
+        viewModel.addPhotos(it)
+    }
+    Text(
+        "Photos ${viewModel.photos.size + viewModel.existingPhotoIds.size}/$MAX_PHOTOS" +
+            if (seller) " *" else "",
+        style = MaterialTheme.typography.labelLarge,
+    )
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedButton(onClick = { picker.launch("image/*") }) { Text("+ Add") }
+        viewModel.existingPhotoIds.forEachIndexed { index, _ ->
+            OutlinedButton(onClick = { viewModel.removeExistingPhoto(index) }) {
+                Text("Photo ${index + 1} ✕")
+            }
+        }
+        viewModel.photos.forEachIndexed { index, uri ->
+            OutlinedButton(onClick = { viewModel.removePhoto(index) }) {
+                Text("${uri.lastPathSegment?.takeLast(8) ?: "photo"} ✕")
+            }
+        }
+    }
+}
+
+@Composable
+private fun FieldRows(viewModel: PostViewModel, seller: Boolean) {
+    Text(
+        if (seller) "Attributes" else "Requirements",
+        style = MaterialTheme.typography.titleMedium,
+    )
+    viewModel.rows.forEachIndexed { index, row ->
+        RowEditor(
+            row = row,
+            seller = seller,
+            viewModel = viewModel,
+            onChange = { viewModel.updateRow(index, it) },
+            onRemove = if (row.isCustom) ({ viewModel.removeRow(index) }) else null,
+        )
+    }
+}
+
+@Composable
+private fun SubmitButton(viewModel: PostViewModel, seller: Boolean) {
+    Button(
+        onClick = viewModel::submit,
+        enabled = !viewModel.saving,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        if (viewModel.saving) {
+            CircularProgressIndicator(modifier = Modifier.padding(2.dp))
+        } else {
+            val create = if (seller) "Create listing" else "Create request"
+            Text(if (viewModel.editingId == null) create else "Save changes")
+        }
+    }
+}
+
 @Composable
 private fun RowEditor(
     row: RowState,
@@ -234,92 +256,101 @@ private fun RowEditor(
                 )
                 if (onRemove != null) TextButton(onClick = onRemove) { Text("✕") }
             }
-
-            when {
-                row.type == "bool" -> Switch(
-                    checked = row.boolValue,
-                    onCheckedChange = { onChange(row.copy(boolValue = it)) },
-                )
-                row.type == "dimensions" -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("W" to row.width, "H" to row.height, "D" to row.depth).forEachIndexed { i, (name, v) ->
-                        OutlinedTextField(
-                            value = v,
-                            onValueChange = {
-                                onChange(
-                                    when (i) {
-                                        0 -> row.copy(width = it)
-                                        1 -> row.copy(height = it)
-                                        else -> row.copy(depth = it)
-                                    },
-                                )
-                            },
-                            label = { Text(name) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-                row.key == "condition" && row.kind == "builtin" -> Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    CONDITIONS.forEach { c ->
-                        OutlinedButton(onClick = { onChange(row.copy(value = if (row.value == c) "" else c)) }) {
-                            Text(if (row.value == c) "● ${c.titleCase()}" else c.titleCase())
-                        }
-                    }
-                }
-                row.optionField != null -> {
-                    var options by remember(row.key) { mutableStateOf<List<OptionItem>>(emptyList()) }
-                    LaunchedEffect(row.key) { options = viewModel.suggestions(row.optionField!!) }
-                    SuggestField(
-                        label = "Value",
-                        value = row.value,
-                        onValueChange = { onChange(row.copy(value = it)) },
-                        options = options,
-                    )
-                }
-                else -> OutlinedTextField(
-                    value = row.value,
-                    onValueChange = { onChange(row.copy(value = it)) },
-                    label = { Text("Value") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = if (row.type == "number") KeyboardType.Decimal else KeyboardType.Text,
-                    ),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
+            RowValueInput(row, viewModel, onChange)
             // Hard/soft and importance only exist on request fields.
-            if (!seller) {
-                SingleChoiceSegmentedButtonRow {
-                    listOf(true to "Hard", false to "Soft").forEachIndexed { i, (hard, name) ->
-                        SegmentedButton(
-                            selected = row.hard == hard,
-                            onClick = { onChange(row.copy(hard = hard)) },
-                            shape = SegmentedButtonDefaults.itemShape(i, 2),
-                        ) { Text(name) }
-                    }
-                }
-                Text(
-                    if (row.hard) "Must have" else "Importance: ${row.importance}/5",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Slider(
-                    value = row.importance.toFloat(),
-                    onValueChange = { onChange(row.copy(importance = it.toInt().coerceIn(1, 5))) },
-                    valueRange = 1f..5f,
-                    steps = 3,
-                    enabled = !row.hard,
-                )
-            }
+            if (!seller) RequestControls(row, onChange)
         }
     }
 }
 
-/** Text input with tap-to-fill suggestions; typing a new value adds it to the list on save. */
+@Composable
+private fun RowValueInput(row: RowState, viewModel: PostViewModel, onChange: (RowState) -> Unit) {
+    when {
+        row.type == "bool" -> Switch(
+            checked = row.boolValue,
+            onCheckedChange = { onChange(row.copy(boolValue = it)) },
+        )
+        row.type == "dimensions" -> DimensionInputs(row, onChange)
+        row.key == "condition" && row.kind == "builtin" ->
+            ConditionChoices(
+                selected = row.value,
+                onSelect = { onChange(row.copy(value = if (row.value == it) "" else it)) },
+            )
+        row.optionField != null -> OptionValueInput(row, viewModel, onChange)
+        else -> OutlinedTextField(
+            value = row.value,
+            onValueChange = { onChange(row.copy(value = it)) },
+            label = { Text("Value") },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = if (row.type == "number") KeyboardType.Decimal else KeyboardType.Text,
+            ),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun DimensionInputs(row: RowState, onChange: (RowState) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf("W" to row.width, "H" to row.height, "D" to row.depth).forEachIndexed { i, (name, v) ->
+            OutlinedTextField(
+                value = v,
+                onValueChange = {
+                    onChange(
+                        when (i) {
+                            0 -> row.copy(width = it)
+                            1 -> row.copy(height = it)
+                            else -> row.copy(depth = it)
+                        },
+                    )
+                },
+                label = { Text(name) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun OptionValueInput(row: RowState, viewModel: PostViewModel, onChange: (RowState) -> Unit) {
+    var options by remember(row.key) { mutableStateOf<List<OptionItem>>(emptyList()) }
+    LaunchedEffect(row.key) { options = viewModel.suggestions(row.optionField!!) }
+    SuggestField(
+        label = "Value",
+        value = row.value,
+        onValueChange = { onChange(row.copy(value = it)) },
+        options = options,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RequestControls(row: RowState, onChange: (RowState) -> Unit) {
+    SingleChoiceSegmentedButtonRow {
+        listOf(true to "Hard", false to "Soft").forEachIndexed { i, (hard, name) ->
+            SegmentedButton(
+                selected = row.hard == hard,
+                onClick = { onChange(row.copy(hard = hard)) },
+                shape = SegmentedButtonDefaults.itemShape(i, 2),
+            ) { Text(name) }
+        }
+    }
+    Text(
+        if (row.hard) "Must have" else "Importance: ${row.importance}/5",
+        style = MaterialTheme.typography.bodySmall,
+    )
+    Slider(
+        value = row.importance.toFloat(),
+        onValueChange = { onChange(row.copy(importance = it.toInt().coerceIn(1, 5))) },
+        valueRange = 1f..5f,
+        steps = 3,
+        enabled = !row.hard,
+    )
+}
+
 @Composable
 private fun SuggestField(
     label: String,
@@ -335,23 +366,28 @@ private fun SuggestField(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        val matches = options
-            .filter { value.isBlank() || it.key.contains(value.trim().lowercase()) }
-            .filter { it.key != value.trim().lowercase() }
-            .take(8)
-        if (matches.isNotEmpty()) {
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                matches.forEach {
-                    SuggestionChip(onClick = { onValueChange(it.label) }, label = { Text(it.label.titleCase()) })
-                }
-            }
-        }
+        SuggestionRow(value, onValueChange, options)
         val exact = options.any { it.key == value.trim().lowercase() }
         if (value.isNotBlank() && !exact) {
             Text("New value \"${value.trim()}\" will be added", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SuggestionRow(value: String, onValueChange: (String) -> Unit, options: List<OptionItem>) {
+    val matches = options
+        .filter { value.isBlank() || it.key.contains(value.trim().lowercase()) }
+        .filter { it.key != value.trim().lowercase() }
+        .take(8)
+    if (matches.isEmpty()) return
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        matches.forEach {
+            SuggestionChip(onClick = { onValueChange(it.label) }, label = { Text(it.label.titleCase()) })
         }
     }
 }

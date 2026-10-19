@@ -2,6 +2,7 @@ package com.example.cpen321application.post
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -45,7 +47,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PostScreen(viewModel: PostViewModel, padding: PaddingValues) {
     var pendingDelete by remember { mutableStateOf<PostSummary?>(null) }
@@ -57,41 +58,8 @@ fun PostScreen(viewModel: PostViewModel, padding: PaddingValues) {
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            "Match Market",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(top = 16.dp),
-        )
-
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            Mode.entries.forEachIndexed { index, mode ->
-                SegmentedButton(
-                    selected = viewModel.mode == mode,
-                    onClick = { viewModel.selectMode(mode) },
-                    shape = SegmentedButtonDefaults.itemShape(index, Mode.entries.size),
-                ) { Text(mode.tabLabel) }
-            }
-        }
-
-        val noun = if (viewModel.mode == Mode.BUYING) "requests" else "listings"
-        Text(
-            "My $noun (${viewModel.posts.size})",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        if (viewModel.posts.isEmpty() && !viewModel.loading) {
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text(
-                    "Nothing here yet.\nTap the button below to create your first one.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
-            }
-        }
-
+        PostScreenHeader(viewModel)
+        if (viewModel.posts.isEmpty() && !viewModel.loading) EmptyPosts()
         LazyColumn(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -106,33 +74,82 @@ fun PostScreen(viewModel: PostViewModel, padding: PaddingValues) {
                 )
             }
         }
-
-        Button(
-            onClick = viewModel::startEditing,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-        ) {
-            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(viewModel.mode.newLabel)
-        }
+        NewPostButton(viewModel)
     }
 
     pendingDelete?.let { post ->
-        AlertDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = { Text("Delete this post?") },
-            text = { Text(post.title) },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.delete(post)
-                    pendingDelete = null
-                }) { Text("Delete") }
+        DeletePostDialog(
+            post,
+            onConfirm = {
+                viewModel.delete(post)
+                pendingDelete = null
             },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Cancel") } },
+            onDismiss = { pendingDelete = null },
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PostScreenHeader(viewModel: PostViewModel) {
+    Text(
+        "Match Market",
+        style = MaterialTheme.typography.headlineMedium,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(top = 16.dp),
+    )
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        Mode.entries.forEachIndexed { index, mode ->
+            SegmentedButton(
+                selected = viewModel.mode == mode,
+                onClick = { viewModel.selectMode(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index, Mode.entries.size),
+            ) { Text(mode.tabLabel) }
+        }
+    }
+    val noun = if (viewModel.mode == Mode.BUYING) "requests" else "listings"
+    Text(
+        "My $noun (${viewModel.posts.size})",
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun ColumnScope.EmptyPosts() {
+    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Text(
+            "Nothing here yet.\nTap the button below to create your first one.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun NewPostButton(viewModel: PostViewModel) {
+    Button(
+        onClick = viewModel::startEditing,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp),
+    ) {
+        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(viewModel.mode.newLabel)
+    }
+}
+
+@Composable
+private fun DeletePostDialog(post: PostSummary, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete this post?") },
+        text = { Text(post.title) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Delete") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -143,7 +160,6 @@ private fun PostCard(
     onToggleStatus: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    var menu by remember { mutableStateOf(false) }
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -156,14 +172,8 @@ private fun PostCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            val thumb = post.detail.photoIds.firstOrNull()
-            if (thumb != null) {
-                RemoteImage(
-                    id = thumb,
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(12.dp)),
-                )
+            post.detail.photoIds.firstOrNull()?.let {
+                RemoteImage(id = it, modifier = Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -181,34 +191,34 @@ private fun PostCard(
                 Spacer(Modifier.height(8.dp))
                 StatusChip(post.status)
             }
-            Box {
-                IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "More options")
-                }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(
-                        text = { Text("Edit") },
-                        onClick = {
-                            menu = false
-                            onEdit()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(if (post.status == "open") "Close" else "Reopen") },
-                        onClick = {
-                            menu = false
-                            onToggleStatus()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Delete") },
-                        onClick = {
-                            menu = false
-                            onDelete()
-                        },
-                    )
-                }
-            }
+            PostCardMenu(post, onEdit, onToggleStatus, onDelete)
+        }
+    }
+}
+
+@Composable
+private fun PostCardMenu(
+    post: PostSummary,
+    onEdit: () -> Unit,
+    onToggleStatus: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    var menu by remember { mutableStateOf(false) }
+    val choose = { action: () -> Unit ->
+        menu = false
+        action()
+    }
+    Box {
+        IconButton(onClick = { menu = true }) {
+            Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+        }
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            DropdownMenuItem(text = { Text("Edit") }, onClick = { choose(onEdit) })
+            DropdownMenuItem(
+                text = { Text(if (post.status == "open") "Close" else "Reopen") },
+                onClick = { choose(onToggleStatus) },
+            )
+            DropdownMenuItem(text = { Text("Delete") }, onClick = { choose(onDelete) })
         }
     }
 }
