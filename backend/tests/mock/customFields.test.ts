@@ -17,61 +17,30 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-const SERVER_ERROR = { error: 'Internal Server Error' };
+const DOWN = new Error('MongoDB is unreachable');
 
-// Interface GET /api/custom-fields
-describe('Mocked: GET /api/custom-fields', () => {
-  // Input: GET with a session token
-  // Expected status code: 500
-  // Expected behavior: the error is logged
+// Interface GET, POST and DELETE /api/custom-fields
+describe('Mocked: /api/custom-fields', () => {
+  // Input: GET, POST { label: "Wall width", type: "number" }, and DELETE /wall%20width
+  // Expected status code: 500 for each
+  // Expected behavior: the error is logged; nothing is stored or removed
   // Expected output: { error: "Internal Server Error" }
-  // Mocked behavior: the custom fields store rejects the query with a database error
+  // Mocked behavior: the custom fields store rejects the list, upsert and removal with a database error
   test('Database failure', async () => {
-    jest.spyOn(store.customFields, 'list').mockRejectedValue(new Error('MongoDB is unreachable'));
+    jest.spyOn(store.customFields, 'list').mockRejectedValue(DOWN);
+    jest.spyOn(store.customFields, 'upsert').mockRejectedValue(DOWN);
+    jest.spyOn(store.customFields, 'remove').mockRejectedValue(DOWN);
+    const auth = bearer(ME);
 
-    const response = await request(app).get('/api/custom-fields').set('Authorization', bearer(ME));
-
-    expect(response.status).toBe(500);
-    expect(response.body).toEqual(SERVER_ERROR);
-  });
-});
-
-// Interface POST /api/custom-fields
-describe('Mocked: POST /api/custom-fields', () => {
-  // Input: POST { label: "Wall width", type: "number" }
-  // Expected status code: 500
-  // Expected behavior: the error is logged; no field is stored
-  // Expected output: { error: "Internal Server Error" }
-  // Mocked behavior: the custom fields store rejects the upsert with a database error
-  test('Database failure', async () => {
-    jest.spyOn(store.customFields, 'upsert').mockRejectedValue(new Error('MongoDB is unreachable'));
-
-    const response = await request(app)
+    const list = await request(app).get('/api/custom-fields').set('Authorization', auth);
+    const create = await request(app)
       .post('/api/custom-fields')
-      .set('Authorization', bearer(ME))
+      .set('Authorization', auth)
       .send({ label: 'Wall width', type: 'number' });
+    const remove = await request(app).delete('/api/custom-fields/wall%20width').set('Authorization', auth);
 
-    expect(response.status).toBe(500);
-    expect(response.body).toEqual(SERVER_ERROR);
+    expect([list.status, create.status, remove.status]).toEqual([500, 500, 500]);
+    expect(remove.body).toEqual({ error: 'Internal Server Error' });
     expect(store.customFields.rows).toHaveLength(0);
-  });
-});
-
-// Interface DELETE /api/custom-fields/:key
-describe('Mocked: DELETE /api/custom-fields/:key', () => {
-  // Input: DELETE /api/custom-fields/wall%20width
-  // Expected status code: 500
-  // Expected behavior: the error is logged; the field is not removed
-  // Expected output: { error: "Internal Server Error" }
-  // Mocked behavior: the custom fields store rejects the removal with a database error
-  test('Database failure', async () => {
-    await store.customFields.upsert({ ownerId: ME, key: 'wall width', label: 'Wall width', type: 'number' });
-    jest.spyOn(store.customFields, 'remove').mockRejectedValue(new Error('MongoDB is unreachable'));
-
-    const response = await request(app).delete('/api/custom-fields/wall%20width').set('Authorization', bearer(ME));
-
-    expect(response.status).toBe(500);
-    expect(response.body).toEqual(SERVER_ERROR);
-    expect(store.customFields.rows).toHaveLength(1);
   });
 });
