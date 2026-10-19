@@ -331,6 +331,16 @@ private fun SignedInScreen(
             modifier = Modifier.padding(top = 4.dp)
         )
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        val postsContext = LocalContext.current
+        OutlinedButton(
+            onClick = { postsContext.startActivity(Intent(postsContext, MainActivity::class.java)) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = stringResource(R.string.btn_my_posts))
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedButton(
