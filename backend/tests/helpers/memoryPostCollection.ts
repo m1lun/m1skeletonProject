@@ -1,15 +1,17 @@
 import type { Listing } from '../../src/models/listing';
+import type { BuyerRequest } from '../../src/models/request';
 import type { PostCollection, PostDoc } from '../../src/store/types';
 
 // Stands in for MongoPostCollection with the same rules, so post routes can be
 // tested without a database. Ids are 24 hex characters that grow with each
-// insert, like MongoDB ObjectIds. `rows` is exposed so tests can inspect it.
+// insert and, like MongoDB ObjectIds, are unique across every collection, so a
+// listing and a request never share one. `rows` is exposed so tests can inspect it.
 export class MemoryPostCollection<T extends PostDoc> implements PostCollection<T> {
+  private static nextId = 1;
   readonly rows: T[] = [];
-  private nextId = 1;
 
   insert(doc: Omit<T, 'id'>): Promise<T> {
-    const post = { ...doc, id: (this.nextId++).toString(16).padStart(24, '0') } as T;
+    const post = { ...doc, id: (MemoryPostCollection.nextId++).toString(16).padStart(24, '0') } as T;
     this.rows.push(post);
     return Promise.resolve({ ...post });
   }
@@ -42,6 +44,14 @@ export class MemoryPostCollection<T extends PostDoc> implements PostCollection<T
     return Promise.resolve(open.slice(0, limit));
   }
 
+  listOpenInCategory(category: string, excludeOwnerId: string): Promise<T[]> {
+    return Promise.resolve(
+      this.newestFirst().filter(
+        (row) => row.status === 'open' && row.category === category && row.ownerId !== excludeOwnerId
+      )
+    );
+  }
+
   private newestFirst(): T[] {
     return this.rows.map((row) => ({ ...row })).sort((a, b) => b.id.localeCompare(a.id));
   }
@@ -60,6 +70,25 @@ export function newListing(ownerId: string, overrides: Partial<Omit<Listing, 'id
     location: { type: 'Point', coordinates: [-123.25, 49.26] },
     photoIds: ['6ad40b88e74dd3678bfef8f3'],
     listingFields: [],
+    status: 'open',
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
+
+// A valid open request for tests: furniture up to $100 near the default listing.
+// Pass overrides for the fields a test cares about.
+export function newRequest(ownerId: string, overrides: Partial<Omit<BuyerRequest, 'id'>> = {}): Omit<BuyerRequest, 'id'> {
+  const now = new Date();
+  return {
+    ownerId,
+    category: 'furniture',
+    description: 'Looking for a desk',
+    address: '2329 West Mall',
+    location: { type: 'Point', coordinates: [-123.25, 49.26] },
+    photoIds: [],
+    requestFields: [{ key: 'price', label: 'Max price', kind: 'builtin', type: 'number', value: 100, hard: true }],
     status: 'open',
     createdAt: now,
     updatedAt: now,
