@@ -7,7 +7,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
@@ -15,7 +14,13 @@ import org.json.JSONObject
 class ApiException(message: String) : Exception(message)
 
 /** An image picked by the user, read into memory. */
-class PhotoData(val name: String, val mimeType: String, val bytes: ByteArray)
+class PhotoData(val mimeType: String, val bytes: ByteArray)
+
+private const val PHOTO_FILE_NAME = "photo"
+
+internal fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }
+
+internal fun JSONArray.strings(): List<String> = (0 until length()).map { getString(it) }
 
 class PostApi(
     baseUrl: String,
@@ -24,6 +29,8 @@ class PostApi(
 ) {
     private val base = baseUrl.trimEnd('/')
     private val json = "application/json".toMediaType()
+
+    private fun JSONObject.asBody() = toString().toRequestBody(json)
 
     private suspend fun call(path: String, build: Request.Builder.() -> Unit = {}): String =
         withContext(Dispatchers.IO) {
@@ -47,7 +54,7 @@ class PostApi(
         val obj = JSONObject(body)
         val details = obj.optJSONArray("details")
         if (details != null && details.length() > 0) {
-            (0 until details.length()).joinToString("\n") { details.getString(it) }
+            details.strings().joinToString("\n")
         } else {
             obj.optString("error", "Request failed ($code)")
         }
@@ -56,8 +63,7 @@ class PostApi(
     }
 
     suspend fun listPosts(mode: Mode): List<PostSummary> {
-        val array = JSONArray(call("/${mode.path}"))
-        return (0 until array.length()).map { summarise(mode, array.getJSONObject(it)) }
+        return JSONArray(call("/${mode.path}")).objects().map { summarise(mode, it) }
     }
 
     private fun formatValue(row: JSONObject): String {
@@ -79,9 +85,7 @@ class PostApi(
 
     private fun detailOf(mode: Mode, post: JSONObject): PostDetail {
         val rowsKey = if (mode == Mode.BUYING) "requestFields" else "listingFields"
-        val rows = post.getJSONArray(rowsKey)
-        val detailRows = (0 until rows.length()).map {
-            val row = rows.getJSONObject(it)
+        val detailRows = post.getJSONArray(rowsKey).objects().map { row ->
             DetailRow(
                 label = row.getString("label"),
                 value = formatValue(row),
@@ -89,14 +93,13 @@ class PostApi(
                 importance = if (row.has("importance")) row.getInt("importance") else null,
             )
         }
-        val photos = post.optJSONArray("photoIds") ?: JSONArray()
         return PostDetail(
             category = post.getString("category").titleCase(),
             address = post.getString("address"),
             description = post.optString("description"),
             price = if (mode == Mode.SELLING) "$${post.get("price")}" else null,
             condition = if (mode == Mode.SELLING) post.getString("condition").titleCase() else null,
-            photoIds = (0 until photos.length()).map { photos.getString(it) },
+            photoIds = post.optJSONArray("photoIds")?.strings().orEmpty(),
             rows = detailRows,
             createdAt = post.optString("createdAt").take(10),
         )
@@ -106,18 +109,13 @@ class PostApi(
         val category = post.getString("category").titleCase()
         val detail = detailOf(mode, post)
         return if (mode == Mode.BUYING) {
-            val rows = post.getJSONArray("requestFields")
-            var hard = 0
-            var max = ""
-            for (i in 0 until rows.length()) {
-                val row = rows.getJSONObject(i)
-                if (row.getBoolean("hard")) hard++
-                if (row.getString("key") == "price") max = " · ≤ $${row.get("value")}"
-            }
+            val rows = post.getJSONArray("requestFields").objects()
+            val hard = rows.count { it.getBoolean("hard") }
+            val max = rows.lastOrNull { it.getString("key") == "price" }?.let { " · ≤ $${it.get("value")}" }.orEmpty()
             PostSummary(
                 post.getString("id"),
                 category + max,
-                "$hard hard · ${rows.length() - hard} soft",
+                "$hard hard · ${rows.size - hard} soft",
                 post.getString("status"),
                 detail,
                 post,
@@ -135,16 +133,15 @@ class PostApi(
     }
 
     suspend fun createPost(mode: Mode, body: JSONObject) {
-        call("/${mode.path}") { post(body.toString().toRequestBody(json)) }
+        call("/${mode.path}") { post(body.asBody()) }
     }
 
     suspend fun updatePost(mode: Mode, id: String, body: JSONObject) {
-        call("/${mode.path}/$id") { patch(body.toString().toRequestBody(json)) }
+        call("/${mode.path}/$id") { patch(body.asBody()) }
     }
 
     suspend fun setStatus(mode: Mode, id: String, status: String) {
-        val body = JSONObject().put("status", status)
-        call("/${mode.path}/$id") { patch(body.toString().toRequestBody(json)) }
+        updatePost(mode, id, JSONObject().put("status", status))
     }
 
     suspend fun deletePost(mode: Mode, id: String) {
@@ -153,24 +150,14 @@ class PostApi(
 
     suspend fun options(field: String): List<OptionItem> {
         val encoded = java.net.URLEncoder.encode(field, "UTF-8")
-        val array = JSONArray(call("/options?field=$encoded"))
-        return (0 until array.length()).map {
-            val o = array.getJSONObject(it)
-            OptionItem(o.getString("key"), o.getString("label"))
+        return JSONArray(call("/options?field=$encoded")).objects().map {
+            OptionItem(it.getString("key"), it.getString("label"))
         }
     }
 
-    /** Adds an option; adding an existing one is harmless. */
-    suspend fun addOption(field: String, label: String) {
-        val body = JSONObject().put("field", field).put("label", label)
-        call("/options") { post(body.toString().toRequestBody(json)) }
-    }
-
     suspend fun fields(): List<FieldDef> {
-        val array = JSONArray(call("/custom-fields"))
-        return (0 until array.length()).map {
-            val f = array.getJSONObject(it)
-            FieldDef(f.getString("key"), f.getString("label"), f.getString("type"))
+        return JSONArray(call("/custom-fields")).objects().map {
+            FieldDef(it.getString("key"), it.getString("label"), it.getString("type"))
         }
     }
 
@@ -179,25 +166,11 @@ class PostApi(
         photos.forEach {
             form.addFormDataPart(
                 "photos",
-                it.name,
+                PHOTO_FILE_NAME,
                 it.bytes.toRequestBody(it.mimeType.toMediaType()),
             )
         }
-        val body: RequestBody = form.build()
-        val array = JSONObject(call("/photos") { post(body) }).getJSONArray("ids")
-        return (0 until array.length()).map { array.getString(it) }
-    }
-
-    /** New brand, colour, category and custom text values are added to the saved options first. */
-    suspend fun addNewOptions(body: JSONObject) {
-        addOption("category", body.getString("category"))
-        val rowsJson = body.optJSONArray("requestFields") ?: body.optJSONArray("listingFields") ?: return
-        for (i in 0 until rowsJson.length()) {
-            val row = rowsJson.getJSONObject(i)
-            val key = row.optString("key")
-            if (row.optString("kind") == "builtin" && (key == "brand" || key == "colour")) {
-                addOption(key, row.getString("value"))
-            }
-        }
+        val body = form.build()
+        return JSONObject(call("/photos") { post(body) }).getJSONArray("ids").strings()
     }
 }
