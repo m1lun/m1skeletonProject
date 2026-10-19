@@ -7,18 +7,14 @@ import android.os.Build
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-/** Address suggestions from the Android platform [Geocoder]; no extra services or keys. */
+/* Address suggestions from the Android platform [Geocoder] */
 class AddressSearch(private val context: Context) {
     suspend fun suggest(query: String): List<AddressSuggestion> =
-        try {
-            lookup(Geocoder(context), query)
-                .mapNotNull { a ->
-                    a.getAddressLine(0)?.let { AddressSuggestion(it, a.longitude, a.latitude) }
-                }
-                .distinctBy { it.label.lowercase() }
-        } catch (e: java.io.IOException) {
-            emptyList()
-        }
+        lookup(Geocoder(context), query)
+            .mapNotNull { a ->
+                a.getAddressLine(0)?.let { AddressSuggestion(it, a.longitude, a.latitude) }
+            }
+            .distinctBy { it.label.lowercase() }
 
     // The callback API needs Android 13; Pixel 9 and newer have it. Older versions get no suggestions.
     private suspend fun lookup(geocoder: Geocoder, query: String): List<Address> =
