@@ -2,7 +2,6 @@ package com.example.cpen321application.post
 
 import android.app.Application
 import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -11,11 +10,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cpen321application.BuildConfig
 import com.example.cpen321application.auth.SessionManager
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -26,11 +23,9 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
     )
     private val addressSearch = AddressSearch(app)
 
-    // Navigation: bottom tab, and the post open on the detail screen
     var tab by mutableStateOf(AppTab.POSTS)
     var selected by mutableStateOf<PostSummary?>(null)
 
-    // List screen
     var mode by mutableStateOf(Mode.BUYING)
         private set
     var posts by mutableStateOf<List<PostSummary>>(emptyList())
@@ -39,25 +34,20 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var message by mutableStateOf<String?>(null)
 
-    // Editor
     var editing by mutableStateOf(false)
         private set
     var saving by mutableStateOf(false)
         private set
-    /** Id of the post being edited, or null when creating. */
     var editingId by mutableStateOf<String?>(null)
         private set
     val existingPhotoIds = mutableStateListOf<String>()
     var addressSuggestions by mutableStateOf<List<AddressSuggestion>>(emptyList())
         private set
-    // The address and coordinates of the suggestion the user chose (or the saved post's own).
-    /** Set only after Save fails because the address was not picked; cleared on any edit. */
     var showAddressError by mutableStateOf(false)
         private set
     private var pickedAddress by mutableStateOf<String?>(null)
     private var pickedLocation by mutableStateOf<JSONObject?>(null)
 
-    /** True only while the field still holds a chosen suggestion, unedited. */
     val addressConfirmed: Boolean
         get() = pickedLocation != null && address.trim() == pickedAddress
     private var suggestJob: Job? = null
@@ -100,31 +90,22 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun toggleStatus(post: PostSummary) {
-        viewModelScope.launch {
-            try {
-                val next = if (post.status == "open") "closed" else "open"
-                api.setStatus(mode, post.id, next)
-                selected = selected?.takeIf { it.id == post.id }?.copy(status = next)
-                refresh()
-            } catch (e: ApiException) {
-                message = e.message
-            }
+        launchCatching {
+            val next = if (post.status == "open") "closed" else "open"
+            api.setStatus(mode, post.id, next)
+            selected = selected?.takeIf { it.id == post.id }?.copy(status = next)
+            refresh()
         }
     }
 
     fun delete(post: PostSummary) {
-        viewModelScope.launch {
-            try {
-                api.deletePost(mode, post.id)
-                selected = null
-                refresh()
-            } catch (e: ApiException) {
-                message = e.message
-            }
+        launchCatching {
+            api.deletePost(mode, post.id)
+            selected = null
+            refresh()
         }
     }
 
-    /** Opens the editor: blank for a new post, prefilled when [post] is given. */
     fun startEditing(post: PostSummary? = null) {
         category = ""
         address = ""
@@ -142,13 +123,9 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         editingId = post?.id
         if (post != null) prefill(post.raw)
         editing = true
-        viewModelScope.launch {
-            try {
-                categories = api.options("category")
-                savedFields = api.fields()
-            } catch (e: ApiException) {
-                message = e.message
-            }
+        launchCatching {
+            categories = api.options("category")
+            savedFields = api.fields()
         }
     }
 
@@ -158,21 +135,16 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         address = raw.getString("address")
         description = raw.optString("description")
         if (seller) {
-            price = raw.get("price").toString().removeSuffix(".0")
+            price = raw.get("price").asPlainNumber()
             condition = raw.getString("condition")
         }
         val coords = raw.getJSONObject("location").getJSONArray("coordinates")
         pickedAddress = address
-        pickedLocation = JSONObject()
-            .put("longitude", coords.getDouble(0))
-            .put("latitude", coords.getDouble(1))
-        raw.optJSONArray("photoIds")?.let { ids ->
-            for (i in 0 until ids.length()) existingPhotoIds.add(ids.getString(i))
-        }
+        pickedLocation = locationJson(coords.getDouble(0), coords.getDouble(1))
+        raw.optJSONArray("photoIds")?.let { existingPhotoIds.addAll(it.strings()) }
 
         val stored = raw.optJSONArray(if (seller) "listingFields" else "requestFields") ?: return
-        for (i in 0 until stored.length()) {
-            val o = stored.getJSONObject(i)
+        for (o in stored.objects()) {
             val type = o.getString("type")
             var row = RowState(
                 key = o.getString("key"),
@@ -187,12 +159,12 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
                 "dimensions" -> {
                     val d = o.getJSONObject("value")
                     row.copy(
-                        width = d.get("width").toString().removeSuffix(".0"),
-                        height = d.get("height").toString().removeSuffix(".0"),
-                        depth = d.get("depth").toString().removeSuffix(".0"),
+                        width = d.get("width").asPlainNumber(),
+                        height = d.get("height").asPlainNumber(),
+                        depth = d.get("depth").asPlainNumber(),
                     )
                 }
-                else -> row.copy(value = o.get("value").toString().removeSuffix(".0"))
+                else -> row.copy(value = o.get("value").asPlainNumber())
             }
             val at = rows.indexOfFirst { it.key == row.key }
             if (at >= 0) rows[at] = row.copy(required = rows[at].required) else rows.add(row)
@@ -204,7 +176,6 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         addressSuggestions = emptyList()
     }
 
-    /** Called on every address keystroke; suggests matching addresses after a short pause. */
     fun onAddressChange(text: String) {
         address = text
         showAddressError = false
@@ -223,9 +194,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         address = suggestion.label
         pickedAddress = suggestion.label
         showAddressError = false
-        pickedLocation = JSONObject()
-            .put("longitude", suggestion.longitude)
-            .put("latitude", suggestion.latitude)
+        pickedLocation = locationJson(suggestion.longitude, suggestion.latitude)
         addressSuggestions = emptyList()
     }
 
@@ -263,7 +232,6 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         existingPhotoIds.removeAt(index)
     }
 
-    /** Option suggestions for a field, cached per field. */
     suspend fun suggestions(field: String): List<OptionItem> {
         optionCache[field]?.let { return it }
         return try {
@@ -279,13 +247,11 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
             saving = true
             try {
                 val body = buildBody()
-                api.addNewOptions(body)
                 val id = editingId
                 if (id == null) api.createPost(mode, body) else api.updatePost(mode, id, body)
                 optionCache.clear()
                 editing = false
                 load()
-                // Keep the detail screen on the freshly saved post after an edit.
                 selected = selected?.let { s -> posts.find { it.id == s.id } }
             } catch (e: ApiException) {
                 message = e.message
@@ -327,8 +293,24 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         }
         body.put(if (seller) "listingFields" else "requestFields", rowsJson)
 
-        val uploaded = if (photos.isNotEmpty()) api.uploadPhotos(readPhotos(getApplication<Application>().contentResolver, photos)) else emptyList()
+        val resolver = getApplication<Application>().contentResolver
+        val uploaded = if (photos.isNotEmpty()) api.uploadPhotos(readPhotos(resolver, photos)) else emptyList()
         body.put("photoIds", JSONArray(existingPhotoIds + uploaded))
         return body
     }
 }
+
+private fun PostViewModel.launchCatching(block: suspend () -> Unit) {
+    viewModelScope.launch {
+        try {
+            block()
+        } catch (e: ApiException) {
+            message = e.message
+        }
+    }
+}
+
+private fun locationJson(longitude: Double, latitude: Double) =
+    JSONObject().put("longitude", longitude).put("latitude", latitude)
+
+private fun Any.asPlainNumber() = toString().removeSuffix(".0")
