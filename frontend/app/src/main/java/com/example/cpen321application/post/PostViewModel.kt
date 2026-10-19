@@ -23,11 +23,9 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
     )
     private val addressSearch = AddressSearch(app)
 
-    // Navigation: bottom tab, and the post open on the detail screen
     var tab by mutableStateOf(AppTab.POSTS)
     var selected by mutableStateOf<PostSummary?>(null)
 
-    // List screen
     var mode by mutableStateOf(Mode.BUYING)
         private set
     var posts by mutableStateOf<List<PostSummary>>(emptyList())
@@ -36,25 +34,20 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var message by mutableStateOf<String?>(null)
 
-    // Editor
     var editing by mutableStateOf(false)
         private set
     var saving by mutableStateOf(false)
         private set
-    /** Id of the post being edited, or null when creating. */
     var editingId by mutableStateOf<String?>(null)
         private set
     val existingPhotoIds = mutableStateListOf<String>()
     var addressSuggestions by mutableStateOf<List<AddressSuggestion>>(emptyList())
         private set
-    /** Set only after Save fails because the address was not picked; cleared on any edit. */
     var showAddressError by mutableStateOf(false)
         private set
-    // The address and coordinates of the suggestion the user chose (or the saved post's own).
     private var pickedAddress by mutableStateOf<String?>(null)
     private var pickedLocation by mutableStateOf<JSONObject?>(null)
 
-    /** True only while the field still holds a chosen suggestion, unedited. */
     val addressConfirmed: Boolean
         get() = pickedLocation != null && address.trim() == pickedAddress
     private var suggestJob: Job? = null
@@ -113,7 +106,6 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Opens the editor: blank for a new post, prefilled when [post] is given. */
     fun startEditing(post: PostSummary? = null) {
         category = ""
         address = ""
@@ -184,7 +176,6 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         addressSuggestions = emptyList()
     }
 
-    /** Called on every address keystroke; suggests matching addresses after a short pause. */
     fun onAddressChange(text: String) {
         address = text
         showAddressError = false
@@ -241,7 +232,6 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         existingPhotoIds.removeAt(index)
     }
 
-    /** Option suggestions for a field, cached per field. */
     suspend fun suggestions(field: String): List<OptionItem> {
         optionCache[field]?.let { return it }
         return try {
@@ -262,7 +252,6 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
                 optionCache.clear()
                 editing = false
                 load()
-                // Keep the detail screen on the freshly saved post after an edit.
                 selected = selected?.let { s -> posts.find { it.id == s.id } }
             } catch (e: ApiException) {
                 message = e.message
