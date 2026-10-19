@@ -18,9 +18,9 @@ class PhotoData(val mimeType: String, val bytes: ByteArray)
 
 private const val PHOTO_FILE_NAME = "photo"
 
-private fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }
+internal fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }
 
-private fun JSONArray.strings(): List<String> = (0 until length()).map { getString(it) }
+internal fun JSONArray.strings(): List<String> = (0 until length()).map { getString(it) }
 
 class PostApi(
     baseUrl: String,

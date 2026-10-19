@@ -2,7 +2,6 @@ package com.example.cpen321application.post
 
 import android.app.Application
 import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -11,11 +10,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cpen321application.BuildConfig
 import com.example.cpen321application.auth.SessionManager
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -50,10 +47,10 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
     val existingPhotoIds = mutableStateListOf<String>()
     var addressSuggestions by mutableStateOf<List<AddressSuggestion>>(emptyList())
         private set
-    // The address and coordinates of the suggestion the user chose (or the saved post's own).
     /** Set only after Save fails because the address was not picked; cleared on any edit. */
     var showAddressError by mutableStateOf(false)
         private set
+    // The address and coordinates of the suggestion the user chose (or the saved post's own).
     private var pickedAddress by mutableStateOf<String?>(null)
     private var pickedLocation by mutableStateOf<JSONObject?>(null)
 
@@ -100,27 +97,19 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun toggleStatus(post: PostSummary) {
-        viewModelScope.launch {
-            try {
-                val next = if (post.status == "open") "closed" else "open"
-                api.setStatus(mode, post.id, next)
-                selected = selected?.takeIf { it.id == post.id }?.copy(status = next)
-                refresh()
-            } catch (e: ApiException) {
-                message = e.message
-            }
+        launchCatching {
+            val next = if (post.status == "open") "closed" else "open"
+            api.setStatus(mode, post.id, next)
+            selected = selected?.takeIf { it.id == post.id }?.copy(status = next)
+            refresh()
         }
     }
 
     fun delete(post: PostSummary) {
-        viewModelScope.launch {
-            try {
-                api.deletePost(mode, post.id)
-                selected = null
-                refresh()
-            } catch (e: ApiException) {
-                message = e.message
-            }
+        launchCatching {
+            api.deletePost(mode, post.id)
+            selected = null
+            refresh()
         }
     }
 
@@ -142,13 +131,9 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         editingId = post?.id
         if (post != null) prefill(post.raw)
         editing = true
-        viewModelScope.launch {
-            try {
-                categories = api.options("category")
-                savedFields = api.fields()
-            } catch (e: ApiException) {
-                message = e.message
-            }
+        launchCatching {
+            categories = api.options("category")
+            savedFields = api.fields()
         }
     }
 
@@ -158,21 +143,16 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         address = raw.getString("address")
         description = raw.optString("description")
         if (seller) {
-            price = raw.get("price").toString().removeSuffix(".0")
+            price = raw.get("price").asPlainNumber()
             condition = raw.getString("condition")
         }
         val coords = raw.getJSONObject("location").getJSONArray("coordinates")
         pickedAddress = address
-        pickedLocation = JSONObject()
-            .put("longitude", coords.getDouble(0))
-            .put("latitude", coords.getDouble(1))
-        raw.optJSONArray("photoIds")?.let { ids ->
-            for (i in 0 until ids.length()) existingPhotoIds.add(ids.getString(i))
-        }
+        pickedLocation = locationJson(coords.getDouble(0), coords.getDouble(1))
+        raw.optJSONArray("photoIds")?.let { existingPhotoIds.addAll(it.strings()) }
 
         val stored = raw.optJSONArray(if (seller) "listingFields" else "requestFields") ?: return
-        for (i in 0 until stored.length()) {
-            val o = stored.getJSONObject(i)
+        for (o in stored.objects()) {
             val type = o.getString("type")
             var row = RowState(
                 key = o.getString("key"),
@@ -187,12 +167,12 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
                 "dimensions" -> {
                     val d = o.getJSONObject("value")
                     row.copy(
-                        width = d.get("width").toString().removeSuffix(".0"),
-                        height = d.get("height").toString().removeSuffix(".0"),
-                        depth = d.get("depth").toString().removeSuffix(".0"),
+                        width = d.get("width").asPlainNumber(),
+                        height = d.get("height").asPlainNumber(),
+                        depth = d.get("depth").asPlainNumber(),
                     )
                 }
-                else -> row.copy(value = o.get("value").toString().removeSuffix(".0"))
+                else -> row.copy(value = o.get("value").asPlainNumber())
             }
             val at = rows.indexOfFirst { it.key == row.key }
             if (at >= 0) rows[at] = row.copy(required = rows[at].required) else rows.add(row)
@@ -223,9 +203,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         address = suggestion.label
         pickedAddress = suggestion.label
         showAddressError = false
-        pickedLocation = JSONObject()
-            .put("longitude", suggestion.longitude)
-            .put("latitude", suggestion.latitude)
+        pickedLocation = locationJson(suggestion.longitude, suggestion.latitude)
         addressSuggestions = emptyList()
     }
 
@@ -326,8 +304,24 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         }
         body.put(if (seller) "listingFields" else "requestFields", rowsJson)
 
-        val uploaded = if (photos.isNotEmpty()) api.uploadPhotos(readPhotos(getApplication<Application>().contentResolver, photos)) else emptyList()
+        val resolver = getApplication<Application>().contentResolver
+        val uploaded = if (photos.isNotEmpty()) api.uploadPhotos(readPhotos(resolver, photos)) else emptyList()
         body.put("photoIds", JSONArray(existingPhotoIds + uploaded))
         return body
     }
 }
+
+private fun PostViewModel.launchCatching(block: suspend () -> Unit) {
+    viewModelScope.launch {
+        try {
+            block()
+        } catch (e: ApiException) {
+            message = e.message
+        }
+    }
+}
+
+private fun locationJson(longitude: Double, latitude: Double) =
+    JSONObject().put("longitude", longitude).put("latitude", latitude)
+
+private fun Any.asPlainNumber() = toString().removeSuffix(".0")
