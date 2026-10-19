@@ -19,13 +19,7 @@ afterEach(() => {
 
 const DOWN = new Error('MongoDB is unreachable');
 
-// Interface GET, POST and DELETE /api/custom-fields
 describe('Mocked: /api/custom-fields', () => {
-  // Input: GET, POST { label: "Wall width", type: "number" }, and DELETE /wall%20width
-  // Expected status code: 500 for each
-  // Expected behavior: the error is logged; nothing is stored or removed
-  // Expected output: { error: "Internal Server Error" }
-  // Mocked behavior: the custom fields store rejects the list, upsert and removal with a database error
   test('Database failure', async () => {
     jest.spyOn(store.customFields, 'list').mockRejectedValue(DOWN);
     jest.spyOn(store.customFields, 'upsert').mockRejectedValue(DOWN);

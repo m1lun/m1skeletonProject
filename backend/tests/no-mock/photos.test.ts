@@ -7,7 +7,6 @@ import { MAX_PHOTO_BYTES } from '../../src/models/common';
 import { createMemoryStore, type MemoryStore } from '../helpers/memoryStore';
 import { ME, bearer } from '../helpers/postFixtures';
 
-// A few bytes are enough: the server checks the declared type and size, not the picture.
 const IMAGE = Buffer.from('fake image bytes');
 const BAD_REQUEST = { error: 'Attach images (jpeg, png, webp or gif) in the "photos" field' };
 
@@ -27,12 +26,7 @@ function upload(files: { data: Buffer; type: string }[]): request.Test {
   return pending;
 }
 
-// Interface POST /api/photos
 describe('Unmocked: POST /api/photos', () => {
-  // Input: two images (jpeg and png) in the "photos" field of a multipart request
-  // Expected status code: 201
-  // Expected behavior: both are stored with their type and the caller as owner
-  // Expected output: { ids: [two different 24-character ids] }
   test('Valid photos', async () => {
     const response = await upload([
       { data: IMAGE, type: 'image/jpeg' },
@@ -46,10 +40,6 @@ describe('Unmocked: POST /api/photos', () => {
     expect(store.photos.photos.get(ids[0] ?? '')).toMatchObject({ mimeType: 'image/jpeg', ownerId: ME });
   });
 
-  // Input: 11 photos
-  // Expected status code: 400
-  // Expected behavior: request is rejected; nothing is stored
-  // Expected output: { error: "At most 10 photos are allowed" }
   test('More than 10 photos', async () => {
     const response = await upload(Array.from({ length: 11 }, () => ({ data: IMAGE, type: 'image/jpeg' })));
 
@@ -58,10 +48,6 @@ describe('Unmocked: POST /api/photos', () => {
     expect(store.photos.photos.size).toBe(0);
   });
 
-  // Input: a photo of exactly 5 MB, then one a byte over
-  // Expected status code: 201, then 413
-  // Expected behavior: the first is stored; the second is rejected and not stored
-  // Expected output: { ids: [id] }, then { error: "Each photo must be at most 5 MB" }
   test('Photo size limit', async () => {
     expect((await upload([{ data: Buffer.alloc(MAX_PHOTO_BYTES), type: 'image/jpeg' }])).status).toBe(201);
 
@@ -71,10 +57,6 @@ describe('Unmocked: POST /api/photos', () => {
     expect(store.photos.photos.size).toBe(1);
   });
 
-  // Input: a file that is not a supported image (text/plain), and a request with no file in "photos"
-  // Expected status code: 400
-  // Expected behavior: request is rejected; nothing is stored
-  // Expected output: { error: 'Attach images (jpeg, png, webp or gif) in the "photos" field' }
   test('Not an image, or no photo', async () => {
     const notImage = await upload([{ data: IMAGE, type: 'text/plain' }]);
     expect(notImage.status).toBe(400);
@@ -85,10 +67,6 @@ describe('Unmocked: POST /api/photos', () => {
     expect(store.photos.photos.size).toBe(0);
   });
 
-  // Input: a multipart request with no boundary, one whose body is never closed, and one whose part has no headers
-  // Expected status code: 400
-  // Expected behavior: the body cannot be parsed, so the request is rejected; nothing is stored
-  // Expected output: { error: 'Attach images (jpeg, png, webp or gif) in the "photos" field' }
   test.each([
     ['no boundary', 'multipart/form-data', 'whatever'],
     [
@@ -108,10 +86,6 @@ describe('Unmocked: POST /api/photos', () => {
     expect(response.body).toEqual(BAD_REQUEST);
   });
 
-  // Input: no Authorization header
-  // Expected status code: 401
-  // Expected behavior: request is rejected; nothing is stored
-  // Expected output: { error: "Missing Authorization: Bearer <session token> header" }
   test('Missing session token', async () => {
     const response = await request(app)
       .post('/api/photos')
@@ -122,12 +96,7 @@ describe('Unmocked: POST /api/photos', () => {
   });
 });
 
-// Interface GET /api/photos/:id
 describe('Unmocked: GET /api/photos/:id', () => {
-  // Input: GET of a stored photo with no session token (photos are public), then of an unknown id
-  // Expected status code: 200, then 404
-  // Expected behavior: database unchanged
-  // Expected output: the photo's bytes with its Content-Type, then { error: "Photo not found" }
   test('Stored and unknown photo', async () => {
     const id = await store.photos.save(IMAGE, 'image/png', ME);
 
@@ -142,7 +111,6 @@ describe('Unmocked: GET /api/photos/:id', () => {
   });
 });
 
-// Collects a binary response body into a Buffer, which supertest does not do for image types.
 function binaryParser(res: request.Response, callback: (err: Error | null, body: Buffer) => void): void {
   const stream = res as unknown as Readable;
   const chunks: Buffer[] = [];

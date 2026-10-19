@@ -9,8 +9,6 @@ import type { CustomFieldCollection, OptionCollection, Store } from '../../src/s
 import { MemoryPostCollection } from './memoryPostCollection';
 import { MemorySessionRepo } from './memorySessionRepo';
 
-// Stands in for MongoOptionCollection with the same rules (listed by label,
-// inserted only if missing), so option routes can be tested without a database.
 export class MemoryOptionCollection implements OptionCollection {
   readonly rows: Option[] = [];
 
@@ -40,7 +38,6 @@ export class MemoryOptionCollection implements OptionCollection {
   }
 }
 
-// Stands in for MongoCustomFieldCollection: one definition per owner and key.
 export class MemoryCustomFieldCollection implements CustomFieldCollection {
   readonly rows: CustomField[] = [];
 
@@ -74,7 +71,6 @@ export interface StoredPhoto {
   ownerId: string;
 }
 
-// Stands in for the GridFS photo storage. Ids are 24 hex characters, like ObjectIds.
 export class MemoryPhotoStorage implements PhotoStorage {
   readonly photos = new Map<string, StoredPhoto>();
   private nextId = 1;
@@ -91,8 +87,6 @@ export class MemoryPhotoStorage implements PhotoStorage {
   }
 }
 
-// A whole store held in memory. The parts are exposed so tests can inspect them
-// or make one fail.
 export interface MemoryStore extends Store {
   listings: MemoryPostCollection<Listing>;
   requests: MemoryPostCollection<BuyerRequest>;

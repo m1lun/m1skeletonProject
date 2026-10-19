@@ -19,13 +19,7 @@ afterEach(() => {
 
 const DOWN = new Error('MongoDB is unreachable');
 
-// Interface GET /api/options
 describe('Mocked: GET /api/options', () => {
-  // Input: GET ?field=category
-  // Expected status code: 500
-  // Expected behavior: the error is logged
-  // Expected output: { error: "Internal Server Error" }
-  // Mocked behavior: the options store rejects the query with a database error
   test('Database failure', async () => {
     jest.spyOn(store.options, 'list').mockRejectedValue(DOWN);
 
@@ -36,13 +30,7 @@ describe('Mocked: GET /api/options', () => {
   });
 });
 
-// Interface POST /api/options
 describe('Mocked: POST /api/options', () => {
-  // Input: POST { field: "brand", label: "Trek" }
-  // Expected status code: 500
-  // Expected behavior: the error is logged; no option is stored
-  // Expected output: { error: "Internal Server Error" }
-  // Mocked behavior: the options store rejects the insert with a database error
   test('Database failure', async () => {
     jest.spyOn(store.options, 'ensure').mockRejectedValue(DOWN);
 
