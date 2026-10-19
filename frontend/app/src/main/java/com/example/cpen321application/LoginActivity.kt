@@ -121,17 +121,15 @@ fun LoginScreen(sessions: SessionManager, googleClientId: String, modifier: Modi
             onBack = { activity?.finish() },
             modifier = modifier
         )
-        else -> SignedInScreen(
-            userDisplayName = user.displayName,
-            userEmail = user.email,
-            onSignOut = {
-                scope.launch {
-                    sessions.signOut()
-                    activity?.finish()
-                }
-            },
-            modifier = modifier
-        )
+        else -> {
+            LaunchedEffect(user) {
+                context.startActivity(Intent(context, MainActivity::class.java))
+                activity?.finish()
+            }
+            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
     }
 }
 
@@ -302,53 +300,6 @@ private fun AddAccountPrompt(onAddAccount: () -> Unit) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(text = stringResource(R.string.btn_add_account))
-    }
-}
-
-@Composable
-private fun SignedInScreen(
-    userDisplayName: String,
-    userEmail: String,
-    onSignOut: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Signed in as $userDisplayName",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = userEmail,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        val postsContext = LocalContext.current
-        OutlinedButton(
-            onClick = { postsContext.startActivity(Intent(postsContext, MainActivity::class.java)) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = stringResource(R.string.btn_my_posts))
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        OutlinedButton(
-            onClick = onSignOut,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "Sign Out")
-        }
     }
 }
 
