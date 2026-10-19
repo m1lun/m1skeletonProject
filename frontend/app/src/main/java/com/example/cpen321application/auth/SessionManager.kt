@@ -67,6 +67,13 @@ class SessionManager(
         return withContext(Dispatchers.IO) { http.send(method, path, body, renewed.sessionToken) }
     }
 
+    // The current session token, renewed first if it has run out. Throws
+    // SessionExpiredException when the user has to sign in again.
+    suspend fun sessionToken(): String {
+        val known = current ?: throw SessionExpiredException("Not signed in")
+        return (if (known.isExpired()) refresh(known) else known).sessionToken
+    }
+
     // Forgets the session here and revokes it on the backend. Signing out
     // locally always succeeds; if the backend is unreachable, the refresh
     // token simply expires there on its own.
