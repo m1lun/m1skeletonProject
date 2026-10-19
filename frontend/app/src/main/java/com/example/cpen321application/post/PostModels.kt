@@ -15,7 +15,7 @@ enum class AppTab(val label: String) {
 val CONDITIONS = listOf("new", "like new", "good", "fair", "poor")
 
 const val MAX_PHOTOS = 10
-const val MAX_PHOTO_BYTES = 10 * 1024 * 1024
+const val MAX_PHOTO_BYTES = 5 * 1024 * 1024
 const val MAX_CUSTOM_FIELDS = 10
 
 /** One line on the detail screen; hard/importance are set for request fields only. */
