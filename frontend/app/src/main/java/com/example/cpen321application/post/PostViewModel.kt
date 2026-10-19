@@ -279,7 +279,6 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
             saving = true
             try {
                 val body = buildBody()
-                api.addNewOptions(body)
                 val id = editingId
                 if (id == null) api.createPost(mode, body) else api.updatePost(mode, id, body)
                 optionCache.clear()
