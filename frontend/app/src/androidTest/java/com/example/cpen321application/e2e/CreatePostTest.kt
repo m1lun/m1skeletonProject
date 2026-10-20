@@ -19,7 +19,6 @@ import com.example.cpen321application.support.type
 import com.example.cpen321application.support.waitForText
 import org.junit.After
 import org.junit.Assert.assertTrue
-import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -98,14 +97,18 @@ class CreatePostTest(private val form: PostForm) {
     }
 
     @Test
-    fun rejectsMissingPhotoOnListing() {
-        assumeTrue(form.photoRequired)
+    fun photoIsRequiredOnlyOnListings() {
         rule.openForm(form)
         rule.fillForm(form, photos = 0)
         rule.click(form.createButton)
 
-        rule.waitForText("Add at least one photo")
-        assertTrue(testPosts().isEmpty())
+        if (form.photoRequired) {
+            rule.waitForText("Add at least one photo")
+            assertTrue(testPosts().isEmpty())
+        } else {
+            rule.waitForText(form.listHeader, substring = true)
+            assertTrue(rule.postCards().size == 1)
+        }
     }
 
     @Test
