@@ -47,6 +47,31 @@ describe('Unmocked: POST /api/requests', () => {
       'min condition must be one of: new, like new, good, fair, poor',
     ],
     [
+      'the max price is negative',
+      { requestFields: [{ kind: 'builtin', key: 'price', value: -5, hard: true }] },
+      'max price must be at least 0',
+    ],
+    [
+      'the radius is negative',
+      {
+        requestFields: [
+          { kind: 'builtin', key: 'price', value: 10, hard: true },
+          { kind: 'builtin', key: 'radiuskm', value: -1, hard: false },
+        ],
+      },
+      'radius (km) must be at least 0',
+    ],
+    [
+      'a dimension is negative',
+      {
+        requestFields: [
+          { kind: 'builtin', key: 'price', value: 10, hard: true },
+          { kind: 'builtin', key: 'dimensions', value: { width: -1, height: 5, depth: 5 }, hard: false },
+        ],
+      },
+      'max size must be at least 0',
+    ],
+    [
       'a built-in field is unknown',
       { requestFields: [{ kind: 'builtin', key: 'weight', value: 3 }] },
       'requestFields[0] has an unknown field "weight"',

@@ -86,12 +86,24 @@ function parseCustomField(field: Body, fieldName: string, errors: string[]): Pos
   return { ...field, key } as PostField;
 }
 
+// Numbers and dimensions are measurements (prices, radius, sizes), so they can't be negative.
+function hasNegativeNumber(value: unknown): boolean {
+  if (typeof value === 'number') {
+    return value < 0;
+  }
+  return isObject(value) && Object.values(value).some((part) => typeof part === 'number' && part < 0);
+}
+
 // A built-in field arrives as { key, value }; the label and type come from the built-ins.
 function parseBuiltinField(field: Body, builtins: Builtins, fieldName: string, errors: string[]): PostField | null {
   const key = normaliseKey(String(field.key));
   const builtin = Object.entries(builtins).find(([builtinKey]) => builtinKey === key)?.[1];
   if (builtin === undefined) {
     errors.push(`${fieldName} has an unknown field "${String(field.key)}"`);
+    return null;
+  }
+  if ((builtin.type === 'number' || builtin.type === 'dimensions') && hasNegativeNumber(field.value)) {
+    errors.push(`${builtin.label.toLowerCase()} must be at least 0`);
     return null;
   }
   return { ...field, kind: 'builtin', key, label: builtin.label, type: builtin.type } as PostField;
