@@ -207,14 +207,6 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         addressSuggestions = emptyList()
     }
 
-    fun updateRow(index: Int, row: RowState) {
-        rows[index] = row
-    }
-
-    fun removeRow(index: Int) {
-        rows.removeAt(index)
-    }
-
     fun addCustomRow(label: String, type: String): String? {
         val trimmed = label.trim()
         if (trimmed.isEmpty()) return "Enter a field name"
