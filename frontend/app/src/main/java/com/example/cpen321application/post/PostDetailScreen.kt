@@ -86,17 +86,15 @@ fun PostDetailScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (!readOnly) {
-                if (post.status == "open") {
-                    Button(
-                        onClick = { viewModel.showRecommendations(post) },
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                    ) {
-                        Text("See recommendations")
-                    }
+            if (!readOnly && post.status == "open") {
+                Button(
+                    onClick = { viewModel.showRecommendations(post) },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                ) {
+                    Text("See recommendations")
                 }
-                DetailActions(post, viewModel, onDelete = { confirmDelete = true })
             }
+            if (!readOnly) DetailActions(post, viewModel, onDelete = { confirmDelete = true })
         }
     }
 

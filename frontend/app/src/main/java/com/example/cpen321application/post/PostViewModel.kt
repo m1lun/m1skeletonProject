@@ -101,7 +101,6 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
     /** Another user's post opened from the Feed, shown read-only; null when none is open. */
     var openPost by mutableStateOf<PostSummary?>(null)
         private set
-    /** Whether openPost is a request or a listing. */
     var openPostMode by mutableStateOf(Mode.SELLING)
         private set
 
