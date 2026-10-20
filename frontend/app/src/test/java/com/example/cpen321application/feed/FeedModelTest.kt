@@ -9,13 +9,13 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-private fun listing(id: String) = FeedListing(
+private fun listing(id: String, photoId: String? = null) = FeedListing(
     id = id,
     category = "furniture",
     price = 40.0,
     condition = "good",
     description = "A sturdy desk",
-    address = "6335 Thunderbird Cres"
+    photoId = photoId
 )
 
 // Serves fixed pages keyed by the `before` cursor, and records each request.
@@ -35,13 +35,18 @@ class FeedModelTest {
     fun parsesAFeedPage() {
         val page = parseFeedPage(
             """
-            {"listings":[{"id":"a1","ownerId":"u2","category":"furniture","price":40,"condition":"good",
-              "description":"A sturdy desk","address":"6335 Thunderbird Cres","status":"open"}],
+            {"listings":[
+               {"id":"a2","ownerId":"u2","category":"furniture","price":40,"condition":"good",
+                "description":"A sturdy desk","address":"6335 Thunderbird Cres","status":"open",
+                "photoIds":["p1","p2"]},
+               {"id":"a1","ownerId":"u2","category":"furniture","price":40,"condition":"good",
+                "description":"A sturdy desk","address":"6335 Thunderbird Cres","status":"open",
+                "photoIds":[]}],
              "nextCursor":"a1"}
             """.trimIndent()
         )
 
-        assertEquals(listOf(listing("a1")), page.listings)
+        assertEquals(listOf(listing("a2", photoId = "p1"), listing("a1")), page.listings)
         assertEquals("a1", page.nextCursor)
     }
 

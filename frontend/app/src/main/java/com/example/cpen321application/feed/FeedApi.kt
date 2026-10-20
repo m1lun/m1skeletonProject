@@ -11,7 +11,8 @@ data class FeedListing(
     val price: Double,
     val condition: String,
     val description: String,
-    val address: String
+    // The first photo, shown on the card; null if the listing has none.
+    val photoId: String?
 )
 
 // One page of the feed. nextCursor is null on the last page.
@@ -51,7 +52,7 @@ fun parseFeedPage(body: String): FeedPage {
             price = item.getDouble("price"),
             condition = item.getString("condition"),
             description = item.optString("description"),
-            address = item.optString("address")
+            photoId = item.optJSONArray("photoIds")?.optString(0)?.takeIf { it.isNotEmpty() }
         )
     }
     val nextCursor = if (json.isNull("nextCursor")) null else json.getString("nextCursor")

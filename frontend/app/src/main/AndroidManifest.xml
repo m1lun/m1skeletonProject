@@ -29,10 +29,6 @@
             android:name=".MainActivity"
             android:exported="false"
             android:theme="@style/Theme.CPEN321Application" />
-        <activity
-            android:name=".feed.FeedActivity"
-            android:exported="false"
-            android:theme="@style/Theme.CPEN321Application" />
     </application>
 
 </manifest>
