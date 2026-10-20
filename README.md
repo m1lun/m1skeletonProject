@@ -110,7 +110,15 @@ Listings (what sellers offer) and requests (what buyers want) share the same rou
 
 The feed shows other users' posts. It needs the session token too.
 
-- `GET /api/feed/listings?limit=20&before=<id>`: open listings from everyone except you, newest first: `{ "listings": [...], "nextCursor" }`. `limit` is 1 to 50 (default 20). To get the next page, pass the `nextCursor` you got back as `before`; it is `null` on the last page. A bad `limit` or `before` is a `400` with `{ "error", "details": [...] }`.
+- `GET /api/feed/listings?limit=20&before=<id>`: open listings from everyone except you, newest first: `{ "listings": [...], "nextCursor" }`.
+- `GET /api/feed/requests?limit=20&before=<id>`: the same for requests: `{ "requests": [...], "nextCursor" }`.
+
+Both take `limit` from 1 to 50 (default 20). To get the next page, pass the `nextCursor` you got back as `before`, along with the same filters; it is `null` on the last page. Optional filters, which can be combined:
+- `category`: one category, ignoring case and spacing.
+- `minPrice`, `maxPrice`: an inclusive range on a listing's price or a request's budget (its `price` field). A request with no budget is left out when either is sent.
+- `lat`, `lng`, `radiusKm`: within `radiusKm` (up to 100) of a point. Send all three or none.
+
+A bad value, a misspelt parameter or `minPrice` above `maxPrice` is a `400` with `{ "error", "details": [...] }`.
 
 
 ### Option 1: Run locally

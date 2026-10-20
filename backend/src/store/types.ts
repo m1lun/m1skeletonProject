@@ -13,6 +13,21 @@ export interface PostDoc {
   updatedAt: Date;
 }
 
+// MongoDB's sphere for distance queries, so code that measures distance agrees with it.
+export const EARTH_RADIUS_KM = 6378.1;
+
+// A post's price is a listing's price or a request's budget.
+export interface PostFilter {
+  category?: string | undefined;
+  minPrice?: number | undefined;
+  maxPrice?: number | undefined;
+  near?: { lat: number; lng: number; radiusKm: number } | undefined;
+}
+
+export interface OpenPostFilter extends PostFilter {
+  before?: string | undefined;
+}
+
 // Posts (listings or requests) are stored without an id; the store assigns one.
 export interface PostCollection<T extends PostDoc> {
   insert(doc: Omit<T, 'id'>): Promise<T>;
@@ -20,9 +35,8 @@ export interface PostCollection<T extends PostDoc> {
   listByOwner(ownerId: string): Promise<T[]>;
   replace(doc: T): Promise<T>;
   remove(id: string): Promise<void>;
-  // Open posts from everyone except excludeOwnerId, newest first. With `before`
-  // (a post id), only posts older than that one, so a page starts where the last ended.
-  listOpen(excludeOwnerId: string, limit: number, before?: string): Promise<T[]>;
+  // Newest first; passing the last post's id as `before` starts the next page.
+  listOpen(excludeOwnerId: string, limit: number, filter?: OpenPostFilter): Promise<T[]>;
   // Every open post in a category from everyone except excludeOwnerId: the
   // candidates the matching feed filters and ranks.
   listOpenInCategory(category: string, excludeOwnerId: string): Promise<T[]>;
