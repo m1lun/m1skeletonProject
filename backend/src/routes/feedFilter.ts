@@ -5,7 +5,7 @@ export const MAX_RADIUS_KM = 100;
 
 export const FILTER_PARAMS = ['category', 'minPrice', 'maxPrice', 'lat', 'lng', 'radiusKm'];
 
-const DECIMAL = /^-?\d+(\.\d+)?$/;
+const DECIMAL = /^-?\d+\.?\d*$/;
 
 function parseCategory(value: unknown, errors: string[]): string | undefined {
   if (value === undefined) {
