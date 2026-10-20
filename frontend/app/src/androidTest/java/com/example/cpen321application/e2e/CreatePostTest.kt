@@ -102,9 +102,8 @@ class CreatePostTest(private val form: PostForm) {
         rule.fillForm(form, photos = 0)
         rule.click(form.createButton)
 
-        val error = form.missingPhotoError
-        if (error != null) {
-            rule.waitForText(error)
+        if (form.photoRequired) {
+            rule.waitForText("Add at least one photo")
             assertTrue(testPosts().isEmpty())
         } else {
             rule.waitForText(form.listHeader, substring = true)
