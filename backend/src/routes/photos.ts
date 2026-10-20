@@ -29,6 +29,18 @@ function uploadError(error: unknown): { status: number; message: string } {
   return { status: 400, message: BAD_PHOTOS };
 }
 
+// Typed here instead of through multer's types, which Codacy cannot load.
+interface UploadedFile {
+  mimetype: string;
+  buffer: Buffer;
+  size: number;
+}
+
+function uploadedFiles(req: Request): UploadedFile[] {
+  const { files } = req as { files?: unknown };
+  return Array.isArray(files) ? (files as UploadedFile[]) : [];
+}
+
 function readPhotos(req: Request, res: Response, next: NextFunction): void {
   upload(req, res, (error: unknown) => {
     if (error === undefined || error === null) {
@@ -63,7 +75,7 @@ export function createPhotosRouter(photos: PhotoStorage): Router {
     requireAuth,
     readPhotos,
     handle(async (req: Request, res: Response) => {
-      const files = Array.isArray(req.files) ? req.files : [];
+      const files = uploadedFiles(req);
       if (files.length === 0 || files.some((f) => !PHOTO_TYPES.includes(f.mimetype.toLowerCase()) || f.size === 0)) {
         res.status(400).json({ error: BAD_PHOTOS });
         return;
