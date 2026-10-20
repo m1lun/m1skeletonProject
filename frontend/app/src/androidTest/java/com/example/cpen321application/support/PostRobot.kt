@@ -118,14 +118,32 @@ fun MainRule.pickAddress(query: String) {
 fun MainRule.postCards(): List<*> =
     onAllNodesWithText(TEST_CATEGORY, substring = true, ignoreCase = true).fetchSemanticsNodes()
 
-fun MainRule.createRequest(maxPrice: String = "150") {
-    openMode("I'm buying")
-    click("New request")
+fun MainRule.openForm(form: PostForm) {
+    openMode(form.mode)
+    click(form.newButton)
+}
+
+fun MainRule.enterPrice(form: PostForm, price: String) {
+    if (form == PostForm.REQUEST) firstValueField().performTextInput(price) else type("Price *", price)
+}
+
+fun MainRule.fillForm(
+    form: PostForm,
+    price: String? = "150",
+    photos: Int = if (form.photoRequired) 1 else 0,
+    address: String? = TEST_ADDRESS,
+) {
     type("Category *", TEST_CATEGORY)
-    pickAddress(TEST_ADDRESS)
-    firstValueField().performTextInput(maxPrice)
-    click("Create request")
-    waitForText("My requests (", substring = true)
+    address?.let { pickAddress(it) }
+    price?.let { enterPrice(form, it) }
+    if (photos > 0) pickPhotos(photos)
+}
+
+fun MainRule.createPost(form: PostForm) {
+    openForm(form)
+    fillForm(form)
+    click(form.createButton)
+    waitForText(form.listHeader, substring = true)
 }
 
 fun MainRule.pickPhotos(count: Int, total: Int? = count) {
@@ -149,17 +167,6 @@ fun MainRule.pickPhotoWithId(id: String) {
         Thread.sleep(RETRY_DELAY_MS * 2)
     }
     error("Photo $id was never first in the picker")
-}
-
-fun MainRule.createListing(price: String = "80") {
-    openMode("I'm selling")
-    click("New listing")
-    type("Category *", TEST_CATEGORY)
-    type("Price *", price)
-    pickAddress(TEST_ADDRESS)
-    pickPhoto()
-    click("Create listing")
-    waitForText("My listings (", substring = true)
 }
 
 fun MainRule.openFirstPostMenu() {

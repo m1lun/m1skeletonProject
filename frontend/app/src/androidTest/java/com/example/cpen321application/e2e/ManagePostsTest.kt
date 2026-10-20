@@ -8,7 +8,7 @@ import androidx.compose.ui.test.performTextReplacement
 import com.example.cpen321application.support.back
 import com.example.cpen321application.support.clearField
 import com.example.cpen321application.support.click
-import com.example.cpen321application.support.createRequest
+import com.example.cpen321application.support.createPost
 import com.example.cpen321application.support.deleteTestPosts
 import com.example.cpen321application.support.firstValueField
 import com.example.cpen321application.support.mainRule
@@ -17,6 +17,7 @@ import com.example.cpen321application.support.openMode
 import com.example.cpen321application.support.postCards
 import com.example.cpen321application.support.setAirplaneMode
 import com.example.cpen321application.support.TEST_CATEGORY
+import com.example.cpen321application.support.PostForm
 import com.example.cpen321application.support.TestPhotos
 import com.example.cpen321application.support.waitForText
 import org.junit.After
@@ -55,7 +56,7 @@ class ManagePostsTest {
 
     @Test
     fun editsPost() {
-        rule.createRequest()
+        rule.createPost(PostForm.REQUEST)
         rule.openFirstPostMenu()
         rule.onNodeWithText("Edit").performClick()
         rule.waitForText("Edit request")
@@ -69,7 +70,7 @@ class ManagePostsTest {
 
     @Test
     fun rejectsInvalidEditAndKeepsPost() {
-        rule.createRequest()
+        rule.createPost(PostForm.REQUEST)
         rule.openFirstPostMenu()
         rule.onNodeWithText("Edit").performClick()
         rule.waitForText("Edit request")
@@ -84,7 +85,7 @@ class ManagePostsTest {
 
     @Test
     fun closesAndReopensPost() {
-        rule.createRequest()
+        rule.createPost(PostForm.REQUEST)
 
         rule.openFirstPostMenu()
         rule.onNodeWithText("Close").performClick()
@@ -97,7 +98,7 @@ class ManagePostsTest {
 
     @Test
     fun deletesPost() {
-        rule.createRequest()
+        rule.createPost(PostForm.REQUEST)
         rule.openFirstPostMenu()
         rule.onNodeWithText("Delete").performClick()
         rule.onAllNodesWithText("Delete").onFirst().performClick()
@@ -107,7 +108,7 @@ class ManagePostsTest {
 
     @Test
     fun keepsPostWhenServerIsUnreachable() {
-        rule.createRequest()
+        rule.createPost(PostForm.REQUEST)
         setAirplaneMode(true)
         rule.openFirstPostMenu()
         rule.onNodeWithText("Close").performClick()
