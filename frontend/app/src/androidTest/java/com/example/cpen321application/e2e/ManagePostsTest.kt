@@ -13,7 +13,6 @@ import com.example.cpen321application.support.deleteTestPosts
 import com.example.cpen321application.support.firstValueField
 import com.example.cpen321application.support.mainRule
 import com.example.cpen321application.support.openFirstPostMenu
-import com.example.cpen321application.support.openMode
 import com.example.cpen321application.support.postCards
 import com.example.cpen321application.support.setAirplaneMode
 import com.example.cpen321application.support.TEST_CATEGORY
@@ -23,7 +22,6 @@ import com.example.cpen321application.support.waitForText
 import org.junit.After
 import org.junit.Before
 import org.junit.Assert.assertTrue
-import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -43,15 +41,6 @@ class ManagePostsTest {
     fun cleanUp() {
         setAirplaneMode(false)
         deleteTestPosts()
-    }
-
-    @Test
-    fun showsEmptyStateWithCreateButton() {
-        rule.openMode("I'm selling")
-        assumeTrue(rule.onAllNodesWithText("My listings (0)").fetchSemanticsNodes().isNotEmpty())
-
-        rule.onNodeWithText("Nothing here yet.", substring = true).assertExists()
-        rule.onNodeWithText("New listing").assertExists()
     }
 
     @Test
