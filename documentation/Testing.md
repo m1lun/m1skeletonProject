@@ -2,9 +2,9 @@
 
 ## 1. Change History
 
-| **Change Date**   | **Modified Sections** | **Rationale** |
-| ----------------- | --------------------- | ------------- |
-| _Nothing to show_ |
+| **Change Date** | **Modified Sections** | **Rationale** |
+| --------------- | --------------------- | ------------- |
+| 2026-10-20 | 2.1, 2.2, 4 | First version: how to run every test suite, the back-end test locations, and the front-end end-to-end tests for Feature 1 (Use Cases 1, 2 and 4) mapped to their use case scenario steps. |
 
 ---
 
@@ -14,31 +14,55 @@
 
 #### 2.1.1. Tests
 
-| **Interface**                 | **Describe Group Location, No Mocks**                | **Describe Group Location, With Mocks**            | **Mocked Components**              |
-| ----------------------------- | ---------------------------------------------------- | -------------------------------------------------- | ---------------------------------- |
-| **POST /user/login**          | [`tests/no-mock/authenticationLogin.test.js#L1`](#) | [`tests/mock/authenticationLogin.test.js#L1`](#) | Google Authentication API, User DB |
-| **POST /study-groups/create** | ...                                                  | ...                                                | Study Group DB                     |
-| ...                           | ...                                                  | ...                                                | ...                                |
-| ...                           | ...                                                  | ...                                                | ...                                |
+| **Interface** | **Describe Group Location, No Mocks** | **Describe Group Location, With Mocks** | **Mocked Components** |
+| ------------- | ------------------------------------- | --------------------------------------- | --------------------- |
+| **GET /health** | [`backend/tests/no-mock/health.test.ts#L9`](../backend/tests/no-mock/health.test.ts#L9) | None (no external component to fail) | None |
+| **Unregistered routes (404)** | [`backend/tests/no-mock/health.test.ts#L23`](../backend/tests/no-mock/health.test.ts#L23) | None (no external component to fail) | None |
+| **POST /api/requests**, **POST /api/listings** | Not yet implemented | Not yet implemented | Posts DB, Photos (GridFS) |
+| **GET /api/requests**, **GET /api/listings**, **GET /api/requests/:id**, **GET /api/listings/:id** | Not yet implemented | Not yet implemented | Posts DB |
+| **PATCH /api/requests/:id**, **PATCH /api/listings/:id** | Not yet implemented | Not yet implemented | Posts DB |
+| **DELETE /api/requests/:id**, **DELETE /api/listings/:id** | Not yet implemented | Not yet implemented | Posts DB, Photos (GridFS) |
+
+The back-end tests call the Express app built by `createApp(...)` in `backend/src/app.ts` through [supertest](https://github.com/ladjs/supertest), so no server needs to be running. No-mock tests use in-memory stand-ins only where a database would otherwise be needed (`backend/tests/helpers/memorySessionRepo.ts`). Each interface has a `describe` group named after it and saying whether it uses mocks, and each test is annotated with its input, expected status code, expected behavior and expected output.
 
 #### 2.1.2. Commit Hash Where Tests Run
 
-`[Insert Commit SHA here]`
+`[Insert the main-branch commit SHA at submission]`
 
 #### 2.1.3. Explanation on How to Run the Tests
 
-1. **Clone the Repository**:
+1. **Clone the repository and install dependencies:**
+   ```bash
+   git clone https://github.com/m1lun/m1skeletonProject.git
+   cd m1skeletonProject
+   cp backend/.env.example backend/.env   # then set GOOGLE_CLIENT_ID and JWT_SECRET, see README.md
+   ```
+   Node.js 22+ and npm 10+ are required. The scripts run `npm install` in `backend/` if `node_modules` is missing.
 
-   - Open your terminal and run:
-     ```
-     git clone https://github.com/example/your-project.git
-     ```
+2. **Run the back-end interface tests** from the project root:
+   ```bash
+   ./scripts/run-backend-interface-tests.sh      # Windows: scripts\run-backend-interface-tests.ps1
+   ```
+   This runs the tests with mocks (`backend/tests/mock/`), then without mocks (`backend/tests/no-mock/`), then both together, each with coverage. The coverage reports are written to `backend/coverage/mock/`, `backend/coverage/no-mock/` and `backend/coverage/interface/`; open `lcov-report/index.html` in each for the per-file report.
 
-2. **...**
+3. **Run the back-end non-functional requirement tests:**
+   ```bash
+   ./scripts/run-backend-nfr-tests.sh            # Windows: scripts\run-backend-nfr-tests.ps1
+   ```
+
+4. **Run a single test file** while developing:
+   ```bash
+   cd backend
+   npx jest tests/no-mock/health.test.ts
+   ```
+
+5. **Run the front-end end-to-end tests:** see [4.1](#41-location-in-git-of-front-end-test-suite).
 
 ### 2.2. GitHub Actions Configuration Location
 
-`~/.github/workflows/backend-tests.yml`
+`.github/workflows/backend-tests.yml`
+
+It runs on every push to `main` and on every pull request: it installs dependencies, typechecks the back-end, and runs `scripts/run-backend-interface-tests.sh` and `scripts/run-backend-nfr-tests.sh`.
 
 ### 2.3. Jest Coverage Report Screenshots With Mocks
 
@@ -54,26 +78,25 @@ _(Placeholder for Jest coverage screenshot without mocks)_
 
 ### 3.1. Test Locations in Git
 
-| **Non-Functional Requirement**  | **Location in Git**                              |
-| ------------------------------- | ------------------------------------------------ |
-| **Performance (Response Time)** | [`backend/tests/nfr/response_time.test.js`](#) |
-| **Chat Data Security**          | [`backend/tests/nfr/chat_security.test.js`](#) |
+| **Non-Functional Requirement** | **Location in Git** |
+| ------------------------------ | ------------------- |
+| **Feed ranking latency** ([NFR 1](Requirements_and_Design.md#nfr1)) | Not yet implemented (`backend/tests/nfr/`) |
+| **Graceful degradation without the routing service** ([NFR 2](Requirements_and_Design.md#nfr2)) | Not yet implemented (`backend/tests/nfr/`) |
 
 ### 3.2. Test Verification and Logs
 
-- **Performance (Response Time)**
-
-  - **Verification:** This test suite simulates multiple concurrent API calls using Jest along with a load-testing utility to mimic real-world user behavior. The focus is on key endpoints such as user login and study group search to ensure that each call completes within the target response time of 2 seconds under normal load. The test logs capture metrics such as average response time, maximum response time, and error rates. These logs are then analyzed to identify any performance bottlenecks, ensuring the system can handle expected traffic without degradation in user experience.
+- **Feed ranking latency**
+  - **Verification:** _To be added with the test._
   - **Log Output**
     ```
-    [Placeholder for response time test logs]
+    [Placeholder for feed ranking latency test logs]
     ```
 
-- **Chat Data Security**
-  - **Verification:** ...
+- **Graceful degradation without the routing service**
+  - **Verification:** _To be added with the test._
   - **Log Output**
     ```
-    [Placeholder for chat security test logs]
+    [Placeholder for routing degradation test logs]
     ```
 
 ---
@@ -82,40 +105,94 @@ _(Placeholder for Jest coverage screenshot without mocks)_
 
 ### 4.1. Location in Git of Front-end Test Suite:
 
-`frontend/src/androidTest/java/com/studygroupfinder/`
+`frontend/app/src/androidTest/java/com/example/cpen321application/e2e/`
+
+| **Test class** | **Use cases** |
+| -------------- | ------------- |
+| [`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt) | [Use Case 1: Create Buyer Request](Requirements_and_Design.md#uc1), [Use Case 2: Create Seller Listing](Requirements_and_Design.md#uc2) |
+| [`ManagePostsTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/ManagePostsTest.kt) | [Use Case 4: Manage Own Posts](Requirements_and_Design.md#uc4) |
+
+Shared test steps are in `support/PostRobot.kt`, and the differences between the request and listing forms are in `support/PostForm.kt`.
+
+**How the tests are set up.** Following the course rules, each test starts from the app's main screen with the user already signed in, and assumes no existing data:
+
+- **Stand-alone tests.** Every post a test creates uses the category `e2e chair`. Before and after each test, `deleteTestPosts()` deletes every post in that category through the back-end API, so each test starts from an empty state and a failed test leaves nothing behind. The tester's posts in other categories are never touched. Tests that need an existing post create it through the UI first (`createPost`).
+- **One test class for both post types.** Use Cases 1 and 2 share the same form, so `CreatePostTest` is parameterized over `PostForm` and runs every test once for requests (`[REQUEST]`) and once for listings (`[LISTING]`).
+- **No mocking.** The tests talk to the real back-end. For failure scenario 4b ("the network or server is unavailable"), the test switches on the emulator's airplane mode, and switches it off again in `@After` even if the test fails.
+- **Results checked on the server.** When a scenario says nothing is saved, the test asks the back-end with `testPosts()` and checks the list is empty, instead of trusting the screen.
+- **System UI.** The Android photo picker is not part of the app, so it is driven with UI Automator. `TestPhotos` adds small JPEGs to the emulator's gallery before each test and deletes them afterwards.
+
+**How to run them.**
+
+1. Complete the Frontend Setup and the `backend/.env` part of the Backend Setup in the [README](../README.md). Docker must be running, and `java` must be on your `PATH`. Android Studio's bundled JDK works:
+   ```bash
+   export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"   # macOS
+   export PATH="$JAVA_HOME/bin:$PATH"
+   ```
+2. In `frontend/local.properties`, set `API_BASE_URL=http://10.0.2.2:3000` so the app uses the back-end the script starts on your machine.
+3. From the project root, run:
+   ```bash
+   ./scripts/run-frontend-e2e-tests.sh        # Windows: scripts\run-frontend-e2e-tests.ps1
+   ```
+   The script starts the back-end and the `Pixel_9` emulator (set `AVD_NAME=<name>` for another AVD), then builds and installs the app. When prompted, sign in inside the app on the emulator, wait for the main screen, and press Enter. The full suite takes about 5 minutes.
+4. The report is at `frontend/app/build/reports/androidTests/connected/debug/index.html`.
+
+To rerun one test once the back-end is up and the app is signed in:
+```bash
+cd frontend
+./gradlew connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.example.cpen321application.e2e.ManagePostsTest#editsPost
+```
+
+**Troubleshooting.**
+- If every test fails with "Your session has expired. Sign in again.", the app is signed out: sign in on the emulator again and rerun.
+- If Google sign-in fails on the emulator, it has probably lost DNS, which can happen when the host changes network or wakes from sleep. `adb shell ping -c1 google.com` reports `unknown host` when that is the cause. Cold boot the emulator (Device Manager → ⋮ → Cold Boot Now).
 
 ### 4.2. Tests
 
-- **Use Case: Login**
-
-  - **Expected Behaviors:**
-    | **Scenario Steps** | **Test Case Steps** |
-    | ------------------ | ------------------- |
-    | 1. The user opens "Add Todo Items" screen. | Open "Add Todo Items" screen. |
-    | 2. The app shows an input text field and an "Add" button. The add button is disabled. | Check that the text field is present on screen.<br>Check that the button labelled "Add" is present on screen.<br>Check that the "Add" button is disabled. |
-    | 3a. The user inputs an ill-formatted string. | Input "_^_^^OQ#$" in the text field. |
-    | 3a1. The app displays an error message prompting the user for the expected format. | Check that a dialog is opened with the text: "Please use only alphanumeric characters ". |
-    | 3. The user inputs a new item for the list and the add button becomes enabled. | Input "buy milk" in the text field.<br>Check that the button labelled "add" is enabled. |
-    | 4. The user presses the "Add" button. | Click the button labelled "add ". |
-    | 5. The screen refreshes and the new item is at the bottom of the todo list. | Check that a text box with the text "buy milk" is present on screen.<br>Input "buy chocolate" in the text field.<br>Click the button labelled "add".<br>Check that two text boxes are present on the screen with "buy milk" on top and "buy chocolate" at the bottom. |
-    | 5a. The list exceeds the maximum todo-list size. | Repeat steps 3 to 5 ten times.<br>Check that a dialog is opened with the text: "You have too many items, try completing one first". |
-
-  - **Test Logs:**
-    ```
-    [Placeholder for Espresso test execution logs]
-    ```
-
-- **Use Case: ...**
+- **Use Cases 1 and 2: Create Buyer Request / Create Seller Listing** ([`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt), each test runs for both forms)
 
   - **Expected Behaviors:**
 
     | **Scenario Steps** | **Test Case Steps** |
     | ------------------ | ------------------- |
-    | ...                | ...                 |
+    | 1. The buyer/seller opens the create-request/create-listing screen. | Tap "My Posts", then "I'm buying" (request) or "I'm selling" (listing).<br>Tap "New request" or "New listing". |
+    | 2. The app shows the request/listing form. | Check that the "Category \*" field is present on screen. |
+    | 3. The buyer/seller enters the fields and a typed address, and adds photos (optional for requests). | Input "e2e chair" in "Category \*".<br>Input "6335 Thunderbird Crescent, Vancouver" in "Address \*", tap the first suggestion, and check that "✓ Address confirmed" is shown.<br>Input "150" as the maximum price (request) or in "Price \*" (listing).<br>Listing only: tap "+ Add", select one photo in the system photo picker, tap "Done", and check that "Photos 1/10" is shown. |
+    | 4. The buyer/seller submits the form. | Tap "Create request" or "Create listing". |
+    | 5. The app confirms the post was saved and shows it in "My posts". | Check that the "My requests (" or "My listings (" header is shown.<br>Check that exactly one post with the category "e2e chair" is listed.<br>(`createsPostAndShowsItInMyPosts`; `createsPostWithSeveralPhotos` repeats steps 1-5 with three photos.) |
+    | 3a. A required field is missing or invalid. | **Missing category** (`rejectsMissingCategory`): open the form and tap "Create request"/"Create listing" without filling it.<br>**Missing price** (`rejectsMissingPrice`): fill everything except the price and submit.<br>**Negative price** (`rejectsNegativePrice`): fill the form with the price "-5" and submit.<br>**Missing photo** (`photoIsRequiredOnlyOnListings`): fill the form without a photo and submit. |
+    | 3a1. The app shows an error message. | **Missing category:** check that "Choose a category" is shown and the create button is still on screen.<br>**Missing price:** check that "Max price is required" (request) or "Enter a price" (listing) is shown and the back-end has no test posts.<br>**Negative price:** check that the error ("at least 0" for requests, "price must be" for listings) is shown and the back-end has no test posts.<br>**Missing photo:** for listings, check that "Add at least one photo" is shown and the back-end has no test posts; for requests, where photos are optional, check that the request is saved and listed. |
+    | 3b. A photo is too large. | (`rejectsPhotoOverFiveMegabytes`) Add an oversized JPEG to the gallery. Fill the form without photos, select that photo in the photo picker, and submit. |
+    | 3b1. The app rejects the photo and shows an error message. | Check that "Each photo must be at most 5 MB" is shown and the back-end has no test posts. |
+    | 3c. The user adds more than 10 photos. | (`limitsPhotosToTen`) Open the form, select 6 photos in the photo picker, then try to select 6 more. |
+    | 3c1. The app rejects the extra photos. | Check that "Photos 10/10" is shown and the "+ Add" button is disabled. |
+    | 4a. The typed address cannot be located. | (`rejectsAddressThatWasNotPicked`) Fill the form without picking an address, input "zzzzqqqqxxxx nowhere" in "Address \*", and submit. |
+    | 4a1. The app asks the user to correct the address. | Check that "Choose your address from the suggestions list" is shown and the back-end has no test posts. |
+    | 4b. The network or server is unavailable. | (`showsErrorWhenServerIsUnreachable`) Fill the form, turn on airplane mode, and submit. |
+    | 4b1. The app shows an error message; no post is created. | Check that "Could not reach the server" is shown.<br>Turn off airplane mode and check that the form, with its create button, is still on screen. |
 
   - **Test Logs:**
     ```
-    [Placeholder for Espresso test execution logs]
+    [Placeholder for CreatePostTest execution logs]
     ```
 
-- **...**
+- **Use Case 4: Manage Own Posts** ([`ManagePostsTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/ManagePostsTest.kt))
+
+  - **Expected Behaviors:**
+
+    | **Scenario Steps** | **Test Case Steps** |
+    | ------------------ | ------------------- |
+    | 1. The user opens "My posts". | Create a request with the category "e2e chair" through the UI (Use Case 1, steps 1-5). The app ends on "My posts". |
+    | 2. The app shows the user's requests and listings. | Check that the "My requests (" header is shown with the new request. |
+    | 3. The user selects a post and edits its fields, or taps "Close". | **Edit** (`editsPost`): tap "More options" on the post, tap "Edit", check that "Edit request" is shown, replace the maximum price with "175", and tap "Save changes".<br>**Close** (`closesAndReopensPost`): tap "More options" on the post and tap "Close".<br>**Delete** (`deletesPost`): tap "More options" on the post, tap "Delete", and confirm "Delete". |
+    | 4. The app confirms the change and shows the updated post. | **Edit:** check that "My requests (" is shown, tap the post, and check that "175" is shown.<br>**Close:** check that the post shows "Closed". Tap "More options", tap "Reopen", and check that it shows "Open".<br>**Delete:** check that no "e2e chair" post is listed. |
+    | 3a. An edited field is invalid. | (`rejectsInvalidEditAndKeepsPost`) Tap "More options" on the post, tap "Edit", clear "Category \*", and tap "Save changes". |
+    | 3a1. The app shows an error message; the post is unchanged. | Check that "Choose a category" is shown.<br>Tap "Back" and check that "My requests (" still lists exactly one "e2e chair" post. |
+    | 4a. The network or server is unavailable. | (`keepsPostWhenServerIsUnreachable`) Turn on airplane mode, tap "More options" on the post, and tap "Close". |
+    | 4a1. The app shows an error message; the post is unchanged. | Check that "Could not reach the server" is shown.<br>Turn off airplane mode and check that the post still shows "Open". |
+
+  - **Test Logs:**
+    ```
+    [Placeholder for ManagePostsTest execution logs]
+    ```
