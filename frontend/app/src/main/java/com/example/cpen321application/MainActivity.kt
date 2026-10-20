@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -27,6 +28,8 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.cpen321application.auth.SessionManager
+import com.example.cpen321application.feed.FeedTab
+import com.example.cpen321application.feed.FeedViewModel
 import com.example.cpen321application.post.AppTab
 import com.example.cpen321application.post.PostDetailScreen
 import com.example.cpen321application.post.PostEditorScreen
@@ -40,6 +43,7 @@ import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
  */
 class MainActivity : ComponentActivity() {
     private val viewModel: PostViewModel by viewModels()
+    private val feedViewModel: FeedViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,6 +93,7 @@ class MainActivity : ComponentActivity() {
         when {
             viewModel.editing -> PostEditorScreen(viewModel, innerPadding)
             selected != null -> PostDetailScreen(selected, viewModel.mode, viewModel, innerPadding)
+            viewModel.tab == AppTab.FEED -> FeedTab(feedViewModel, ::signOut, innerPadding)
             viewModel.tab == AppTab.POSTS -> PostScreen(viewModel, innerPadding)
             else -> ProfileScreen(SessionManager.get(this), ::signOut, innerPadding)
         }
@@ -110,6 +115,7 @@ private fun AppNavigationBar(viewModel: PostViewModel) {
 }
 
 private fun AppTab.icon(): ImageVector = when (this) {
+    AppTab.FEED -> Icons.Filled.Home
     AppTab.POSTS -> Icons.AutoMirrored.Filled.List
     AppTab.PROFILE -> Icons.Filled.Person
 }
