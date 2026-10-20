@@ -31,6 +31,7 @@ import com.example.cpen321application.auth.SessionManager
 import com.example.cpen321application.feed.FeedTab
 import com.example.cpen321application.feed.FeedViewModel
 import com.example.cpen321application.post.AppTab
+import com.example.cpen321application.post.MatchesScreen
 import com.example.cpen321application.post.PostDetailScreen
 import com.example.cpen321application.post.PostEditorScreen
 import com.example.cpen321application.post.PostScreen
@@ -63,10 +64,14 @@ class MainActivity : ComponentActivity() {
                         viewModel.message = null
                     }
                 }
-                BackHandler(enabled = viewModel.editing || viewModel.selected != null) {
-                    if (viewModel.editing) viewModel.stopEditing() else viewModel.selected = null
+                BackHandler(enabled = viewModel.editing || viewModel.selected != null || viewModel.matchesFor != null) {
+                    when {
+                        viewModel.matchesFor != null -> viewModel.closeMatches()
+                        viewModel.editing -> viewModel.stopEditing()
+                        else -> viewModel.selected = null
+                    }
                 }
-                val fullScreen = viewModel.editing || viewModel.selected != null
+                val fullScreen = viewModel.editing || viewModel.selected != null || viewModel.matchesFor != null
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(snackbar) },
@@ -90,7 +95,9 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun Content(innerPadding: PaddingValues) {
         val selected = viewModel.selected
+        val matchesFor = viewModel.matchesFor
         when {
+            matchesFor != null -> MatchesScreen(matchesFor, viewModel, innerPadding)
             viewModel.editing -> PostEditorScreen(viewModel, innerPadding)
             selected != null -> PostDetailScreen(selected, viewModel.mode, viewModel, innerPadding)
             viewModel.tab == AppTab.FEED -> FeedTab(feedViewModel, ::signOut, innerPadding)
