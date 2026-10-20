@@ -37,24 +37,15 @@ import com.example.cpen321application.post.RemoteImage
 import java.text.NumberFormat
 import java.util.Locale
 
-// Start loading the next page when the user is this many listings from the end.
 private const val LOAD_AHEAD = 5
 private const val DESCRIPTION_LINES = 2
 private val PHOTO_SIZE = 72.dp
 
-// Test tags for the E2E tests.
 object FeedTags {
-    const val LIST = "feed_list"
-    const val LOADING = "feed_loading"
-    const val LOADING_MORE = "feed_loading_more"
-    const val EMPTY = "feed_empty"
-    const val ERROR = "feed_error"
     const val RETRY = "feed_retry"
     const val REFRESH = "feed_refresh"
-    fun listing(id: String) = "feed_listing_$id"
 }
 
-// The feed of other users' listings, with loading, empty and error states.
 @Composable
 fun FeedScreen(
     state: FeedUiState,
@@ -67,7 +58,6 @@ fun FeedScreen(
         nothingShown && state.loadFailed -> FeedMessage(
             text = stringResource(R.string.feed_error),
             buttonText = stringResource(R.string.btn_retry),
-            textTag = FeedTags.ERROR,
             buttonTag = FeedTags.RETRY,
             onClick = onLoadMore,
             modifier = modifier
@@ -75,13 +65,12 @@ fun FeedScreen(
         nothingShown && state.endReached -> FeedMessage(
             text = stringResource(R.string.feed_empty),
             buttonText = stringResource(R.string.btn_refresh),
-            textTag = FeedTags.EMPTY,
             buttonTag = FeedTags.REFRESH,
             onClick = onRefresh,
             modifier = modifier
         )
         nothingShown -> Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(modifier = Modifier.testTag(FeedTags.LOADING))
+            CircularProgressIndicator()
         }
         else -> FeedList(state = state, onLoadMore = onLoadMore, modifier = modifier)
     }
@@ -105,9 +94,7 @@ private fun FeedList(state: FeedUiState, onLoadMore: () -> Unit, modifier: Modif
         state = listState,
         contentPadding = PaddingValues(all = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier
-            .fillMaxSize()
-            .testTag(FeedTags.LIST)
+        modifier = modifier.fillMaxSize()
     ) {
         items(state.listings, key = { it.id }) { listing ->
             ListingCard(listing)
@@ -122,7 +109,7 @@ private fun FeedList(state: FeedUiState, onLoadMore: () -> Unit, modifier: Modif
 private fun FeedFooter(state: FeedUiState, onRetry: () -> Unit) {
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         if (state.isLoading) {
-            CircularProgressIndicator(modifier = Modifier.testTag(FeedTags.LOADING_MORE))
+            CircularProgressIndicator()
         } else if (state.loadFailed) {
             OutlinedButton(onClick = onRetry, modifier = Modifier.testTag(FeedTags.RETRY)) {
                 Text(text = stringResource(R.string.btn_retry))
@@ -133,11 +120,8 @@ private fun FeedFooter(state: FeedUiState, onRetry: () -> Unit) {
 
 @Composable
 private fun ListingCard(listing: FeedListing) {
-    // Styled like the cards on My Posts.
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag(FeedTags.listing(listing.id)),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -183,7 +167,6 @@ private fun ListingText(listing: FeedListing, modifier: Modifier = Modifier) {
 private fun FeedMessage(
     text: String,
     buttonText: String,
-    textTag: String,
     buttonTag: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -198,8 +181,7 @@ private fun FeedMessage(
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.testTag(textTag)
+            textAlign = TextAlign.Center
         )
         OutlinedButton(onClick = onClick, modifier = Modifier.testTag(buttonTag)) {
             Text(text = buttonText)

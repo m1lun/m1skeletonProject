@@ -4,23 +4,18 @@ import com.example.cpen321application.auth.SessionManager
 import java.io.IOException
 import org.json.JSONObject
 
-// One listing as the feed shows it.
 data class FeedListing(
     val id: String,
     val category: String,
     val price: Double,
     val condition: String,
     val description: String,
-    // The first photo, shown on the card; null if the listing has none.
     val photoId: String?
 )
 
-// One page of the feed. nextCursor is null on the last page.
 data class FeedPage(val listings: List<FeedListing>, val nextCursor: String?)
 
-// GET /api/feed/listings: open listings from other users, newest first.
 class FeedApi(private val sessions: SessionManager) {
-    // The page that follows `before` (a listing id), or the newest page when null.
     suspend fun page(before: String?): FeedPage {
         val cursor = if (before == null) "" else "&before=$before"
         val result = sessions.authorizedRequest("GET", "/api/feed/listings?limit=$PAGE_SIZE$cursor")
@@ -35,7 +30,6 @@ class FeedApi(private val sessions: SessionManager) {
     }
 }
 
-// Reads a `{ listings, nextCursor }` response. Throws JSONException if it is not one.
 private fun parseFeedPage(body: String): FeedPage {
     val json = JSONObject(body)
     val items = json.getJSONArray("listings")

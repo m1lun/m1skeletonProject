@@ -14,7 +14,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.R
 
-// The Feed tab of the bottom menu. onSignedOut runs when the session has run out.
 @Composable
 fun FeedTab(viewModel: FeedViewModel, onSignedOut: () -> Unit, innerPadding: PaddingValues) {
     val state = viewModel.state
