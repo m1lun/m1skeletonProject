@@ -9,18 +9,20 @@ import { OPTIONS_COLLECTION, type Option } from '../models/option';
 import { REQUESTS_COLLECTION, type BuyerRequest } from '../models/request';
 import { SESSIONS_COLLECTION, type RefreshSession } from '../models/session';
 import { customFieldSchema, listingSchema, optionSchema, requestSchema, sessionSchema } from '../models/schema';
-import {
-  EARTH_RADIUS_KM,
-  type CustomFieldCollection,
-  type OpenPostFilter,
-  type OptionCollection,
-  type PostDoc,
-  type PostCollection,
-  type SessionRepo,
-  type Store,
+import type {
+  CustomFieldCollection,
+  OpenPostFilter,
+  OptionCollection,
+  PostDoc,
+  PostCollection,
+  SessionRepo,
+  Store,
 } from './types';
 
 type Stored<T> = Omit<T, 'id'> & { _id: ObjectId };
+
+// The radius MongoDB uses for $centerSphere, which takes distances in radians.
+const EARTH_RADIUS_KM = 6378.1;
 
 function toDoc<T extends { id: string }>(stored: Stored<T>): T {
   const { _id, ...rest } = stored;

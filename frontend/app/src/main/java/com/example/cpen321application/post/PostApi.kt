@@ -148,20 +148,6 @@ class PostApi(
         call("/${mode.path}/$id") { delete() }
     }
 
-    /** The ranked feed for one of the user's posts: listings for a request, requests for a listing. */
-    suspend fun matches(mode: Mode, postId: String): List<MatchItem> {
-        val other = if (mode == Mode.BUYING) Mode.SELLING else Mode.BUYING
-        val body = JSONObject(call("/feed?postId=$postId"))
-        return body.getJSONArray("matches").objects().map { match ->
-            MatchItem(
-                post = summarise(other, match.getJSONObject("post")),
-                score = match.getDouble("score"),
-                distanceKm = match.getDouble("distanceKm"),
-                travelMinutes = if (match.isNull("travelMinutes")) null else match.getInt("travelMinutes"),
-            )
-        }
-    }
-
     suspend fun options(field: String): List<OptionItem> {
         val encoded = java.net.URLEncoder.encode(field, "UTF-8")
         return JSONArray(call("/options?field=$encoded")).objects().map {
