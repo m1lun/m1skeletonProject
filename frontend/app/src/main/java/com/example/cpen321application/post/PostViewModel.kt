@@ -98,6 +98,21 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         tab = AppTab.FEED
     }
 
+    /** Another user's post opened from the Feed, shown read-only; null when none is open. */
+    var openPost by mutableStateOf<PostSummary?>(null)
+        private set
+    var openPostMode by mutableStateOf(Mode.SELLING)
+        private set
+
+    fun open(raw: JSONObject, postMode: Mode) {
+        openPostMode = postMode
+        openPost = api.summarise(postMode, raw)
+    }
+
+    fun closeOpenPost() {
+        openPost = null
+    }
+
     fun toggleStatus(post: PostSummary) {
         launchCatching {
             val next = if (post.status == "open") "closed" else "open"

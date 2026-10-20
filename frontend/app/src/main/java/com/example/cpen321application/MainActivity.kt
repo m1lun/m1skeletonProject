@@ -32,6 +32,7 @@ import com.example.cpen321application.feed.FeedTab
 import com.example.cpen321application.feed.FeedViewModel
 import com.example.cpen321application.feed.ownPostOf
 import com.example.cpen321application.post.AppTab
+import com.example.cpen321application.post.Mode
 import com.example.cpen321application.post.PostDetailScreen
 import com.example.cpen321application.post.PostEditorScreen
 import com.example.cpen321application.post.PostScreen
@@ -64,8 +65,13 @@ class MainActivity : ComponentActivity() {
                         viewModel.message = null
                     }
                 }
-                BackHandler(enabled = viewModel.editing || viewModel.selected != null) {
-                    if (viewModel.editing) viewModel.stopEditing() else viewModel.selected = null
+                val fullScreen = viewModel.editing || viewModel.selected != null || viewModel.openPost != null
+                BackHandler(enabled = fullScreen) {
+                    when {
+                        viewModel.openPost != null -> viewModel.closeOpenPost()
+                        viewModel.editing -> viewModel.stopEditing()
+                        else -> viewModel.selected = null
+                    }
                 }
                 LaunchedEffect(viewModel.recommendationsFor) {
                     viewModel.recommendationsFor?.let {
@@ -73,7 +79,6 @@ class MainActivity : ComponentActivity() {
                         viewModel.recommendationsFor = null
                     }
                 }
-                val fullScreen = viewModel.editing || viewModel.selected != null
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(snackbar) },
@@ -97,10 +102,21 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun Content(innerPadding: PaddingValues) {
         val selected = viewModel.selected
+        val openPost = viewModel.openPost
         when {
+            openPost != null -> PostDetailScreen(
+                openPost,
+                viewModel.openPostMode,
+                viewModel,
+                innerPadding,
+                readOnly = true,
+                onBack = viewModel::closeOpenPost,
+            )
             viewModel.editing -> PostEditorScreen(viewModel, innerPadding)
             selected != null -> PostDetailScreen(selected, viewModel.mode, viewModel, innerPadding)
-            viewModel.tab == AppTab.FEED -> FeedTab(feedViewModel, ::signOut, innerPadding)
+            viewModel.tab == AppTab.FEED -> FeedTab(feedViewModel, ::signOut, innerPadding) {
+                viewModel.open(it.raw, if (it.isRequest) Mode.BUYING else Mode.SELLING)
+            }
             viewModel.tab == AppTab.POSTS -> PostScreen(viewModel, innerPadding)
             else -> ProfileScreen(SessionManager.get(this), ::signOut, innerPadding)
         }
