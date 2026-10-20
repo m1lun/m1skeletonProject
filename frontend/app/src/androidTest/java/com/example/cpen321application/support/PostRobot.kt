@@ -52,6 +52,8 @@ private const val ONLINE_WAIT_MS = 60_000L
 private const val RETRY_DELAY_MS = 1_000L
 private const val PICKER_PHOTO = "Photo taken on"
 private const val PICK_ATTEMPTS = 3
+private const val OPEN_ATTEMPTS = 3
+private const val FORM_WAIT_MS = 5_000L
 
 fun mainRule(): MainRule = createAndroidComposeRule<MainActivity>()
 
@@ -120,7 +122,11 @@ fun MainRule.postCards(): List<*> =
 
 fun MainRule.openForm(form: PostForm) {
     openMode(form.mode)
-    click(form.newButton)
+    repeat(OPEN_ATTEMPTS) {
+        click(form.newButton)
+        if (runCatching { waitForText("Category *", timeoutMs = FORM_WAIT_MS) }.isSuccess) return
+    }
+    error("The \"${form.newButton}\" form did not open")
 }
 
 fun MainRule.enterPrice(form: PostForm, price: String) {
