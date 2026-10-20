@@ -1,6 +1,7 @@
 package com.example.cpen321application.post
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -176,9 +177,14 @@ private fun addressHint(viewModel: PostViewModel): String = when {
 
 @Composable
 private fun PhotoRow(viewModel: PostViewModel, seller: Boolean) {
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) {
-        viewModel.addPhotos(it)
+    val room = MAX_PHOTOS - viewModel.photos.size - viewModel.existingPhotoIds.size
+    val pickOne = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri?.let { viewModel.addPhotos(listOf(it)) }
     }
+    // The picker itself stops the user at the photos still allowed; it needs a limit of at least 2.
+    val pickManyContract = remember(room) { ActivityResultContracts.PickMultipleVisualMedia(maxOf(room, 2)) }
+    val pickMany = rememberLauncherForActivityResult(pickManyContract) { viewModel.addPhotos(it) }
+    val imagesOnly = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
     Text(
         "Photos ${viewModel.photos.size + viewModel.existingPhotoIds.size}/$MAX_PHOTOS" +
             if (seller) " *" else "",
@@ -188,7 +194,10 @@ private fun PhotoRow(viewModel: PostViewModel, seller: Boolean) {
         modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        OutlinedButton(onClick = { picker.launch("image/*") }) { Text("+ Add") }
+        OutlinedButton(
+            onClick = { if (room == 1) pickOne.launch(imagesOnly) else pickMany.launch(imagesOnly) },
+            enabled = room > 0,
+        ) { Text("+ Add") }
         viewModel.existingPhotoIds.forEachIndexed { index, _ ->
             OutlinedButton(onClick = { viewModel.removeExistingPhoto(index) }) {
                 Text("Photo ${index + 1} ✕")
