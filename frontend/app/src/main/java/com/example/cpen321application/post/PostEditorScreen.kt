@@ -222,8 +222,8 @@ private fun FieldRows(viewModel: PostViewModel, seller: Boolean) {
             row = row,
             seller = seller,
             viewModel = viewModel,
-            onChange = { viewModel.updateRow(index, it) },
-            onRemove = if (row.isCustom) ({ viewModel.removeRow(index) }) else null,
+            onChange = { viewModel.rows[index] = it },
+            onRemove = if (row.isCustom) ({ viewModel.rows.removeAt(index) }) else null,
         )
     }
 }
