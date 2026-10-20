@@ -60,6 +60,13 @@ class MongoPostCollection<T extends PostDoc & { category: string }> implements P
     return stored.map((d) => toDoc<T>(d));
   }
 
+  // Uses the { status, category } index.
+  async listOpenInCategory(category: string, excludeOwnerId: string): Promise<T[]> {
+    const found = await this.collection.find({ status: 'open', category, ownerId: { $ne: excludeOwnerId } }).toArray();
+    const stored = found as Stored<T>[];
+    return stored.map((d) => toDoc<T>(d));
+  }
+
   async replace(doc: T): Promise<T> {
     const { id, ...rest } = doc;
     const clean = this.normalise(rest);

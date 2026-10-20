@@ -7,6 +7,7 @@ import type { PhotoStorage } from '../photos/storage';
 export interface PostDoc {
   id: string;
   ownerId: string;
+  category: string;
   status: 'open' | 'closed';
   location: GeoPoint;
   updatedAt: Date;
@@ -22,6 +23,9 @@ export interface PostCollection<T extends PostDoc> {
   // Open posts from everyone except excludeOwnerId, newest first. With `before`
   // (a post id), only posts older than that one, so a page starts where the last ended.
   listOpen(excludeOwnerId: string, limit: number, before?: string): Promise<T[]>;
+  // Every open post in a category from everyone except excludeOwnerId: the
+  // candidates the matching feed filters and ranks.
+  listOpenInCategory(category: string, excludeOwnerId: string): Promise<T[]>;
 }
 
 export interface OptionCollection {

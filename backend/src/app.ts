@@ -85,7 +85,7 @@ export function createApp({ sessions, store }: AppDeps): Express {
   // Posts carry photo ids and fields, so they get a larger body limit.
   if (store !== undefined) {
     const posts = [express.json({ limit: '1mb' }), requireAuth];
-    app.use('/api/feed', requireAuth, createFeedRouter(store.listings));
+    app.use('/api/feed', requireAuth, createFeedRouter(store));
     app.use('/api/listings', ...posts, createListingsRouter(store));
     app.use('/api/requests', ...posts, createRequestsRouter(store));
     app.use('/api/options', ...posts, createOptionsRouter(store));
