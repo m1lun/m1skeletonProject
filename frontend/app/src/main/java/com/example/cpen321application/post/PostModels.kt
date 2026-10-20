@@ -8,6 +8,7 @@ enum class Mode(val path: String, val tabLabel: String, val newLabel: String) {
 }
 
 enum class AppTab(val label: String) {
+    FEED("Feed"),
     POSTS("My Posts"),
     PROFILE("Profile"),
 }
