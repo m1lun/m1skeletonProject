@@ -1,11 +1,12 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 
 import { currentUser } from '../sessions';
 import { BadRequestError } from '../errors';
 import { DEFAULT_WEIGHTS, asPair, isRequest, rank, type Post } from '../matching/rank';
 import { satisfies } from '../matching/satisfies';
 import { DEFAULT_TRAVEL_MODE, travelTimes } from '../matching/travelTime';
-import type { Store } from '../store/types';
+import type { PostCollection, PostDoc, Store } from '../store/types';
+import { FILTER_PARAMS, parsePostFilter } from './feedFilter';
 import { handle } from './handle';
 
 export const DEFAULT_PAGE_SIZE = 20;
@@ -17,6 +18,7 @@ const POST_ID = /^[0-9a-f]{24}$/;
 // The query parameters GET /api/feed accepts. Any other is rejected rather than
 // silently ignored, so a misspelt parameter is noticed.
 const MATCH_FEED_PARAMS = ['postId', 'limit', 'cursor'];
+const BROWSE_PARAMS = ['limit', 'before', ...FILTER_PARAMS];
 
 function parseLimit(value: unknown, errors: string[]): number {
   if (value === undefined) {
@@ -63,6 +65,28 @@ function parseCursor(value: unknown, errors: string[]): number {
 
 async function findPost(store: Store, id: string): Promise<Post | null> {
   return (await store.requests.findById(id)) ?? (await store.listings.findById(id));
+}
+
+// Responds with `{ [key]: posts, nextCursor }`: other users' open posts, newest first.
+// nextCursor is the `before` for the next page, or null on the last page.
+function browse<T extends PostDoc>(posts: PostCollection<T>, key: string): RequestHandler {
+  return handle(async (req, res) => {
+    const errors = Object.keys(req.query)
+      .filter((name) => !BROWSE_PARAMS.includes(name))
+      .map((name) => `unsupported parameter "${name}"`);
+    const limit = parseLimit(req.query.limit, errors);
+    const before = parseBefore(req.query.before, errors);
+    const filter = parsePostFilter(req.query, errors);
+    if (errors.length > 0) {
+      throw new BadRequestError(errors);
+    }
+    // One extra post tells whether another page follows.
+    const found = await posts.listOpen(currentUser(res).id, limit + 1, { ...filter, before });
+    const page = found.slice(0, limit);
+    const last = page[page.length - 1];
+    const nextCursor = found.length > limit && last !== undefined ? last.id : null;
+    res.json({ [key]: page, nextCursor });
+  });
 }
 
 export function createFeedRouter(store: Store): Router {
@@ -123,22 +147,8 @@ export function createFeedRouter(store: Store): Router {
     });
   }));
 
-  // GET /api/feed/listings?limit=20&before=<id> — open listings from other users, newest
-  // first. nextCursor is the `before` for the next page, or null on the last page.
-  router.get('/listings', handle(async (req, res) => {
-    const errors: string[] = [];
-    const limit = parseLimit(req.query.limit, errors);
-    const before = parseBefore(req.query.before, errors);
-    if (errors.length > 0) {
-      throw new BadRequestError(errors);
-    }
-    // One extra listing tells whether another page follows.
-    const found = await store.listings.listOpen(currentUser(res).id, limit + 1, before);
-    const page = found.slice(0, limit);
-    const last = page[page.length - 1];
-    const nextCursor = found.length > limit && last !== undefined ? last.id : null;
-    res.json({ listings: page, nextCursor });
-  }));
+  router.get('/listings', browse(store.listings, 'listings'));
+  router.get('/requests', browse(store.requests, 'requests'));
 
   return router;
 }

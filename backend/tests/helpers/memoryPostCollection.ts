@@ -1,6 +1,6 @@
 import type { Listing } from '../../src/models/listing';
 import type { BuyerRequest } from '../../src/models/request';
-import type { PostCollection, PostDoc } from '../../src/store/types';
+import { EARTH_RADIUS_KM, type OpenPostFilter, type PostCollection, type PostDoc, type PostFilter } from '../../src/store/types';
 
 // Stands in for MongoPostCollection with the same rules, so post routes can be
 // tested without a database. Ids are 24 hex characters that grow with each
@@ -37,9 +37,14 @@ export class MemoryPostCollection<T extends PostDoc> implements PostCollection<T
     return Promise.resolve();
   }
 
-  listOpen(excludeOwnerId: string, limit: number, before?: string): Promise<T[]> {
+  listOpen(excludeOwnerId: string, limit: number, filter: OpenPostFilter = {}): Promise<T[]> {
     const open = this.newestFirst().filter(
-      (row) => row.status === 'open' && row.ownerId !== excludeOwnerId && (before === undefined || row.id < before)
+      (row) =>
+        row.status === 'open' &&
+        row.ownerId !== excludeOwnerId &&
+        (filter.before === undefined || row.id < filter.before) &&
+        // Only the feed calls listOpen, and it only reads listings and requests.
+        passesFilter(row as unknown as Listing | BuyerRequest, filter)
     );
     return Promise.resolve(open.slice(0, limit));
   }
@@ -55,6 +60,37 @@ export class MemoryPostCollection<T extends PostDoc> implements PostCollection<T
   private newestFirst(): T[] {
     return this.rows.map((row) => ({ ...row })).sort((a, b) => b.id.localeCompare(a.id));
   }
+}
+
+function distanceKm(from: { lat: number; lng: number }, post: Listing | BuyerRequest): number {
+  const [lng, lat] = post.location.coordinates;
+  const toRadians = (degrees: number): number => (degrees * Math.PI) / 180;
+  const dLat = toRadians(lat - from.lat);
+  const dLng = toRadians(lng - from.lng);
+  const a =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(from.lat)) * Math.cos(toRadians(lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(a));
+}
+
+function price(post: Listing | BuyerRequest): number | undefined {
+  if ('price' in post) {
+    return post.price;
+  }
+  const budget = post.requestFields.find((field) => field.key === 'price')?.value;
+  return typeof budget === 'number' ? budget : undefined;
+}
+
+// The same rule as MongoPostCollection.listOpen. A request with no budget fails any
+// price filter, as it does in MongoDB.
+function passesFilter(post: Listing | BuyerRequest, filter: PostFilter): boolean {
+  const { category, minPrice, maxPrice, near } = filter;
+  const postPrice = price(post);
+  return (
+    (category === undefined || post.category === category) &&
+    (minPrice === undefined || (postPrice !== undefined && postPrice >= minPrice)) &&
+    (maxPrice === undefined || (postPrice !== undefined && postPrice <= maxPrice)) &&
+    (near === undefined || distanceKm(near, post) <= near.radiusKm)
+  );
 }
 
 // A valid open listing for tests; pass overrides for the fields a test cares about.
