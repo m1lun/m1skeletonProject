@@ -1,5 +1,6 @@
 package com.example.cpen321application.e2e
 
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithText
 import com.example.cpen321application.support.click
 import com.example.cpen321application.support.createListing
@@ -159,13 +160,12 @@ class CreateListingTest {
     }
 
     @Test
-    fun rejectsMoreThanTenPhotos() {
+    fun limitsPhotosToTen() {
         rule.openMode("I'm selling")
         rule.click("New listing")
         rule.pickPhotos(6)
-        rule.pickPhotos(6, total = null)
+        rule.pickPhotos(6, total = 10)
 
-        rule.waitForText("At most 10 photos")
-        rule.waitForText("Photos 10/10", substring = true)
+        rule.onNodeWithText("+ Add").assertIsNotEnabled()
     }
 }

@@ -1,5 +1,6 @@
 package com.example.cpen321application.e2e
 
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
@@ -147,13 +148,12 @@ class CreateRequestTest {
     }
 
     @Test
-    fun rejectsMoreThanTenPhotos() {
+    fun limitsPhotosToTen() {
         rule.openMode("I'm buying")
         rule.click("New request")
         rule.pickPhotos(6)
-        rule.pickPhotos(6, total = null)
+        rule.pickPhotos(6, total = 10)
 
-        rule.waitForText("At most 10 photos")
-        rule.waitForText("Photos 10/10", substring = true)
+        rule.onNodeWithText("+ Add").assertIsNotEnabled()
     }
 }
