@@ -112,8 +112,9 @@ The feed shows other users' posts. It needs the session token too.
 
 - `GET /api/feed/listings?limit=20&before=<id>`: open listings from everyone except you, newest first: `{ "listings": [...], "nextCursor" }`.
 - `GET /api/feed/requests?limit=20&before=<id>`: the same for requests: `{ "requests": [...], "nextCursor" }`.
+- `GET /api/feed?postId=<id>&limit=20&cursor=<nextCursor>`: recommendations for one of your open posts, best fit first: listings for a request, requests for a listing. `{ "matches": [{ "post", "score", "distanceKm", "travelMinutes" }], "nextCursor" }`. Pass `nextCursor` back as `cursor`. `404` if the post doesn't exist, `403` if it isn't yours, `409` if it's closed.
 
-Both take `limit` from 1 to 50 (default 20). To get the next page, pass the `nextCursor` you got back as `before`, along with the same filters; it is `null` on the last page. Optional filters, which can be combined:
+All three take `limit` from 1 to 50 (default 20). For the two browse routes, pass the `nextCursor` you got back as `before` to get the next page, along with the same filters; it is `null` on the last page. All three take these optional filters, which can be combined:
 - `category`: one category, ignoring case and spacing.
 - `minPrice`, `maxPrice`: an inclusive range on a listing's price or a request's budget (its `price` field). A request with no budget is left out when either is sent.
 - `lat`, `lng`, `radiusKm`: within `radiusKm` (up to 100) of a point. Send all three or none.

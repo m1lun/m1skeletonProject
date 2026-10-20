@@ -44,6 +44,18 @@ private val PHOTO_SIZE = 72.dp
 object FeedTags {
     const val RETRY = "feed_retry"
     const val REFRESH = "feed_refresh"
+    const val MODE_BUYING = "feed_mode_buying"
+    const val MODE_SELLING = "feed_mode_selling"
+    const val FILTERS = "feed_filters"
+    const val CLEAR_RECOMMENDATION = "feed_clear_recommendation"
+    const val FILTER_CATEGORY = "feed_filter_category"
+    const val FILTER_MIN_PRICE = "feed_filter_min_price"
+    const val FILTER_MAX_PRICE = "feed_filter_max_price"
+    const val FILTER_ADDRESS = "feed_filter_address"
+    const val FILTER_RADIUS = "feed_filter_radius"
+    const val FILTER_RECOMMENDED_FOR = "feed_filter_recommended_for"
+    const val FILTER_APPLY = "feed_filter_apply"
+    const val FILTER_CLEAR = "feed_filter_clear"
 }
 
 @Composable
@@ -53,7 +65,7 @@ fun FeedScreen(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val nothingShown = state.listings.isEmpty()
+    val nothingShown = state.items.isEmpty()
     when {
         nothingShown && state.loadFailed -> FeedMessage(
             text = stringResource(R.string.feed_error),
@@ -85,8 +97,8 @@ private fun FeedList(state: FeedUiState, onLoadMore: () -> Unit, modifier: Modif
             lastVisible >= listState.layoutInfo.totalItemsCount - LOAD_AHEAD
         }
     }
-    // Asks again each time more listings arrive, so a long scroll keeps loading pages.
-    LaunchedEffect(nearEnd, state.listings.size) {
+    // Asks again each time more posts arrive, so a long scroll keeps loading pages.
+    LaunchedEffect(nearEnd, state.items.size) {
         if (nearEnd) onLoadMore()
     }
 
@@ -96,8 +108,8 @@ private fun FeedList(state: FeedUiState, onLoadMore: () -> Unit, modifier: Modif
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier.fillMaxSize()
     ) {
-        items(state.listings, key = { it.id }) { listing ->
-            ListingCard(listing)
+        items(state.items, key = { it.id }) { item ->
+            FeedCard(item)
         }
         item {
             FeedFooter(state = state, onRetry = onLoadMore)
@@ -119,7 +131,7 @@ private fun FeedFooter(state: FeedUiState, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun ListingCard(listing: FeedListing) {
+private fun FeedCard(item: FeedItem) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -131,30 +143,32 @@ private fun ListingCard(listing: FeedListing) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            listing.photoId?.let {
+            item.photoId?.let {
                 RemoteImage(id = it, modifier = Modifier.size(PHOTO_SIZE).clip(RoundedCornerShape(12.dp)))
             }
-            ListingText(listing, modifier = Modifier.weight(1f))
+            FeedCardText(item, modifier = Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun ListingText(listing: FeedListing, modifier: Modifier = Modifier) {
+private fun FeedCardText(item: FeedItem, modifier: Modifier = Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text = formatPrice(listing.price), style = MaterialTheme.typography.titleLarge)
+        Text(text = priceText(item), style = MaterialTheme.typography.titleLarge)
         Text(
-            text = listing.category.replaceFirstChar { it.titlecase(Locale.getDefault()) },
+            text = item.category.replaceFirstChar { it.titlecase(Locale.getDefault()) },
             style = MaterialTheme.typography.titleMedium
         )
-        Text(
-            text = stringResource(R.string.feed_condition, listing.condition),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        if (listing.description.isNotBlank()) {
+        detailsText(item)?.let {
             Text(
-                text = listing.description,
+                text = it,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (item.description.isNotBlank()) {
+            Text(
+                text = item.description,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = DESCRIPTION_LINES,
                 overflow = TextOverflow.Ellipsis
@@ -189,4 +203,19 @@ private fun FeedMessage(
     }
 }
 
-private fun formatPrice(price: Double): String = NumberFormat.getCurrencyInstance(Locale.CANADA).format(price)
+@Composable
+private fun priceText(item: FeedItem): String {
+    val price = item.price?.let { NumberFormat.getCurrencyInstance(Locale.CANADA).format(it) }
+    return when {
+        !item.isRequest -> price.orEmpty()
+        price == null -> stringResource(R.string.feed_any_budget)
+        else -> stringResource(R.string.feed_budget, price)
+    }
+}
+
+@Composable
+private fun detailsText(item: FeedItem): String? {
+    val condition = item.condition?.let { stringResource(R.string.feed_condition, it) }
+    val distance = item.distanceKm?.let { stringResource(R.string.feed_distance, it) }
+    return listOfNotNull(condition, distance).joinToString(" · ").ifEmpty { null }
+}

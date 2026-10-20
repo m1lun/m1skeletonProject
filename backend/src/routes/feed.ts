@@ -6,7 +6,7 @@ import { DEFAULT_WEIGHTS, asPair, isRequest, rank, type Post } from '../matching
 import { satisfies } from '../matching/satisfies';
 import { DEFAULT_TRAVEL_MODE, travelTimes } from '../matching/travelTime';
 import type { PostCollection, PostDoc, Store } from '../store/types';
-import { FILTER_PARAMS, parsePostFilter } from './feedFilter';
+import { FILTER_PARAMS, parsePostFilter, passesFilter } from './feedFilter';
 import { handle } from './handle';
 
 export const DEFAULT_PAGE_SIZE = 20;
@@ -17,7 +17,7 @@ const POST_ID = /^[0-9a-f]{24}$/;
 
 // The query parameters GET /api/feed accepts. Any other is rejected rather than
 // silently ignored, so a misspelt parameter is noticed.
-const MATCH_FEED_PARAMS = ['postId', 'limit', 'cursor'];
+const MATCH_FEED_PARAMS = ['postId', 'limit', 'cursor', ...FILTER_PARAMS];
 const BROWSE_PARAMS = ['limit', 'before', ...FILTER_PARAMS];
 
 function parseLimit(value: unknown, errors: string[]): number {
@@ -94,8 +94,8 @@ export function createFeedRouter(store: Store): Router {
 
   // GET /api/feed?postId=<id>&limit=20&cursor=<nextCursor> — the ranked feed for one of
   // the caller's open posts: listings that match a request, or requests that match a
-  // listing, best first. The first page carries travel times. nextCursor is the
-  // `cursor` for the next page, or null on the last page.
+  // listing, best first, narrowed by any feed filters. The first page carries travel
+  // times. nextCursor is the `cursor` for the next page, or null on the last page.
   router.get('/', handle(async (req, res) => {
     const errors = Object.keys(req.query)
       .filter((name) => !MATCH_FEED_PARAMS.includes(name))
@@ -103,6 +103,7 @@ export function createFeedRouter(store: Store): Router {
     const postId = parsePostId(req.query.postId, errors);
     const limit = parseLimit(req.query.limit, errors);
     const offset = parseCursor(req.query.cursor, errors);
+    const filter = parsePostFilter(req.query, errors);
     if (errors.length > 0) {
       throw new BadRequestError(errors);
     }
@@ -127,7 +128,7 @@ export function createFeedRouter(store: Store): Router {
       : await store.requests.listOpenInCategory(source.category, me);
     const matching = candidates.filter((candidate) => {
       const { request, listing } = asPair(source, candidate);
-      return satisfies(request, listing);
+      return satisfies(request, listing) && passesFilter(candidate, filter);
     });
     // Every match is ranked before paging, since any of them could come first.
     const ranked = rank(source, matching, DEFAULT_WEIGHTS);

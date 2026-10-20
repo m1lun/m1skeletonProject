@@ -48,14 +48,6 @@ data class PostSummary(
     val raw: JSONObject,
 )
 
-/** One post in the ranked feed, with how well it fits (0 to 1) and how far away it is. */
-data class MatchItem(
-    val post: PostSummary,
-    val score: Double,
-    val distanceKm: Double,
-    val travelMinutes: Int?,
-)
-
 data class AddressSuggestion(
     val label: String,
     val longitude: Double,
