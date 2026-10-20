@@ -86,6 +86,17 @@ describe('Unmocked: POST /api/photos', () => {
     expect(response.body).toEqual(BAD_REQUEST);
   });
 
+  test('Photo in another field', async () => {
+    const response = await request(app)
+      .post('/api/photos')
+      .set('Authorization', bearer(ME))
+      .attach('file', IMAGE, { filename: 'a.png', contentType: 'image/png' });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual(BAD_REQUEST);
+    expect(store.photos.photos.size).toBe(0);
+  });
+
   test('Missing session token', async () => {
     const response = await request(app)
       .post('/api/photos')

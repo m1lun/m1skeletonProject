@@ -1,13 +1,44 @@
-import express, { Router, type Request, type Response } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
+import multer from 'multer';
 import { pipeline } from 'node:stream/promises';
 
 import { MAX_PHOTOS, MAX_PHOTO_BYTES } from '../models/common';
-import { parseMultipart } from '../photos/multipart';
 import { PHOTO_TYPES, type PhotoStorage } from '../photos/storage';
 import { currentUser, requireAuth } from '../sessions';
 import { handle } from './handle';
 
-const MULTIPART_OVERHEAD_BYTES = 64 * 1024;
+const BAD_PHOTOS = 'Attach images (jpeg, png, webp or gif) in the "photos" field';
+const TOO_MANY_PHOTOS = `At most ${MAX_PHOTOS} photos are allowed`;
+const PHOTO_TOO_BIG = `Each photo must be at most ${MAX_PHOTO_BYTES / (1024 * 1024)} MB`;
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_PHOTO_BYTES, files: MAX_PHOTOS },
+}).array('photos', MAX_PHOTOS);
+
+// Multer stops reading at the first broken limit; anything else it rejects is a malformed body.
+function uploadError(error: unknown): { status: number; message: string } {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return { status: 413, message: PHOTO_TOO_BIG };
+    }
+    if (error.code === 'LIMIT_FILE_COUNT' || (error.code === 'LIMIT_UNEXPECTED_FILE' && error.field === 'photos')) {
+      return { status: 400, message: TOO_MANY_PHOTOS };
+    }
+  }
+  return { status: 400, message: BAD_PHOTOS };
+}
+
+function readPhotos(req: Request, res: Response, next: NextFunction): void {
+  upload(req, res, (error: unknown) => {
+    if (error === undefined || error === null) {
+      next();
+      return;
+    }
+    const { status, message } = uploadError(error);
+    res.status(status).json({ error: message });
+  });
+}
 
 export function createPhotosRouter(photos: PhotoStorage): Router {
   const router = Router();
@@ -30,25 +61,15 @@ export function createPhotosRouter(photos: PhotoStorage): Router {
   router.post(
     '/',
     requireAuth,
-    express.raw({ type: 'multipart/form-data', limit: MAX_PHOTOS * MAX_PHOTO_BYTES + MULTIPART_OVERHEAD_BYTES }),
+    readPhotos,
     handle(async (req: Request, res: Response) => {
-      const body = req.body as unknown;
-      const parts = Buffer.isBuffer(body) ? parseMultipart(body, String(req.get('content-type') ?? '')) : undefined;
-      const files = parts?.filter((p) => p.field === 'photos') ?? [];
-      if (files.length === 0 || files.some((f) => !PHOTO_TYPES.includes(f.mimeType) || f.data.length === 0)) {
-        res.status(400).json({ error: 'Attach images (jpeg, png, webp or gif) in the "photos" field' });
-        return;
-      }
-      if (files.length > MAX_PHOTOS) {
-        res.status(400).json({ error: `At most ${MAX_PHOTOS} photos are allowed` });
-        return;
-      }
-      if (files.some((f) => f.data.length > MAX_PHOTO_BYTES)) {
-        res.status(413).json({ error: `Each photo must be at most ${MAX_PHOTO_BYTES / (1024 * 1024)} MB` });
+      const files = Array.isArray(req.files) ? req.files : [];
+      if (files.length === 0 || files.some((f) => !PHOTO_TYPES.includes(f.mimetype.toLowerCase()) || f.size === 0)) {
+        res.status(400).json({ error: BAD_PHOTOS });
         return;
       }
       const ownerId = currentUser(res).id;
-      const ids = await Promise.all(files.map((f) => photos.save(f.data, f.mimeType, ownerId)));
+      const ids = await Promise.all(files.map((f) => photos.save(f.buffer, f.mimetype.toLowerCase(), ownerId)));
       res.status(201).json({ ids });
     }),
   );
