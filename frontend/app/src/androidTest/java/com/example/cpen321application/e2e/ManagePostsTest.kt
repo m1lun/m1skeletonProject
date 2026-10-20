@@ -5,7 +5,22 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
+import com.example.cpen321application.support.back
+import com.example.cpen321application.support.clearField
+import com.example.cpen321application.support.click
+import com.example.cpen321application.support.createRequest
+import com.example.cpen321application.support.deleteTestPosts
+import com.example.cpen321application.support.firstValueField
+import com.example.cpen321application.support.mainRule
+import com.example.cpen321application.support.openFirstPostMenu
+import com.example.cpen321application.support.openMode
+import com.example.cpen321application.support.postCards
+import com.example.cpen321application.support.setAirplaneMode
+import com.example.cpen321application.support.TEST_CATEGORY
+import com.example.cpen321application.support.TestPhotos
+import com.example.cpen321application.support.waitForText
 import org.junit.After
+import org.junit.Before
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
@@ -13,12 +28,20 @@ import org.junit.Test
 
 class ManagePostsTest {
     @get:Rule
+    val photos = TestPhotos()
+
+    @get:Rule
     val rule = mainRule()
+
+    @Before
+    fun removeLeftovers() {
+        deleteTestPosts()
+    }
 
     @After
     fun cleanUp() {
         setAirplaneMode(false)
-        rule.deleteTestPosts()
+        deleteTestPosts()
     }
 
     @Test
@@ -54,7 +77,7 @@ class ManagePostsTest {
         rule.click("Save changes")
 
         rule.waitForText("Choose a category")
-        rule.click("Back")
+        rule.back()
         rule.waitForText("My requests (", substring = true)
         assertTrue(rule.postCards().size == 1)
     }
