@@ -18,15 +18,10 @@ data class FeedListing(
 // One page of the feed. nextCursor is null on the last page.
 data class FeedPage(val listings: List<FeedListing>, val nextCursor: String?)
 
-// Where the feed gets its pages, so tests can supply their own.
-fun interface FeedSource {
-    // The page that follows `before` (a listing id), or the newest page when null.
-    suspend fun page(before: String?): FeedPage
-}
-
 // GET /api/feed/listings: open listings from other users, newest first.
-class FeedApi(private val sessions: SessionManager) : FeedSource {
-    override suspend fun page(before: String?): FeedPage {
+class FeedApi(private val sessions: SessionManager) {
+    // The page that follows `before` (a listing id), or the newest page when null.
+    suspend fun page(before: String?): FeedPage {
         val cursor = if (before == null) "" else "&before=$before"
         val result = sessions.authorizedRequest("GET", "/api/feed/listings?limit=$PAGE_SIZE$cursor")
         if (!result.isSuccess) {
@@ -41,7 +36,7 @@ class FeedApi(private val sessions: SessionManager) : FeedSource {
 }
 
 // Reads a `{ listings, nextCursor }` response. Throws JSONException if it is not one.
-fun parseFeedPage(body: String): FeedPage {
+private fun parseFeedPage(body: String): FeedPage {
     val json = JSONObject(body)
     val items = json.getJSONArray("listings")
     val listings = (0 until items.length()).map { index ->

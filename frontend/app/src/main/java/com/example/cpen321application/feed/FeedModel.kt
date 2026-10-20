@@ -25,7 +25,7 @@ data class FeedUiState(
 
 // Loads the feed one page at a time and keeps every page loaded so far.
 // Call it from the main thread: a load in progress blocks a second one.
-class FeedModel(private val source: FeedSource) {
+class FeedModel(private val api: FeedApi) {
     var state by mutableStateOf(FeedUiState())
         private set
 
@@ -35,7 +35,7 @@ class FeedModel(private val source: FeedSource) {
         if (current.isLoading || current.endReached) return
         state = current.copy(isLoading = true, loadFailed = false)
         state = try {
-            val page = source.page(current.nextCursor)
+            val page = api.page(current.nextCursor)
             state.copy(
                 listings = state.listings + page.listings,
                 nextCursor = page.nextCursor,
