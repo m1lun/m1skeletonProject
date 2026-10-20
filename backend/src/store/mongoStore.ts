@@ -9,7 +9,16 @@ import { OPTIONS_COLLECTION, type Option } from '../models/option';
 import { REQUESTS_COLLECTION, type BuyerRequest } from '../models/request';
 import { SESSIONS_COLLECTION, type RefreshSession } from '../models/session';
 import { customFieldSchema, listingSchema, optionSchema, requestSchema, sessionSchema } from '../models/schema';
-import type { CustomFieldCollection, OptionCollection, PostDoc, PostCollection, SessionRepo, Store } from './types';
+import {
+  EARTH_RADIUS_KM,
+  type CustomFieldCollection,
+  type OpenPostFilter,
+  type OptionCollection,
+  type PostDoc,
+  type PostCollection,
+  type SessionRepo,
+  type Store,
+} from './types';
 
 type Stored<T> = Omit<T, 'id'> & { _id: ObjectId };
 
@@ -26,6 +35,8 @@ class MongoPostCollection<T extends PostDoc & { category: string }> implements P
     private readonly collection: Collection<Document>,
     // Tidies a post (lower-case keys, trimmed text, no duplicate fields) before it is saved.
     private readonly normalise: (doc: Omit<T, 'id'>) => Omit<T, 'id'>,
+    // Listings and requests store their price in different places.
+    private readonly priceQuery: (range: Document) => Document,
   ) {}
 
   async insert(doc: Omit<T, 'id'>): Promise<T> {
@@ -50,12 +61,33 @@ class MongoPostCollection<T extends PostDoc & { category: string }> implements P
   }
 
   // Sorted by _id, which grows with insertion time and is unique, so pages never overlap.
-  async listOpen(excludeOwnerId: string, limit: number, before?: string): Promise<T[]> {
-    const filter: Document = { status: 'open', ownerId: { $ne: excludeOwnerId } };
-    if (before !== undefined) {
-      filter._id = { $lt: new ObjectId(before) };
+  async listOpen(excludeOwnerId: string, limit: number, filter: OpenPostFilter = {}): Promise<T[]> {
+    const query: Document = { status: 'open', ownerId: { $ne: excludeOwnerId } };
+    if (filter.before !== undefined) {
+      query._id = { $lt: new ObjectId(filter.before) };
     }
-    const found = await this.collection.find(filter).sort({ _id: -1 }).limit(limit).toArray();
+    if (filter.category !== undefined) {
+      query.category = filter.category;
+    }
+    if (filter.minPrice !== undefined || filter.maxPrice !== undefined) {
+      Object.assign(query, this.priceQuery({
+        ...(filter.minPrice === undefined ? {} : { $gte: filter.minPrice }),
+        ...(filter.maxPrice === undefined ? {} : { $lte: filter.maxPrice }),
+      }));
+    }
+    if (filter.near !== undefined) {
+      // $centerSphere rather than $near, so results keep the newest-first order.
+      const { lat, lng, radiusKm } = filter.near;
+      query.location = { $geoWithin: { $centerSphere: [[lng, lat], radiusKm / EARTH_RADIUS_KM] } };
+    }
+    const found = await this.collection.find(query).sort({ _id: -1 }).limit(limit).toArray();
+    const stored = found as Stored<T>[];
+    return stored.map((d) => toDoc<T>(d));
+  }
+
+  // Uses the { status, category } index.
+  async listOpenInCategory(category: string, excludeOwnerId: string): Promise<T[]> {
+    const found = await this.collection.find({ status: 'open', category, ownerId: { $ne: excludeOwnerId } }).toArray();
     const stored = found as Stored<T>[];
     return stored.map((d) => toDoc<T>(d));
   }
@@ -199,8 +231,12 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Sto
   const db = client.db(dbName);
   await setupCollections(db);
   return {
-    listings: new MongoPostCollection<Listing>(db.collection(LISTINGS_COLLECTION), normaliseListing),
-    requests: new MongoPostCollection<BuyerRequest>(db.collection(REQUESTS_COLLECTION), normaliseRequest),
+    listings: new MongoPostCollection<Listing>(db.collection(LISTINGS_COLLECTION), normaliseListing, (range) => ({
+      price: range,
+    })),
+    requests: new MongoPostCollection<BuyerRequest>(db.collection(REQUESTS_COLLECTION), normaliseRequest, (range) => ({
+      requestFields: { $elemMatch: { key: 'price', value: range } },
+    })),
     options: new MongoOptionCollection(db.collection(OPTIONS_COLLECTION)),
     customFields: new MongoCustomFieldCollection(db.collection(CUSTOM_FIELDS_COLLECTION)),
     sessions: new MongoSessionRepo(db.collection(SESSIONS_COLLECTION)),

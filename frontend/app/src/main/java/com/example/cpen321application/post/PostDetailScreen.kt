@@ -78,6 +78,11 @@ fun PostDetailScreen(post: PostSummary, mode: Mode, viewModel: PostViewModel, pa
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            if (post.status == "open") {
+                Button(onClick = { viewModel.showMatches(post) }, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                    Text("See matches")
+                }
+            }
             DetailActions(post, viewModel, onDelete = { confirmDelete = true })
         }
     }
