@@ -105,7 +105,7 @@ class PostApi(
         )
     }
 
-    private fun summarise(mode: Mode, post: JSONObject): PostSummary {
+    fun summarise(mode: Mode, post: JSONObject): PostSummary {
         val category = post.getString("category").titleCase()
         val detail = detailOf(mode, post)
         return if (mode == Mode.BUYING) {

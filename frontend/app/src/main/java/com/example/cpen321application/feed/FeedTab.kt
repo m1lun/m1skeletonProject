@@ -30,7 +30,12 @@ import com.example.cpen321application.R
 import com.example.cpen321application.post.Mode
 
 @Composable
-fun FeedTab(viewModel: FeedViewModel, onSignedOut: () -> Unit, innerPadding: PaddingValues) {
+fun FeedTab(
+    viewModel: FeedViewModel,
+    onSignedOut: () -> Unit,
+    innerPadding: PaddingValues,
+    onOpen: (FeedItem) -> Unit,
+) {
     val state = viewModel.state
     var editingFilter by remember { mutableStateOf(false) }
     LaunchedEffect(state.signedOut) {
@@ -61,6 +66,7 @@ fun FeedTab(viewModel: FeedViewModel, onSignedOut: () -> Unit, innerPadding: Pad
             state = state,
             onLoadMore = viewModel::loadMore,
             onRefresh = viewModel::refresh,
+            onOpen = onOpen,
             modifier = Modifier.weight(1f),
         )
     }

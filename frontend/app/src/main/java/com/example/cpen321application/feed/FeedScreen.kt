@@ -63,6 +63,7 @@ fun FeedScreen(
     state: FeedUiState,
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
+    onOpen: (FeedItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val nothingShown = state.items.isEmpty()
@@ -84,12 +85,17 @@ fun FeedScreen(
         nothingShown -> Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
-        else -> FeedList(state = state, onLoadMore = onLoadMore, modifier = modifier)
+        else -> FeedList(state = state, onLoadMore = onLoadMore, onOpen = onOpen, modifier = modifier)
     }
 }
 
 @Composable
-private fun FeedList(state: FeedUiState, onLoadMore: () -> Unit, modifier: Modifier = Modifier) {
+private fun FeedList(
+    state: FeedUiState,
+    onLoadMore: () -> Unit,
+    onOpen: (FeedItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val listState = rememberLazyListState()
     val nearEnd by remember {
         derivedStateOf {
@@ -109,7 +115,7 @@ private fun FeedList(state: FeedUiState, onLoadMore: () -> Unit, modifier: Modif
         modifier = modifier.fillMaxSize()
     ) {
         items(state.items, key = { it.id }) { item ->
-            FeedCard(item)
+            FeedCard(item, onClick = { onOpen(item) })
         }
         item {
             FeedFooter(state = state, onRetry = onLoadMore)
@@ -131,8 +137,9 @@ private fun FeedFooter(state: FeedUiState, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun FeedCard(item: FeedItem) {
+private fun FeedCard(item: FeedItem, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),

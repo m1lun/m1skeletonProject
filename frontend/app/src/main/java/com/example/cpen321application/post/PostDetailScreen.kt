@@ -52,8 +52,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/** readOnly shows another user's post (opened from the Feed) without the owner's actions. */
 @Composable
-fun PostDetailScreen(post: PostSummary, mode: Mode, viewModel: PostViewModel, padding: PaddingValues) {
+fun PostDetailScreen(
+    post: PostSummary,
+    mode: Mode,
+    viewModel: PostViewModel,
+    padding: PaddingValues,
+    readOnly: Boolean = false,
+    onBack: () -> Unit = { viewModel.selected = null },
+) {
     var confirmDelete by remember { mutableStateOf(false) }
 
     Column(
@@ -63,7 +71,7 @@ fun PostDetailScreen(post: PostSummary, mode: Mode, viewModel: PostViewModel, pa
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        DetailHeader(post, mode, onBack = { viewModel.selected = null })
+        DetailHeader(post, mode, onBack = onBack)
         PhotoPager(post.detail.photoIds)
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -78,15 +86,17 @@ fun PostDetailScreen(post: PostSummary, mode: Mode, viewModel: PostViewModel, pa
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (post.status == "open") {
-                Button(
-                    onClick = { viewModel.showRecommendations(post) },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                ) {
-                    Text("See recommendations")
+            if (!readOnly) {
+                if (post.status == "open") {
+                    Button(
+                        onClick = { viewModel.showRecommendations(post) },
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                    ) {
+                        Text("See recommendations")
+                    }
                 }
+                DetailActions(post, viewModel, onDelete = { confirmDelete = true })
             }
-            DetailActions(post, viewModel, onDelete = { confirmDelete = true })
         }
     }
 

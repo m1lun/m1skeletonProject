@@ -18,7 +18,9 @@ data class FeedItem(
     val condition: String?,
     val description: String,
     val photoId: String?,
-    val distanceKm: Double?
+    val distanceKm: Double?,
+    /** The post exactly as the backend returned it; used to open its detail screen. */
+    val raw: JSONObject
 )
 
 data class FeedPage(val items: List<FeedItem>, val nextCursor: String?)
@@ -124,7 +126,8 @@ private fun parseItem(post: JSONObject, distanceKm: Double?): FeedItem {
         condition = post.optString("condition").takeIf { it.isNotEmpty() },
         description = post.optString("description"),
         photoId = post.optJSONArray("photoIds")?.optString(0)?.takeIf { it.isNotEmpty() },
-        distanceKm = distanceKm
+        distanceKm = distanceKm,
+        raw = post
     )
 }
 
