@@ -145,8 +145,28 @@ describe('Unmocked: GET /api/feed', () => {
     expect(response.body).toEqual({ matches: [], nextCursor: null });
   });
 
-  // Input: GET with no postId, a malformed postId, limit=0, a malformed cursor, or an
-  //   unsupported parameter
+  // Input: GET ?postId=<my request for furniture up to $100, 10 km radius>&maxPrice=50
+  //   &lat=49.26&lng=-123.25&radiusKm=2; the store holds a $20 listing nearby, an $80
+  //   listing nearby and a $20 listing about 5.5 km north
+  // Expected status code: 200
+  // Expected behavior: database unchanged
+  // Expected output: { matches: [the $20 nearby listing], nextCursor: null }
+  test('Filters narrow the matches', async () => {
+    const mine = await requests.insert(newRequest(ME));
+    const cheapNearby = await listings.insert(newListing(OTHER, { price: 20 }));
+    await listings.insert(newListing(OTHER, { price: 80 }));
+    await listings.insert(newListing(OTHER, { price: 20, location: north(0.05) }));
+
+    const response = await getFeed(`?postId=${mine.id}&maxPrice=50&lat=49.26&lng=-123.25&radiusKm=2`);
+
+    expect(response.status).toBe(200);
+    const body = response.body as MatchBody;
+    expect(body.matches.map((match) => match.post.id)).toEqual([cheapNearby.id]);
+    expect(body.nextCursor).toBeNull();
+  });
+
+  // Input: GET with no postId, a malformed postId, limit=0, a malformed cursor, a bad
+  //   filter, or an unsupported parameter
   // Expected status code: 400
   // Expected behavior: database unchanged
   // Expected output: { error: "Invalid request", details: [a message naming the problem] }
@@ -155,7 +175,8 @@ describe('Unmocked: GET /api/feed', () => {
     ['?postId=not-an-id', 'postId must be the id of one of your requests or listings'],
     ['?postId=000000000000000000000001&limit=0', 'limit must be a whole number from 1 to 50'],
     ['?postId=000000000000000000000001&cursor=abc', 'cursor must be the nextCursor from a previous page'],
-    ['?postId=000000000000000000000001&maxPrice=50', 'unsupported parameter "maxPrice"'],
+    ['?postId=000000000000000000000001&minPrice=abc', 'minPrice must be a number from 0 up'],
+    ['?postId=000000000000000000000001&sort=price', 'unsupported parameter "sort"'],
   ])('Rejects bad query %p', async (query, detail) => {
     const response = await getFeed(query);
 

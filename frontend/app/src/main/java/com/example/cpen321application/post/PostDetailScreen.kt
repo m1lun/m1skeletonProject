@@ -79,8 +79,11 @@ fun PostDetailScreen(post: PostSummary, mode: Mode, viewModel: PostViewModel, pa
                 )
             }
             if (post.status == "open") {
-                Button(onClick = { viewModel.showMatches(post) }, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                    Text("See matches")
+                Button(
+                    onClick = { viewModel.showRecommendations(post) },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                ) {
+                    Text("See recommendations")
                 }
             }
             DetailActions(post, viewModel, onDelete = { confirmDelete = true })

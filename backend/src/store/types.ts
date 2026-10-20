@@ -13,9 +13,6 @@ export interface PostDoc {
   updatedAt: Date;
 }
 
-// MongoDB's sphere for distance queries, so code that measures distance agrees with it.
-export const EARTH_RADIUS_KM = 6378.1;
-
 // A post's price is a listing's price or a request's budget.
 export interface PostFilter {
   category?: string | undefined;

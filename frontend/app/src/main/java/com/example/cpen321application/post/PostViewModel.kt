@@ -89,33 +89,13 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** The post whose matches are on screen, or null when the matches screen is closed. */
-    var matchesFor by mutableStateOf<PostSummary?>(null)
-        private set
-    var matches by mutableStateOf<List<MatchItem>>(emptyList())
-        private set
-    var matchesLoading by mutableStateOf(false)
-        private set
+    /** Set by "See recommendations"; MainActivity hands it to the Feed tab and clears it. */
+    var recommendationsFor by mutableStateOf<PostSummary?>(null)
 
-    fun showMatches(post: PostSummary) {
-        matchesFor = post
-        matches = emptyList()
-        matchesLoading = true
-        viewModelScope.launch {
-            try {
-                val found = api.matches(mode, post.id)
-                // Ignore a late reply after the user has moved on to another post.
-                if (matchesFor == post) matches = found
-            } catch (e: ApiException) {
-                message = e.message
-            } finally {
-                matchesLoading = false
-            }
-        }
-    }
-
-    fun closeMatches() {
-        matchesFor = null
+    fun showRecommendations(post: PostSummary) {
+        recommendationsFor = post
+        selected = null
+        tab = AppTab.FEED
     }
 
     fun toggleStatus(post: PostSummary) {
