@@ -1,5 +1,6 @@
 import { MongoClient, ObjectId, type Collection, type Db, type Document } from 'mongodb';
 
+import { createGridFsPhotoStorage } from '../photos/storage';
 import { CUSTOM_FIELDS_COLLECTION, type CustomField } from '../models/customField';
 import { postIndexes } from '../models/common';
 import { normaliseListing, normaliseRequest } from '../models/normalise';
@@ -203,6 +204,7 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Sto
     options: new MongoOptionCollection(db.collection(OPTIONS_COLLECTION)),
     customFields: new MongoCustomFieldCollection(db.collection(CUSTOM_FIELDS_COLLECTION)),
     sessions: new MongoSessionRepo(db.collection(SESSIONS_COLLECTION)),
+    photos: createGridFsPhotoStorage(db),
     close: async () => {
       await client.close();
     },

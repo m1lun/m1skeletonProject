@@ -30,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -43,8 +42,6 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 import com.example.cpen321application.auth.AuthSession
 import com.example.cpen321application.auth.SessionManager
-import com.example.cpen321application.feed.FeedActivity
-import com.example.cpen321application.feed.FeedTags
 import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -124,17 +121,15 @@ fun LoginScreen(sessions: SessionManager, googleClientId: String, modifier: Modi
             onBack = { activity?.finish() },
             modifier = modifier
         )
-        else -> SignedInScreen(
-            userDisplayName = user.displayName,
-            userEmail = user.email,
-            onSignOut = {
-                scope.launch {
-                    sessions.signOut()
-                    activity?.finish()
-                }
-            },
-            modifier = modifier
-        )
+        else -> {
+            LaunchedEffect(user) {
+                context.startActivity(Intent(context, MainActivity::class.java))
+                activity?.finish()
+            }
+            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
     }
 }
 
@@ -305,56 +300,6 @@ private fun AddAccountPrompt(onAddAccount: () -> Unit) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(text = stringResource(R.string.btn_add_account))
-    }
-}
-
-@Composable
-private fun SignedInScreen(
-    userDisplayName: String,
-    userEmail: String,
-    onSignOut: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Signed in as $userDisplayName",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = userEmail,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp)
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // One button per feature page.
-        val context = LocalContext.current
-        OutlinedButton(
-            onClick = { context.startActivity(Intent(context, FeedActivity::class.java)) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag(FeedTags.OPEN)
-        ) {
-            Text(text = stringResource(R.string.btn_view_feed))
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        OutlinedButton(
-            onClick = onSignOut,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "Sign Out")
-        }
     }
 }
 

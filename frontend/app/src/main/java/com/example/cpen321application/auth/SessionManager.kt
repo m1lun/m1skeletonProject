@@ -57,14 +57,22 @@ class SessionManager(
     // has run out, or once on a 401. Throws SessionExpiredException when the
     // user has to sign in again, IOException when the backend is unreachable.
     suspend fun authorizedRequest(method: String, path: String, body: JSONObject? = null): HttpResult {
-        val known = current ?: throw SessionExpiredException("Not signed in")
-        val session = if (known.isExpired()) refresh(known) else known
+        val session = freshSession()
         val result = withContext(Dispatchers.IO) { http.send(method, path, body, session.sessionToken) }
         if (result.code != HttpURLConnection.HTTP_UNAUTHORIZED) {
             return result
         }
         val renewed = refresh(session)
         return withContext(Dispatchers.IO) { http.send(method, path, body, renewed.sessionToken) }
+    }
+
+    // The current session token, renewed first if it has run out. Throws
+    // SessionExpiredException when the user has to sign in again.
+    suspend fun sessionToken(): String = freshSession().sessionToken
+
+    private suspend fun freshSession(): AuthSession {
+        val known = current ?: throw SessionExpiredException("Not signed in")
+        return if (known.isExpired()) refresh(known) else known
     }
 
     // Forgets the session here and revokes it on the backend. Signing out
