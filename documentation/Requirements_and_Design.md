@@ -119,7 +119,7 @@ flowchart LR
 
 **Main success scenario**:
 1. The user opens My Posts and chooses "I'm buying" (requests) or "I'm selling" (listings).
-2. The app shows the user's open and closed posts of that kind, or "Nothing here yet. Tap the button below to create your first one." if there are none.
+2. The app shows the user's open and closed posts of that kind.
 3. The user taps "New request" or "New listing".
 4. The app shows the post form.
 5. The user enters a category and picks an address from the suggestions.
@@ -131,8 +131,8 @@ flowchart LR
 9. The app shows the updated post, or removes the deleted post from the list.
 
 **Failure scenario(s)**:
-- 2a. The posts cannot be loaded.
-    - 2a1. The app shows an error message.
+- 2a. The network or server is unavailable when the posts are loaded.
+    - 2a1. The app shows "Could not reach the server. Check your connection."
 - 5a. A required field is missing or invalid.
     - 5a1. The app shows an error message, such as "Choose a category", "Max price is required", "Enter a price", "Add at least one photo", or for a price below 0 "max price must be at least 0" (request) or "price must be a number of at least 0" (listing). Nothing is saved.
 - 5b. The address was typed but not picked from the suggestions.
@@ -146,7 +146,7 @@ flowchart LR
 - 8a. The network or server is unavailable when a post is saved, closed, reopened or deleted.
     - 8a1. The app shows "Could not reach the server. Check your connection." and the post is unchanged.
 - 8b. An edit makes a field invalid.
-    - 8b1. The app shows an error message and the post is unchanged.
+    - 8b1. The app shows an error message, such as "Choose a category", and the post is unchanged.
 
 <a name="uc2"></a>
 
@@ -158,11 +158,11 @@ flowchart LR
 
 **Main success scenario**:
 1. Another user expresses interest in the user's listing, or sends an offer on the user's request.
-2. The proposal appears on the user's open screen within seconds; if the app is closed, a push notification is shown.
+2. The proposal appears on the user's open screen within 2 seconds; if the app is closed, a push notification is shown.
 3. The user opens the proposal and sees the post and the other user.
 4. The user taps "Accept" or "Decline".
 5. On accept, the system creates a transaction, reserves the listing, and declines the other pending proposals on it.
-6. The other user's screen shows "Accepted" or "Declined" within seconds, without refreshing.
+6. The other user's screen shows "Accepted" or "Declined" within 2 seconds, without refreshing.
 
 **Failure scenario(s)**:
 - 3a. The other user withdrew the proposal.
@@ -204,8 +204,8 @@ flowchart LR
     - 5b1. The app shows "No route available" for that item.
 - 6a. The network or server is unavailable.
     - 6a1. The app shows "Couldn't load the feed. Check your connection and try again." and a "Retry" button.
-- 7a. *(Planned)* A preference value is out of range.
-    - 7a1. The app highlights the field and shows an error message, and nothing is saved.
+- 7a. *(Planned)* The network or server is unavailable when the preferences are saved.
+    - 7a1. The app shows "Could not reach the server. Check your connection." and the preferences are unchanged.
 
 <a name="uc4"></a>
 
@@ -219,7 +219,7 @@ flowchart LR
 1. From a proposal, the user opens the conversation with the other user.
 2. The app shows the earlier messages.
 3. The user types a message and taps "Send".
-4. The system saves the message and delivers it to the other user, where it appears on their open screen within seconds, or as a push notification if the app is closed.
+4. The system saves the message and delivers it to the other user, where it appears on their open screen within 2 seconds, or as a push notification if the app is closed.
 5. The other user's reply appears on the user's screen without refreshing.
 
 **Failure scenario(s)**:
@@ -270,21 +270,15 @@ flowchart LR
 
 <a name="nfr1"></a>
 
-1. **Performance: Recommendation latency**
-    - **Description**: With 1,000 open candidate posts in the same category, `GET /api/feed?postId=<id>` returns the first page of 20 ranked matches within 1 second for 95% of requests, not counting the travel-time lookup.
-    - **Justification**: Recommendations are the core of the app, so they must feel instant. 1 second is the limit for a user's flow of thought to stay uninterrupted ([Nielsen Norman Group, "Response Times: The 3 Important Limits"](https://www.nngroup.com/articles/response-times-3-important-limits/)), and 1,000 open posts in one category is several times more than we expect from a student community.
+1. **Performance: Feed ranking latency**
+    - **Description**: The feed returns the first page of ranked matches for a post within ____ seconds for 95% of requests, with ____ candidate posts. The workload, target and measurement environment are still to be agreed (see Section 4.7).
+    - **Justification**: Recommendations are the core of the app, so the feed must load quickly.
 
 <a name="nfr2"></a>
 
-2. **Reliability: Routing service failure**
-    - **Description**: When the external routing service fails or does not answer within 2 seconds, `GET /api/feed?postId=<id>` still returns the ranked matches within 3 seconds, with travel time left out (`travelMinutes: null`).
-    - **Justification**: OpenRouteService's free tier has a daily request limit and no uptime guarantee, so outages and rate limits are expected; matching and ranking must keep working without it. 3 seconds is the 2-second timeout plus a margin for ranking.
-
-<a name="nfr3"></a>
-
-3. **Security: Authentication and ownership**
-    - **Description**: Every request, listing, feed, option and custom-field route, and photo uploads, return 401 without a valid session token. Reading, editing, closing or deleting another user's post returns 403 and leaves the post unchanged.
-    - **Justification**: Posts hold users' addresses and are tied to their account, so only signed-in users may use the app and only a post's owner may see its private details or change it.
+2. **Reliability: Graceful degradation without the routing service**
+    - **Description**: If the external routing service fails, times out or is rate-limited, the feed still returns the ranked matches within 3 seconds, without travel times, and shows that travel time is unavailable.
+    - **Justification**: Prevents third-party service failures from disrupting core functionality.
 
 ---
 
@@ -295,8 +289,7 @@ flowchart LR
 1. **Posts**
     - **Purpose**: Owns buyer requests and seller listings, including their photos, validation, and ownership.
     - **Rationale**: Both post types share most fields and lifecycle, so one component avoids duplicate logic; alternative of separate Requests and Listings components was rejected because every matching and feed operation needs both.
-    - **Lifecycle and ownership**: Newly created posts have status open. Only the authenticated owner may edit an open post or close it. Closing changes the stored status to closed and preserves the post for the owner's history; closed posts are read-only and excluded from active candidate retrieval. Reopening and permanent deletion are outside this version.
-    - **Interface decision pending (PD2)**: The current draft uses DELETE routes for closing. The backend and frontend owners must confirm whether to retain that logical-close contract or use PATCH with status=closed. Do not change the HTTP verb in one section without updating the corresponding interface definitions, callers, and sequence diagrams. Keep the existing MongoDB/GridFS choices, component rationale, and other interfaces. This amendment does not finalize the full API contract.
+    - **Lifecycle and ownership**: Newly created posts have status open. Only the authenticated owner may edit, close, reopen or delete a post. Closing changes the stored status to closed and keeps the post in the owner's My Posts; closed posts can still be edited and are excluded from feeds and recommendations. Reopening sets the status back to open, and deleting removes the post permanently.
     - **Interfaces**: All routes use the `/api` prefix. Post operations require an authenticated session.
         1. `POST /api/requests` and `POST /api/listings`
             - **Purpose**: Create a post from JSON containing its fields, coordinates and photo IDs. Photos are uploaded separately before creating the post. Returns the created post with status 201.
@@ -305,7 +298,7 @@ flowchart LR
         3. `GET /api/requests/:id` and `GET /api/listings/:id`
             - **Purpose**: Retrieve an owned post. Returns 403 for another user's post or 404 if the post does not exist.
         4. `PATCH /api/requests/:id` and `PATCH /api/listings/:id`
-            - **Purpose**: Update an owned post's fields or status. Setting `status=closed` closes it; `status=open` reopens it. The current implementation also permits editing closed posts; the intended restriction remains under PD2.
+            - **Purpose**: Update an owned post's fields or status. Setting `status=closed` closes it; `status=open` reopens it. Closed posts can also be edited.
         5. `DELETE /api/requests/:id` and `DELETE /api/listings/:id`
             - **Purpose**: Permanently delete an owned post. Returns status 204.
         6. `POST /api/photos`
@@ -500,10 +493,14 @@ sequenceDiagram
     FE->>P: GET /api/requests and /api/listings
     P->>DB: find posts by owner
     P-->>FE: posts
-    U->>FE: Edit or close a post
-    FE->>P: PATCH or DELETE /api/requests/:id
-    P->>DB: update permitted fields or set status to closed
+    U->>FE: Edit, close or reopen a post
+    FE->>P: PATCH /api/requests/:id
+    P->>DB: update the fields or set status to closed or open
     P-->>FE: 200 updated post
+    U->>FE: Delete a post
+    FE->>P: DELETE /api/requests/:id
+    P->>DB: remove the post
+    P-->>FE: 204
 ```
 
 5. [**Set Preferences**](#uc5)
