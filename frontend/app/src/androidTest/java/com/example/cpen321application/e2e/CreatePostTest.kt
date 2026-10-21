@@ -1,7 +1,10 @@
 package com.example.cpen321application.e2e
 
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import com.example.cpen321application.support.PostForm
 import com.example.cpen321application.support.TestPhotos
 import com.example.cpen321application.support.click
@@ -13,9 +16,11 @@ import com.example.cpen321application.support.openForm
 import com.example.cpen321application.support.pickPhotoWithId
 import com.example.cpen321application.support.pickPhotos
 import com.example.cpen321application.support.postCards
+import com.example.cpen321application.support.scrolled
 import com.example.cpen321application.support.setAirplaneMode
 import com.example.cpen321application.support.testPosts
 import com.example.cpen321application.support.type
+import com.example.cpen321application.support.valueField
 import com.example.cpen321application.support.waitForText
 import org.junit.After
 import org.junit.Assert.assertTrue
@@ -65,6 +70,44 @@ class CreatePostTest(private val form: PostForm) {
 
         rule.waitForText(form.listHeader, substring = true)
         assertTrue(rule.postCards().size == 1)
+    }
+
+    @Test
+    fun createsPostWithOptionalFields() {
+        val request = form == PostForm.REQUEST
+        rule.openForm(form)
+        rule.fillForm(form)
+        rule.type("Description", "Oak, barely used")
+        if (request) {
+            rule.click("Fair")
+            rule.valueField(1).performTextInput("5")
+            rule.onAllNodesWithText("Hard")[3].scrolled().performClick()
+        } else {
+            rule.click("Like New")
+        }
+        rule.type("W", "120")
+        rule.type("H", "75")
+        rule.type("D", "60")
+        rule.valueField(if (request) 2 else 0).performTextInput("ikea")
+        rule.valueField(if (request) 3 else 1).performTextInput("brown")
+        rule.click("+ Add field")
+        rule.type("Name", "Material")
+        rule.click("Add")
+        rule.valueField(if (request) 4 else 2).performTextInput("oak")
+        rule.click(form.createButton)
+
+        rule.waitForText(form.listHeader, substring = true)
+        val post = testPosts().single().second.raw
+        val fields = post.getJSONArray(if (request) "requestFields" else "listingFields")
+        val saved = (0 until fields.length()).associate { fields.getJSONObject(it).let { f -> f.getString("key") to f } }
+        assertTrue(post.getString("description") == "Oak, barely used")
+        assertTrue(saved.keys.containsAll(listOf("dimensions", "brand", "colour", "material")))
+        if (request) {
+            assertTrue(saved.getValue("condition").getString("value") == "fair")
+            assertTrue(saved.getValue("radiuskm").getBoolean("hard"))
+        } else {
+            assertTrue(post.getString("condition") == "like new")
+        }
     }
 
     @Test
