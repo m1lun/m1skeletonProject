@@ -55,19 +55,19 @@ Shared test steps are in `support/PostRobot.kt`, and the differences between the
     | ------------------ | ------------------- |
     | 1. The buyer opens the create-request screen. | Tap "My Posts", then "I'm buying".<br>Tap "New request". |
     | 2. The app shows the request form. | Check that the "Category \*" field is present on screen. |
-    | 3. The buyer enters the hard requirements, soft preferences and a typed address, and optionally adds reference photos. | Input "e2e chair" in "Category \*".<br>Input "6335 Thunderbird Crescent, Vancouver" in "Address \*", tap the first suggestion, and check that "✓ Address confirmed" is shown.<br>Input "150" as the maximum price. |
-    | 4. The buyer submits the form. | Tap "Create request". |
-    | 5. The app confirms the request was saved and shows it in "My posts". | Check that the "My requests (" header is shown.<br>Check that exactly one request with the category "e2e chair" is listed.<br>(`createsPostAndShowsItInMyPosts`; `createsPostWithSeveralPhotos` repeats steps 1-5 with three reference photos; `photoIsRequiredOnlyOnListings` repeats them with no photo, since photos are optional for requests.) |
-    | 3a. A required field is missing or invalid. | **Missing category** (`rejectsMissingCategory`): open the form and tap "Create request" without filling it.<br>**Missing maximum price** (`rejectsMissingPrice`): fill everything except the maximum price and submit.<br>**Negative maximum price** (`rejectsNegativePrice`): fill the form with the maximum price "-5" and submit. |
-    | 3a1. The app shows an error message. | **Missing category:** check that "Choose a category" is shown and the "Create request" button is still on screen.<br>**Missing maximum price:** check that "Max price is required" is shown and the back-end has no test posts.<br>**Negative maximum price:** check that an error containing "at least 0" is shown and the back-end has no test posts. |
-    | 3b. A photo is too large. | (`rejectsPhotoOverFiveMegabytes`) Add an oversized JPEG to the gallery. Fill the form, select that photo in the photo picker, and submit. |
+    | 3. The buyer enters the hard requirements (category, maximum price, minimum condition, maximum dimensions, search radius), the soft preferences (preferred brand and colour), and a typed address, and optionally adds reference photos. Only category and maximum price are required; the radius defaults to the value in the buyer's preferences. | Input "e2e chair" in "Category \*".<br>Input "6335 Thunderbird Crescent, Vancouver" in "Address \*", tap the first suggestion, and check that "✓ Address confirmed" is shown.<br>Input "150" as the maximum price. |
+    | 3a. A required field is missing or invalid (for example negative price, unknown category). | **Missing category** (`rejectsMissingCategory`): open the form and tap "Create request" without filling it.<br>**Missing maximum price** (`rejectsMissingPrice`): fill everything except the maximum price and submit.<br>**Negative maximum price** (`rejectsNegativePrice`): fill the form with the maximum price "-5" and submit. |
+    | 3a1. The app highlights the field and shows an error message. | **Missing category:** check that "Choose a category" is shown and the "Create request" button is still on screen.<br>**Missing maximum price:** check that "Max price is required" is shown and the back-end has no test posts.<br>**Negative maximum price:** check that an error containing "at least 0" is shown and the back-end has no test posts. |
+    | 3b. A photo is larger than 10 MB or is not an image. | (`rejectsPhotoOverFiveMegabytes`) Replace the test photos in the gallery with a single JPEG larger than 5 MB. Fill the form without photos, select that photo in the photo picker, and submit. |
     | 3b1. The app rejects the photo and shows an error message. | Check that "Each photo must be at most 5 MB" is shown and the back-end has no test posts. |
     | 3c. The buyer adds more than 10 photos. | (`limitsPhotosToTen`) Open the form, select 6 photos in the photo picker, then try to select 6 more. |
-    | 3c1. The app rejects the extra photos. | Check that "Photos 10/10" is shown and the "+ Add" button is disabled. |
+    | 3c1. The app rejects the extra photos and shows an error message. | Check that "Photos 10/10" is shown and the "+ Add" button is disabled. |
+    | 4. The buyer submits the form. | Tap "Create request". |
     | 4a. The typed address cannot be located. | (`rejectsAddressThatWasNotPicked`) Fill the form without picking an address, input "zzzzqqqqxxxx nowhere" in "Address \*", and submit. |
-    | 4a1. The app asks the buyer to correct the address. | Check that "Choose your address from the suggestions list" is shown and the back-end has no test posts. |
+    | 4a1. The app shows "Address not found" and asks the buyer to correct it. | Check that "Choose your address from the suggestions list" is shown and the back-end has no test posts. |
     | 4b. The network or server is unavailable. | (`showsErrorWhenServerIsUnreachable`) Fill the form, turn on airplane mode, and tap "Create request". |
-    | 4b1. The app shows an error message; no request is created. | Check that "Could not reach the server" is shown.<br>Turn off airplane mode and check that the form, with its "Create request" button, is still on screen. |
+    | 4b1. The app shows an error message asking the buyer to try again later; no request is created. | Check that "Could not reach the server" is shown.<br>Turn off airplane mode and check that the form, with its "Create request" button, is still on screen. |
+    | 5. The app confirms the request was saved and shows it in "My posts". | Check that the "My requests (" header is shown.<br>Check that exactly one request with the category "e2e chair" is listed.<br>(`createsPostAndShowsItInMyPosts`; `createsPostWithSeveralPhotos` repeats steps 1-5 with three reference photos; `photoIsRequiredOnlyOnListings` repeats them with no photo, since photos are optional for requests.) |
 
   - **Test Logs:**
     ```
@@ -97,19 +97,19 @@ Shared test steps are in `support/PostRobot.kt`, and the differences between the
     | ------------------ | ------------------- |
     | 1. The seller opens the create-listing screen. | Tap "My Posts", then "I'm selling".<br>Tap "New listing". |
     | 2. The app shows the listing form. | Check that the "Category \*" field is present on screen. |
-    | 3. The seller enters the category, price, condition, brand, dimensions, colour and a typed address, and adds photos. | Input "e2e chair" in "Category \*".<br>Input "6335 Thunderbird Crescent, Vancouver" in "Address \*", tap the first suggestion, and check that "✓ Address confirmed" is shown.<br>Input "150" in "Price \*".<br>Tap "+ Add", select one photo in the system photo picker, tap "Done", and check that "Photos 1/10" is shown. |
-    | 4. The seller submits the form. | Tap "Create listing". |
-    | 5. The app confirms the listing was saved and shows it in "My posts". | Check that the "My listings (" header is shown.<br>Check that exactly one listing with the category "e2e chair" is listed.<br>(`createsPostAndShowsItInMyPosts`; `createsPostWithSeveralPhotos` repeats steps 1-5 with three photos.) |
-    | 3a. A required field is missing or invalid. | **Missing category** (`rejectsMissingCategory`): open the form and tap "Create listing" without filling it.<br>**Missing price** (`rejectsMissingPrice`): fill everything except the price and submit.<br>**Negative price** (`rejectsNegativePrice`): fill the form with the price "-5" and submit.<br>**Missing photo** (`photoIsRequiredOnlyOnListings`): fill everything except the photo and submit. |
-    | 3a1. The app shows an error message. | **Missing category:** check that "Choose a category" is shown and the "Create listing" button is still on screen.<br>**Missing price:** check that "Enter a price" is shown and the back-end has no test posts.<br>**Negative price:** check that an error containing "price must be" is shown and the back-end has no test posts.<br>**Missing photo:** check that "Add at least one photo" is shown and the back-end has no test posts. |
-    | 3b. A photo is too large. | (`rejectsPhotoOverFiveMegabytes`) Add an oversized JPEG to the gallery. Fill the form without photos, select that photo in the photo picker, and submit. |
+    | 3. The seller enters the category, price, condition, brand, dimensions, colour, and a typed address, and adds photos. | Input "e2e chair" in "Category \*".<br>Input "6335 Thunderbird Crescent, Vancouver" in "Address \*", tap the first suggestion, and check that "✓ Address confirmed" is shown.<br>Input "150" in "Price \*".<br>Tap "+ Add", select one photo in the system photo picker, tap "Done", and check that "Photos 1/10" is shown. |
+    | 3a. A required field is missing or invalid (for example negative price, unknown category). | **Missing category** (`rejectsMissingCategory`): open the form and tap "Create listing" without filling it.<br>**Missing price** (`rejectsMissingPrice`): fill everything except the price and submit.<br>**Negative price** (`rejectsNegativePrice`): fill the form with the price "-5" and submit.<br>**Missing photo** (`photoIsRequiredOnlyOnListings`): fill everything except the photo and submit. |
+    | 3a1. The app highlights the field and shows an error message. | **Missing category:** check that "Choose a category" is shown and the "Create listing" button is still on screen.<br>**Missing price:** check that "Enter a price" is shown and the back-end has no test posts.<br>**Negative price:** check that an error containing "price must be" is shown and the back-end has no test posts.<br>**Missing photo:** check that "Add at least one photo" is shown and the back-end has no test posts. |
+    | 3b. A photo is larger than 10 MB or is not an image. | (`rejectsPhotoOverFiveMegabytes`) Replace the test photos in the gallery with a single JPEG larger than 5 MB. Fill the form without photos, select that photo in the photo picker, and submit. |
     | 3b1. The app rejects the photo and shows an error message. | Check that "Each photo must be at most 5 MB" is shown and the back-end has no test posts. |
     | 3c. The seller adds more than 10 photos. | (`limitsPhotosToTen`) Open the form, select 6 photos in the photo picker, then try to select 6 more. |
-    | 3c1. The app rejects the extra photos. | Check that "Photos 10/10" is shown and the "+ Add" button is disabled. |
+    | 3c1. The app rejects the extra photos and shows an error message. | Check that "Photos 10/10" is shown and the "+ Add" button is disabled. |
+    | 4. The seller submits the form. | Tap "Create listing". |
     | 4a. The typed address cannot be located. | (`rejectsAddressThatWasNotPicked`) Fill the form without picking an address, input "zzzzqqqqxxxx nowhere" in "Address \*", and submit. |
-    | 4a1. The app asks the seller to correct the address. | Check that "Choose your address from the suggestions list" is shown and the back-end has no test posts. |
+    | 4a1. The app shows "Address not found" and asks the seller to correct it. | Check that "Choose your address from the suggestions list" is shown and the back-end has no test posts. |
     | 4b. The network or server is unavailable. | (`showsErrorWhenServerIsUnreachable`) Fill the form, turn on airplane mode, and tap "Create listing". |
-    | 4b1. The app shows an error message; no listing is created. | Check that "Could not reach the server" is shown.<br>Turn off airplane mode and check that the form, with its "Create listing" button, is still on screen. |
+    | 4b1. The app shows an error message asking the seller to try again later; no listing is created. | Check that "Could not reach the server" is shown.<br>Turn off airplane mode and check that the form, with its "Create listing" button, is still on screen. |
+    | 5. The app confirms the listing was saved and shows it in "My posts". | Check that the "My listings (" header is shown.<br>Check that exactly one listing with the category "e2e chair" is listed.<br>(`createsPostAndShowsItInMyPosts`; `createsPostWithSeveralPhotos` repeats steps 1-5 with three photos.) |
 
   - **Test Logs:**
     ```
@@ -138,13 +138,15 @@ Shared test steps are in `support/PostRobot.kt`, and the differences between the
     | **Scenario Steps** | **Test Case Steps** |
     | ------------------ | ------------------- |
     | 1. The user opens "My posts". | Create a request with the category "e2e chair" through the UI (Use Case 1, steps 1-5). The app ends on "My posts". |
-    | 2. The app shows the user's requests and listings. | Check that the "My requests (" header is shown with the new request. |
+    | 2. The app shows the user's open and closed requests and listings. | Check that the "My requests (" header is shown with the new request. |
+    | 2a. The user has no posts. | Not covered by an automated test yet. |
+    | 2a1. The app shows an empty state with a button to create a post. | Not covered by an automated test yet. |
     | 3. The user selects a post and edits its fields, or taps "Close". | **Edit** (`editsPost`): tap "More options" on the post, tap "Edit", check that "Edit request" is shown, replace the maximum price with "175", and tap "Save changes".<br>**Close** (`closesAndReopensPost`): tap "More options" on the post and tap "Close".<br>**Delete** (`deletesPost`): tap "More options" on the post, tap "Delete", and confirm "Delete". |
-    | 4. The app confirms the change and shows the updated post. | **Edit:** check that "My requests (" is shown, tap the post, and check that "175" is shown.<br>**Close:** check that the post shows "Closed". Tap "More options", tap "Reopen", and check that it shows "Open".<br>**Delete:** check that no "e2e chair" post is listed. |
     | 3a. An edited field is invalid. | (`rejectsInvalidEditAndKeepsPost`) Tap "More options" on the post, tap "Edit", clear "Category \*", and tap "Save changes". |
-    | 3a1. The app shows an error message; the post is unchanged. | Check that "Choose a category" is shown.<br>Tap "Back" and check that "My requests (" still lists exactly one "e2e chair" post. |
+    | 3a1. The app highlights the field and shows an error message; the post is unchanged. | Check that "Choose a category" is shown.<br>Tap "Back" and check that "My requests (" still lists exactly one "e2e chair" post. |
+    | 4. The app confirms the change and shows the updated post. | **Edit:** check that "My requests (" is shown, tap the post, and check that "175" is shown.<br>**Close:** check that the post shows "Closed". Tap "More options", tap "Reopen", and check that it shows "Open".<br>**Delete:** check that no "e2e chair" post is listed. |
     | 4a. The network or server is unavailable. | (`keepsPostWhenServerIsUnreachable`) Turn on airplane mode, tap "More options" on the post, and tap "Close". |
-    | 4a1. The app shows an error message; the post is unchanged. | Check that "Could not reach the server" is shown.<br>Turn off airplane mode and check that the post still shows "Open". |
+    | 4a1. The app shows an error message asking the user to try again later; the post is unchanged. | Check that "Could not reach the server" is shown.<br>Turn off airplane mode and check that the post still shows "Open". |
 
   - **Test Logs:**
     ```
