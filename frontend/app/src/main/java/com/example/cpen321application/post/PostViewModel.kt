@@ -1,6 +1,7 @@
 package com.example.cpen321application.post
 
 import android.app.Application
+import androidx.annotation.StringRes
 import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -9,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cpen321application.BuildConfig
+import com.example.cpen321application.R
 import com.example.cpen321application.auth.SessionManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -23,6 +25,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
     private val api = PostApi(
         BuildConfig.API_BASE_URL.trimEnd('/') + "/api",
         SessionRequestAuth(SessionManager.get(app)),
+        app.resources,
     )
     private val addressSearch = AddressSearch(app)
 
@@ -118,7 +121,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
 
     fun toggleStatus(post: PostSummary) {
         launchCatching {
-            val next = if (post.status == "open") "closed" else "open"
+            val next = if (post.status == STATUS_OPEN) STATUS_CLOSED else STATUS_OPEN
             api.setStatus(mode, post.id, next)
             selected = selected?.takeIf { it.id == post.id }?.copy(status = next)
             refresh()
@@ -146,7 +149,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         pickedAddress = null
         pickedLocation = null
         rows.clear()
-        rows.addAll(defaultRows(mode))
+        rows.addAll(defaultRows(mode, getApplication<Application>().resources))
         editingId = post?.id
         if (post != null) prefill(post.raw)
         editing = true
@@ -182,8 +185,8 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
                 importance = o.optInt("importance", DEFAULT_IMPORTANCE),
             )
             row = when (type) {
-                "bool" -> row.copy(boolValue = o.getBoolean("value"))
-                "dimensions" -> {
+                TYPE_BOOL -> row.copy(boolValue = o.getBoolean("value"))
+                TYPE_DIMENSIONS -> {
                     val d = o.getJSONObject("value")
                     row.copy(
                         width = d.get("width").asPlainNumber(),
@@ -227,19 +230,19 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
 
     fun addCustomRow(label: String, type: String): String? {
         val trimmed = label.trim()
-        if (trimmed.isEmpty()) return "Enter a field name"
+        if (trimmed.isEmpty()) return text(R.string.error_field_name)
         if (rows.count { it.isCustom } >= MAX_CUSTOM_FIELDS) {
-            return "At most $MAX_CUSTOM_FIELDS custom fields"
+            return text(R.string.error_too_many_fields, MAX_CUSTOM_FIELDS.toString())
         }
         val key = trimmed.lowercase().replace(Regex("\\s+"), " ")
-        if (rows.any { it.key == key }) return "That field is already on this post"
-        rows.add(RowState(key, trimmed, "custom", type, hard = false))
+        if (rows.any { it.key == key }) return text(R.string.error_duplicate_field)
+        rows.add(RowState(key, trimmed, KIND_CUSTOM, type, hard = false))
         return null
     }
 
     fun addPhotos(uris: List<Uri>) {
         val room = MAX_PHOTOS - photos.size - existingPhotoIds.size
-        if (uris.size > room) message = "At most $MAX_PHOTOS photos"
+        if (uris.size > room) message = text(R.string.error_too_many_photos, MAX_PHOTOS.toString())
         photos.addAll(uris.take(room))
     }
 
@@ -274,14 +277,15 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun buildBody(): JSONObject {
         val seller = mode == Mode.SELLING
-        if (category.isBlank()) throw ApiException("Choose a category")
+        val resources = getApplication<Application>().resources
+        if (category.isBlank()) throw ApiException(text(R.string.error_choose_category))
         val location = pickedLocation
         if (location == null || !addressConfirmed) {
             showAddressError = true
-            throw ApiException("Choose your address from the suggestions list")
+            throw ApiException(text(R.string.editor_address_error))
         }
         if (seller && photos.isEmpty() && existingPhotoIds.isEmpty()) {
-            throw ApiException("Add at least one photo")
+            throw ApiException(text(R.string.error_photo_required))
         }
 
         val body = JSONObject()
@@ -292,20 +296,24 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
 
         if (seller) {
             val parsedPrice = price.trim().toDoubleOrNull()
-                ?: throw ApiException("Enter a price")
+                ?: throw ApiException(text(R.string.error_price_required))
             body.put("price", parsedPrice).put("condition", condition)
         }
 
         val rowsJson = JSONArray()
         for (row in rows) {
-            if (row.required && row.isEmpty) throw ApiException("${row.label} is required")
+            if (row.required && row.isEmpty) throw ApiException(text(R.string.error_field_required, row.label))
             if (row.isEmpty) continue
-            rowsJson.put(rowToJson(row, seller))
+            rowsJson.put(rowToJson(row, seller, resources))
         }
         body.put(if (seller) "listingFields" else "requestFields", rowsJson)
 
         val resolver = getApplication<Application>().contentResolver
-        val uploaded = if (photos.isNotEmpty()) api.uploadPhotos(readPhotos(resolver, photos)) else emptyList()
+        val uploaded = if (photos.isNotEmpty()) {
+            api.uploadPhotos(readPhotos(resolver, photos, resources))
+        } else {
+            emptyList()
+        }
         body.put("photoIds", JSONArray(existingPhotoIds + uploaded))
         return body
     }
@@ -320,6 +328,10 @@ private fun PostViewModel.launchCatching(block: suspend () -> Unit) {
         }
     }
 }
+
+// A message from the string resources, for text the view model shows.
+private fun PostViewModel.text(@StringRes id: Int, vararg args: Any?): String =
+    getApplication<Application>().getString(id, *args)
 
 private fun locationJson(longitude: Double, latitude: Double) =
     JSONObject().put("longitude", longitude).put("latitude", latitude)

@@ -302,12 +302,12 @@ private fun RowEditor(
 @Composable
 private fun RowValueInput(row: RowState, viewModel: PostViewModel, onChange: (RowState) -> Unit) {
     when {
-        row.type == "bool" -> Switch(
+        row.type == TYPE_BOOL -> Switch(
             checked = row.boolValue,
             onCheckedChange = { onChange(row.copy(boolValue = it)) },
         )
-        row.type == "dimensions" -> DimensionInputs(row, onChange)
-        row.key == "condition" && row.kind == "builtin" ->
+        row.type == TYPE_DIMENSIONS -> DimensionInputs(row, onChange)
+        row.key == "condition" && row.kind == KIND_BUILTIN ->
             ConditionChoices(
                 selected = row.value,
                 onSelect = { onChange(row.copy(value = if (row.value == it) "" else it)) },
@@ -318,7 +318,7 @@ private fun RowValueInput(row: RowState, viewModel: PostViewModel, onChange: (Ro
             onValueChange = { onChange(row.copy(value = it)) },
             label = { Text(stringResource(R.string.editor_value)) },
             keyboardOptions = KeyboardOptions(
-                keyboardType = if (row.type == "number") KeyboardType.Decimal else KeyboardType.Text,
+                keyboardType = if (row.type == TYPE_NUMBER) KeyboardType.Decimal else KeyboardType.Text,
             ),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
@@ -444,7 +444,7 @@ private fun AddFieldDialog(
     onDismiss: () -> Unit,
 ) {
     var label by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("text") }
+    var type by remember { mutableStateOf(TYPE_TEXT) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.editor_add_field_title)) },
@@ -472,9 +472,9 @@ private fun AddFieldDialog(
                 Text(stringResource(R.string.editor_field_type), style = MaterialTheme.typography.labelLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     listOf(
-                        "text" to R.string.editor_type_text,
-                        "number" to R.string.editor_type_number,
-                        "bool" to R.string.editor_type_bool,
+                        TYPE_TEXT to R.string.editor_type_text,
+                        TYPE_NUMBER to R.string.editor_type_number,
+                        TYPE_BOOL to R.string.editor_type_bool,
                     ).forEach { (t, name) ->
                         FilterChip(
                             selected = type == t,

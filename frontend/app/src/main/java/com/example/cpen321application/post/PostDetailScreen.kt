@@ -88,7 +88,7 @@ fun PostDetailScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (!readOnly && post.status == "open") {
+            if (!readOnly && post.status == STATUS_OPEN) {
                 Button(
                     onClick = { viewModel.showRecommendations(post) },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -101,7 +101,8 @@ fun PostDetailScreen(
     }
 
     if (confirmDelete) {
-        DeleteDialog(
+        DeletePostDialog(
+            stringResource(R.string.posts_delete_message),
             onConfirm = {
                 confirmDelete = false
                 viewModel.delete(post)
@@ -217,7 +218,7 @@ private fun DetailRows(detail: PostDetail, mode: Mode) {
 
 @Composable
 private fun DetailActions(post: PostSummary, viewModel: PostViewModel, onDelete: () -> Unit) {
-    val open = post.status == "open"
+    val open = post.status == STATUS_OPEN
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -247,17 +248,6 @@ private fun DetailActions(post: PostSummary, viewModel: PostViewModel, onDelete:
             Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.action_delete))
         }
     }
-}
-
-@Composable
-private fun DeleteDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.posts_delete_title)) },
-        text = { Text(stringResource(R.string.posts_delete_message)) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.action_delete)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
-    )
 }
 
 @Composable
@@ -333,7 +323,7 @@ private fun ImportanceDots(level: Int) {
 
 @Composable
 internal fun StatusChip(status: String) {
-    val open = status == "open"
+    val open = status == STATUS_OPEN
     val container = if (open) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
     val content = if (open) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
     Row(

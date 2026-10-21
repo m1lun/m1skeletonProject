@@ -81,7 +81,7 @@ fun PostScreen(viewModel: PostViewModel, padding: PaddingValues) {
 
     pendingDelete?.let { post ->
         DeletePostDialog(
-            post,
+            post.title,
             onConfirm = {
                 viewModel.delete(post)
                 pendingDelete = null
@@ -143,12 +143,13 @@ private fun NewPostButton(viewModel: PostViewModel) {
     }
 }
 
+/** Asks before deleting a post; [message] is shown under the title. */
 @Composable
-private fun DeletePostDialog(post: PostSummary, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+internal fun DeletePostDialog(message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.posts_delete_title)) },
-        text = { Text(post.title) },
+        text = { Text(message) },
         confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.action_delete)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
@@ -218,7 +219,8 @@ private fun PostCardMenu(
             DropdownMenuItem(text = { Text(stringResource(R.string.action_edit)) }, onClick = { choose(onEdit) })
             DropdownMenuItem(
                 text = {
-                    Text(stringResource(if (post.status == "open") R.string.action_close else R.string.action_reopen))
+                    val action = if (post.status == STATUS_OPEN) R.string.action_close else R.string.action_reopen
+                    Text(stringResource(action))
                 },
                 onClick = { choose(onToggleStatus) },
             )

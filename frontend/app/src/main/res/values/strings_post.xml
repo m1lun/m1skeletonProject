@@ -21,8 +21,8 @@
 
     <!-- My posts -->
     <string name="posts_title">Match Market</string>
-    <string name="posts_my_requests">My requests (%1$d)</string>
-    <string name="posts_my_listings">My listings (%1$d)</string>
+    <string name="posts_my_requests">My requests (%1$s)</string>
+    <string name="posts_my_listings">My listings (%1$s)</string>
     <string name="posts_empty">Nothing here yet.\nTap the button below to create your first one.</string>
     <string name="posts_delete_title">Delete this post?</string>
     <string name="posts_delete_message">This can\'t be undone.</string>
@@ -32,7 +32,7 @@
     <string name="detail_listing">Listing</string>
     <string name="detail_posted">Posted %1$s</string>
     <string name="detail_condition">Condition: %1$s</string>
-    <string name="detail_photo_position">%1$d / %2$d</string>
+    <string name="detail_photo_position">%1$s / %2$s</string>
     <string name="detail_see_recommendations">See recommendations</string>
     <string name="field_must_have">Must have</string>
     <string name="field_nice_to_have">Nice to have</string>
@@ -57,21 +57,28 @@
     <string name="editor_address_confirmed">✓ Address confirmed</string>
     <string name="editor_address_pick">Pick your address from the list below</string>
     <string name="editor_address_hint">Start typing your address, then pick it from the list</string>
-    <string name="editor_photos">Photos %1$d/%2$d</string>
-    <string name="editor_photos_required">Photos %1$d/%2$d *</string>
+    <string name="editor_photos">Photos %1$s/%2$s</string>
+    <string name="editor_photos_required">Photos %1$s/%2$s *</string>
     <string name="editor_add_photo">+ Add</string>
-    <string name="editor_saved_photo">Photo %1$d ✕</string>
+    <string name="editor_saved_photo">Photo %1$s ✕</string>
     <string name="editor_new_photo">%1$s ✕</string>
     <string name="editor_new_photo_fallback">photo</string>
     <string name="editor_field_required">%1$s *</string>
     <string name="editor_field_custom">%1$s (custom)</string>
     <string name="editor_value">Value</string>
+    <string name="field_max_price">Max price</string>
+    <string name="field_min_condition">Min condition</string>
+    <string name="field_max_size">Max size (cm)</string>
+    <string name="field_radius">Radius (km)</string>
+    <string name="field_brand">Brand</string>
+    <string name="field_colour">Colour</string>
+    <string name="field_size">Size (cm)</string>
     <string name="editor_width">W</string>
     <string name="editor_height">H</string>
     <string name="editor_depth">D</string>
     <string name="editor_hard">Hard</string>
     <string name="editor_soft">Soft</string>
-    <string name="editor_importance">Importance: %1$d/%2$d</string>
+    <string name="editor_importance">Importance: %1$s/%2$s</string>
     <string name="editor_new_value">New value \"%1$s\" will be added</string>
     <string name="editor_add_field_title">Add field</string>
     <string name="editor_saved_fields">Your saved fields</string>
@@ -87,4 +94,40 @@
     <string name="login_subtitle">Sign in with your Google account</string>
     <string name="login_google">Sign in with Google</string>
     <string name="profile_sign_out">Sign Out</string>
+
+    <!-- Values and summaries shown for a post -->
+    <string name="value_yes">Yes</string>
+    <string name="value_no">No</string>
+    <string name="value_price">$%1$s</string>
+    <string name="value_radius">%1$s km</string>
+    <string name="value_dimensions">%1$s × %2$s × %3$s cm</string>
+    <string name="summary_request_title">%1$s · ≤ $%2$s</string>
+    <string name="summary_listing_title">%1$s · $%2$s</string>
+    <string name="summary_hard_soft">%1$s hard · %2$s soft</string>
+
+    <!-- Messages shown when a post can't be saved or loaded -->
+    <string name="error_session_expired">Your session has expired. Sign in again.</string>
+    <string name="error_unreachable">Could not reach the server. Check your connection.</string>
+    <string name="error_request_failed">Request failed (%1$s)</string>
+    <string name="error_photo_unreadable">Could not read a selected photo</string>
+    <string name="error_photo_too_big">Each photo must be at most %1$s MB</string>
+    <string name="error_photo_unusable">One of your photos can\'t be used. Please remove it and choose a different one.</string>
+    <string name="error_not_a_number">%1$s must be a number</string>
+    <string name="error_dimensions">%1$s: fill width, height and depth</string>
+    <string name="error_field_name">Enter a field name</string>
+    <string name="error_too_many_fields">At most %1$s custom fields</string>
+    <string name="error_duplicate_field">That field is already on this post</string>
+    <string name="error_too_many_photos">At most %1$s photos</string>
+    <string name="error_choose_category">Choose a category</string>
+    <string name="error_photo_required">Add at least one photo</string>
+    <string name="error_price_required">Enter a price</string>
+    <string name="error_field_required">%1$s is required</string>
+
+    <!-- Sign-in errors -->
+    <string name="login_client_id_missing">GOOGLE_CLIENT_ID is not set. Add it to frontend/local.properties.</string>
+    <string name="login_unexpected_credential">Unexpected credential type: %1$s</string>
+    <string name="login_credential_error">%1$s: %2$s</string>
+    <string name="login_bad_token">Could not read Google ID token: %1$s</string>
+    <string name="login_backend_rejected">Backend rejected sign-in: %1$s</string>
+    <string name="login_bad_response">Unexpected response from backend: %1$s</string>
 </resources>

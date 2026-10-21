@@ -143,7 +143,7 @@ private fun CoroutineScope.launchSignIn(
     onSignedIn: (AuthSession) -> Unit
 ) {
     if (googleClientId.isBlank()) {
-        onState(SignInUiState(errorMessage = "GOOGLE_CLIENT_ID is not set. Add it to frontend/local.properties."))
+        onState(SignInUiState(errorMessage = context.getString(R.string.login_client_id_missing)))
         return
     }
     onState(SignInUiState(isLoading = true))
@@ -179,7 +179,7 @@ private suspend fun signInWithGoogle(
             .build()
         val credential = CredentialManager.create(context).getCredential(context, request).credential
         if (credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-            SignInResult.Failure("Unexpected credential type: ${credential.type}")
+            SignInResult.Failure(context.getString(R.string.login_unexpected_credential, credential.type))
         } else {
             val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
             SignInResult.Success(sessions.signIn(idToken))
@@ -192,16 +192,16 @@ private suspend fun signInWithGoogle(
         SignInResult.NoAccount
     } catch (e: GetCredentialException) {
         android.util.Log.e(TAG, "Sign-in failed: ${e::class.simpleName} — ${e.message}")
-        SignInResult.Failure("${e::class.simpleName}: ${e.message}")
+        SignInResult.Failure(context.getString(R.string.login_credential_error, e::class.simpleName, e.message))
     } catch (e: GoogleIdTokenParsingException) {
         android.util.Log.e(TAG, "Could not read Google ID token", e)
-        SignInResult.Failure("Could not read Google ID token: ${e.message}")
+        SignInResult.Failure(context.getString(R.string.login_bad_token, e.message))
     } catch (e: IOException) {
         android.util.Log.e(TAG, "Backend rejected sign-in", e)
-        SignInResult.Failure("Backend rejected sign-in: ${e.message}")
+        SignInResult.Failure(context.getString(R.string.login_backend_rejected, e.message))
     } catch (e: JSONException) {
         android.util.Log.e(TAG, "Bad sign-in response", e)
-        SignInResult.Failure("Unexpected response from backend: ${e.message}")
+        SignInResult.Failure(context.getString(R.string.login_bad_response, e.message))
     }
 }
 

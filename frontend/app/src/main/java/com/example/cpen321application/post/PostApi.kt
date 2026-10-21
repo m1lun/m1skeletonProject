@@ -1,5 +1,7 @@
 package com.example.cpen321application.post
 
+import android.content.res.Resources
+import com.example.cpen321application.R
 import com.example.cpen321application.auth.SessionExpiredException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,6 +19,8 @@ class ApiException(message: String) : Exception(message)
 class PhotoData(val mimeType: String, val bytes: ByteArray)
 
 private const val PHOTO_FILE_NAME = "photo"
+// The date part ("2026-10-20") of an ISO timestamp.
+private const val DATE_CHARS = 10
 
 internal fun JSONArray.objects(): List<JSONObject> = (0 until length()).map { getJSONObject(it) }
 
@@ -25,6 +29,7 @@ internal fun JSONArray.strings(): List<String> = (0 until length()).map { getStr
 class PostApi(
     baseUrl: String,
     private val auth: RequestAuth,
+    private val resources: Resources,
     private val client: OkHttpClient = OkHttpClient(),
 ) {
     private val base = baseUrl.trimEnd('/')
@@ -44,9 +49,9 @@ class PostApi(
                     body
                 }
             } catch (_: SessionExpiredException) {
-                throw ApiException("Your session has expired. Sign in again.")
+                throw ApiException(resources.getString(R.string.error_session_expired))
             } catch (_: java.io.IOException) {
-                throw ApiException("Could not reach the server. Check your connection.")
+                throw ApiException(resources.getString(R.string.error_unreachable))
             }
         }
 
@@ -56,10 +61,10 @@ class PostApi(
         if (details != null && details.length() > 0) {
             details.strings().joinToString("\n")
         } else {
-            obj.optString("error", "Request failed ($code)")
+            obj.optString("error", resources.getString(R.string.error_request_failed, code.toString()))
         }
     } catch (_: org.json.JSONException) {
-        "Request failed ($code)"
+        resources.getString(R.string.error_request_failed, code.toString())
     }
 
     suspend fun listPosts(mode: Mode): List<PostSummary> {
@@ -69,14 +74,14 @@ class PostApi(
     private fun formatValue(row: JSONObject): String {
         val value = row.get("value")
         return when (row.getString("type")) {
-            "dimensions" -> {
+            TYPE_DIMENSIONS -> {
                 val d = row.getJSONObject("value")
-                "${d.get("width")} × ${d.get("height")} × ${d.get("depth")} cm"
+                resources.getString(R.string.value_dimensions, d.get("width"), d.get("height"), d.get("depth"))
             }
-            "bool" -> if (row.getBoolean("value")) "Yes" else "No"
-            "number" -> when (row.getString("key")) {
-                "price" -> "$$value"
-                "radiuskm" -> "$value km"
+            TYPE_BOOL -> resources.getString(if (row.getBoolean("value")) R.string.value_yes else R.string.value_no)
+            TYPE_NUMBER -> when (row.getString("key")) {
+                "price" -> resources.getString(R.string.value_price, value)
+                "radiuskm" -> resources.getString(R.string.value_radius, value)
                 else -> value.toString()
             }
             else -> value.toString().titleCase()
@@ -97,11 +102,11 @@ class PostApi(
             category = post.getString("category").titleCase(),
             address = post.getString("address"),
             description = post.optString("description"),
-            price = if (mode == Mode.SELLING) "$${post.get("price")}" else null,
+            price = if (mode == Mode.SELLING) resources.getString(R.string.value_price, post.get("price")) else null,
             condition = if (mode == Mode.SELLING) post.getString("condition").titleCase() else null,
             photoIds = post.optJSONArray("photoIds")?.strings().orEmpty(),
             rows = detailRows,
-            createdAt = post.optString("createdAt").take(10),
+            createdAt = post.optString("createdAt").take(DATE_CHARS),
         )
     }
 
@@ -111,13 +116,13 @@ class PostApi(
         return if (mode == Mode.BUYING) {
             val rows = post.getJSONArray("requestFields").objects()
             val hard = rows.count { it.getBoolean("hard") }
-            val max = rows.lastOrNull { it.getString("key") == "price" }
-                ?.let { " · ≤ $${it.get("value")}" }
-                .orEmpty()
+            val title = rows.lastOrNull { it.getString("key") == "price" }
+                ?.let { resources.getString(R.string.summary_request_title, category, it.get("value")) }
+                ?: category
             PostSummary(
                 post.getString("id"),
-                category + max,
-                "$hard hard · ${rows.size - hard} soft",
+                title,
+                resources.getString(R.string.summary_hard_soft, hard.toString(), (rows.size - hard).toString()),
                 post.getString("status"),
                 detail,
                 post,
@@ -125,7 +130,7 @@ class PostApi(
         } else {
             PostSummary(
                 post.getString("id"),
-                "$category · $${post.get("price")}",
+                resources.getString(R.string.summary_listing_title, category, post.get("price")),
                 post.getString("condition").titleCase(),
                 post.getString("status"),
                 detail,
