@@ -359,7 +359,7 @@ The importance values are relative: the system divides each value by the sum of 
     - **Rationale**: Isolated from storage and HTTP so the team-written logic can be tested through the feed's interface tests; alternative of database-only filtering was rejected because ranking needs weighted scoring.
     - **Interfaces**:
         1. `GET /api/feed?postId=<id>&limit=&cursor=&category=&minPrice=&maxPrice=&lat=&lng=&radiusKm=`
-            - **Purpose**: Return the feed for the user's own request or listing, with travel times for the first page. The post type decides the direction: a request returns listings, a listing returns requests. Every parameter except postId is an optional temporary filter. A value looser than the saved requirement is ignored, and an unsupported parameter returns 400. Returns 403 for another user's post and 409 for a closed post. The planned minCondition filter (request feeds only) and sort=best|nearest|cheapest are not implemented yet.
+            - **Purpose**: Return the feed for the user's own request or listing, with travel times for the first page. The post type decides the direction: a request returns listings, a listing returns requests. Every parameter except postId, limit and cursor is an optional temporary filter. A value looser than the saved requirement is ignored, and an unsupported parameter returns 400. Returns 403 for another user's post and 409 for a closed post. The planned minCondition filter (request feeds only) and sort=best|nearest|cheapest are not implemented yet.
         2. `GET /api/feed/listings` and `GET /api/feed/requests`
             - **Purpose**: Return other users' open posts, newest first, with the same filters; `before` pages through them.
         3. `boolean satisfies(Request request, Listing listing)`
@@ -387,7 +387,7 @@ The importance values are relative: the system divides each value by the sum of 
 ### **4.2. Databases**
 
 1. **MongoDB** (self-hosted in Docker on the cloud VM)
-    - **Purpose**: Stores users (planned), requests, listings, options, custom fields, and sessions. Photos for requests and listings are stored in the same database using GridFS (fs.files and fs.chunks), and each post keeps the ids of its photos. Geospatial index on post locations.
+    - **Purpose**: Stores users, requests, listings, options, custom fields, and sessions. Photos for requests and listings are stored in the same database using GridFS (fs.files and fs.chunks), and each post keeps the ids of its photos. Geospatial index on post locations.
 
 ### **4.3. External Modules**
 
