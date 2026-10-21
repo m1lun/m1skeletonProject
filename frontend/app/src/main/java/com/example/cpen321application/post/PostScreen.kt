@@ -44,8 +44,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.cpen321application.R
 
 @Composable
 fun PostScreen(viewModel: PostViewModel, padding: PaddingValues) {
@@ -79,7 +81,7 @@ fun PostScreen(viewModel: PostViewModel, padding: PaddingValues) {
 
     pendingDelete?.let { post ->
         DeletePostDialog(
-            post,
+            post.title,
             onConfirm = {
                 viewModel.delete(post)
                 pendingDelete = null
@@ -93,7 +95,7 @@ fun PostScreen(viewModel: PostViewModel, padding: PaddingValues) {
 @Composable
 private fun PostScreenHeader(viewModel: PostViewModel) {
     Text(
-        "Match Market",
+        stringResource(R.string.posts_title),
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(top = 16.dp),
@@ -104,12 +106,12 @@ private fun PostScreenHeader(viewModel: PostViewModel) {
                 selected = viewModel.mode == mode,
                 onClick = { viewModel.selectMode(mode) },
                 shape = SegmentedButtonDefaults.itemShape(index, Mode.entries.size),
-            ) { Text(mode.tabLabel) }
+            ) { Text(stringResource(mode.tabLabel)) }
         }
     }
-    val noun = if (viewModel.mode == Mode.BUYING) "requests" else "listings"
+    val heading = if (viewModel.mode == Mode.BUYING) R.string.posts_my_requests else R.string.posts_my_listings
     Text(
-        "My $noun (${viewModel.posts.size})",
+        stringResource(heading, viewModel.posts.size),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -119,7 +121,7 @@ private fun PostScreenHeader(viewModel: PostViewModel) {
 private fun ColumnScope.EmptyPosts() {
     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
         Text(
-            "Nothing here yet.\nTap the button below to create your first one.",
+            stringResource(R.string.posts_empty),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -137,18 +139,19 @@ private fun NewPostButton(viewModel: PostViewModel) {
     ) {
         Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
-        Text(viewModel.mode.newLabel)
+        Text(stringResource(viewModel.mode.newLabel))
     }
 }
 
+/** Asks before deleting a post; [message] is shown under the title. */
 @Composable
-private fun DeletePostDialog(post: PostSummary, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+internal fun DeletePostDialog(message: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete this post?") },
-        text = { Text(post.title) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Delete") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        title = { Text(stringResource(R.string.posts_delete_title)) },
+        text = { Text(message) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.action_delete)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 
@@ -210,15 +213,18 @@ private fun PostCardMenu(
     }
     Box {
         IconButton(onClick = { menu = true }) {
-            Icon(Icons.Filled.MoreVert, contentDescription = "More options")
+            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.cd_more_options))
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            DropdownMenuItem(text = { Text("Edit") }, onClick = { choose(onEdit) })
+            DropdownMenuItem(text = { Text(stringResource(R.string.action_edit)) }, onClick = { choose(onEdit) })
             DropdownMenuItem(
-                text = { Text(if (post.status == "open") "Close" else "Reopen") },
+                text = {
+                    val action = if (post.status == STATUS_OPEN) R.string.action_close else R.string.action_reopen
+                    Text(stringResource(action))
+                },
                 onClick = { choose(onToggleStatus) },
             )
-            DropdownMenuItem(text = { Text("Delete") }, onClick = { choose(onDelete) })
+            DropdownMenuItem(text = { Text(stringResource(R.string.action_delete)) }, onClick = { choose(onDelete) })
         }
     }
 }

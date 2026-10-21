@@ -2,6 +2,7 @@ package com.example.cpen321application.feed
 
 import com.example.cpen321application.auth.SessionManager
 import com.example.cpen321application.post.Mode
+import com.example.cpen321application.post.STATUS_OPEN
 import com.example.cpen321application.post.objects
 import java.io.IOException
 import java.math.BigDecimal
@@ -60,7 +61,7 @@ class FeedApi(private val sessions: SessionManager) {
 
     suspend fun ownOpenPosts(mode: Mode): List<OwnPost> =
         JSONArray(get("/api/${mode.path}", emptyList())).objects()
-            .filter { it.getString("status") == "open" }
+            .filter { it.getString("status") == STATUS_OPEN }
             .map(::ownPostOf)
 
     suspend fun categories(): List<String> =

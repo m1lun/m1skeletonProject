@@ -1,7 +1,8 @@
 import express, { type Express, type Response } from 'express';
 
-import { errorHandler } from './errors';
-import { describe, verifyGoogleIdToken } from './googleAuth';
+import { errorHandler, errorMessage } from './errors';
+import { verifyGoogleIdToken } from './googleAuth';
+import { isText } from './routes/checks';
 import { createCustomFieldsRouter } from './routes/customFields';
 import { createFeedRouter } from './routes/feed';
 import { createListingsRouter } from './routes/listings';
@@ -35,7 +36,7 @@ export function createApp({ sessions, store }: AppDeps): Express {
   // session. 400 if no token was sent, 401 if Google rejects it.
   app.post('/api/auth/google', (req, res) => {
     const { idToken } = (req.body ?? {}) as { idToken?: unknown };
-    if (!isNonEmptyString(idToken)) {
+    if (!isText(idToken)) {
       res.status(400).json({ error: 'Request body must contain an idToken' });
       return;
     }
@@ -45,7 +46,7 @@ export function createApp({ sessions, store }: AppDeps): Express {
         sendAuth(res, startSession(sessions, user));
       },
       (cause: unknown) => {
-        console.error(`Google sign-in rejected: ${describe(cause)}`);
+        console.error(`Google sign-in rejected: ${errorMessage(cause)}`);
         res.status(401).json({ error: 'Invalid or expired Google ID token' });
       }
     );
@@ -55,7 +56,7 @@ export function createApp({ sessions, store }: AppDeps): Express {
   // and refresh token, without calling Google. 401 means sign in again.
   app.post('/api/auth/refresh', (req, res) => {
     const { refreshToken } = (req.body ?? {}) as { refreshToken?: unknown };
-    if (!isNonEmptyString(refreshToken)) {
+    if (!isText(refreshToken)) {
       res.status(400).json({ error: 'Request body must contain a refreshToken' });
       return;
     }
@@ -67,7 +68,7 @@ export function createApp({ sessions, store }: AppDeps): Express {
   // the same sign-in. 204 even if it was already gone.
   app.post('/api/auth/logout', (req, res) => {
     const { refreshToken } = (req.body ?? {}) as { refreshToken?: unknown };
-    if (!isNonEmptyString(refreshToken)) {
+    if (!isText(refreshToken)) {
       res.status(400).json({ error: 'Request body must contain a refreshToken' });
       return;
     }
@@ -102,10 +103,6 @@ export function createApp({ sessions, store }: AppDeps): Express {
   return app;
 }
 
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === 'string' && value.trim() !== '';
-}
-
 // 200 with the tokens, 401 if the refresh token was rejected (null), or 500
 // if the session store failed.
 function sendAuth(res: Response, pending: Promise<AuthResponse | null>): void {
@@ -124,6 +121,6 @@ function sendAuth(res: Response, pending: Promise<AuthResponse | null>): void {
 }
 
 function sendServerError(res: Response, cause: unknown): void {
-  console.error(`Session store failed: ${describe(cause)}`);
+  console.error(`Session store failed: ${errorMessage(cause)}`);
   res.status(500).json({ error: 'Internal Server Error' });
 }

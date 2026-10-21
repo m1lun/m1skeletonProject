@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from 'express';
 
 import { currentUser } from '../sessions';
 import { BadRequestError } from '../errors';
-import { MAX_PHOTOS, PHOTO_ID, RESERVED_KEYS, normaliseKey, type PostField, type GeoPoint } from '../models/common';
+import { MAX_PHOTOS, PHOTO_ID, RESERVED_KEYS, isOneOf, normaliseKey, type PostField, type GeoPoint } from '../models/common';
 import type { PostDoc, PostCollection, Store } from '../store/types';
 import { isNumber, isObject, isText, type Body } from './checks';
 import { handle } from './handle';
@@ -79,7 +79,7 @@ function parseCustomField(field: Body, fieldName: string, errors: string[]): Pos
     errors.push(`${fieldName} needs a label`);
     return null;
   }
-  if ((RESERVED_KEYS as readonly string[]).includes(key)) {
+  if (isOneOf(RESERVED_KEYS, key)) {
     errors.push(`"${String(field.label)}" is already a built-in field, so there is no need to add it as a custom field`);
     return null;
   }
@@ -204,7 +204,7 @@ export function createPostRouter<T extends PostDoc>(store: Store, postType: Post
     res.status(201).json(created);
   }));
 
-  router.get('/', handle(async (req, res) => {
+  router.get('/', handle(async (_req, res) => {
     res.json(await postType.collection.listByOwner(currentUser(res).id));
   }));
 

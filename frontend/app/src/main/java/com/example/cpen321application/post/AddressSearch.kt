@@ -7,6 +7,9 @@ import android.os.Build
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
+// How long to wait after the last keystroke before looking an address up.
+const val SUGGEST_DELAY_MS = 250L
+
 /* Address suggestions from the Android platform [Geocoder] */
 class AddressSearch(private val context: Context) {
     suspend fun suggest(query: String): List<AddressSuggestion> =

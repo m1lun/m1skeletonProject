@@ -1,6 +1,8 @@
 import type { GeoPoint } from '../models/common';
 import type { CustomField } from '../models/customField';
+import type { Listing } from '../models/listing';
 import type { Option } from '../models/option';
+import type { BuyerRequest } from '../models/request';
 import type { RefreshSession } from '../models/session';
 import type { PhotoStorage } from '../photos/storage';
 
@@ -41,7 +43,6 @@ export interface PostCollection<T extends PostDoc> {
 
 export interface OptionCollection {
   list(field: string): Promise<Option[]>;
-  find(field: string, key: string): Promise<Option | null>;
   // Inserts if missing and returns the stored option either way.
   ensure(option: Option): Promise<Option>;
   // Inserts every missing option in a single round trip; existing ones are untouched.
@@ -64,8 +65,8 @@ export interface SessionRepo {
 }
 
 export interface Store {
-  listings: PostCollection<import('../models/listing').Listing>;
-  requests: PostCollection<import('../models/request').BuyerRequest>;
+  listings: PostCollection<Listing>;
+  requests: PostCollection<BuyerRequest>;
   options: OptionCollection;
   customFields: CustomFieldCollection;
   sessions: SessionRepo;

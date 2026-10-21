@@ -47,10 +47,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cpen321application.R
 
 /** readOnly shows another user's post (opened from the Feed) without the owner's actions. */
 @Composable
@@ -81,17 +83,17 @@ fun PostDetailScreen(
             DetailRows(post.detail, mode)
             if (post.detail.createdAt.isNotBlank()) {
                 Text(
-                    "Posted ${post.detail.createdAt}",
+                    stringResource(R.string.detail_posted, post.detail.createdAt),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (!readOnly && post.status == "open") {
+            if (!readOnly && post.status == STATUS_OPEN) {
                 Button(
                     onClick = { viewModel.showRecommendations(post) },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                 ) {
-                    Text("See recommendations")
+                    Text(stringResource(R.string.detail_see_recommendations))
                 }
             }
             if (!readOnly) DetailActions(post, viewModel, onDelete = { confirmDelete = true })
@@ -99,7 +101,8 @@ fun PostDetailScreen(
     }
 
     if (confirmDelete) {
-        DeleteDialog(
+        DeletePostDialog(
+            stringResource(R.string.posts_delete_message),
             onConfirm = {
                 confirmDelete = false
                 viewModel.delete(post)
@@ -116,10 +119,10 @@ private fun DetailHeader(post: PostSummary, mode: Mode, onBack: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
         }
         Text(
-            if (mode == Mode.BUYING) "Request" else "Listing",
+            stringResource(if (mode == Mode.BUYING) R.string.detail_request else R.string.detail_listing),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.weight(1f),
         )
@@ -136,7 +139,7 @@ private fun PhotoPager(photoIds: List<String>) {
     }
     if (photoIds.size > 1) {
         Text(
-            "${pager.currentPage + 1} / ${photoIds.size}",
+            stringResource(R.string.detail_photo_position, pager.currentPage + 1, photoIds.size),
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
@@ -160,7 +163,7 @@ private fun DetailSummary(detail: PostDetail) {
     }
     detail.condition?.let {
         Text(
-            "Condition: $it",
+            stringResource(R.string.detail_condition, it),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -201,7 +204,8 @@ private fun AddressBadge(address: String) {
 private fun DetailRows(detail: PostDetail, mode: Mode) {
     if (detail.rows.isEmpty()) return
     Text(
-        (if (mode == Mode.BUYING) "Requirements" else "Attributes").uppercase(),
+        stringResource(if (mode == Mode.BUYING) R.string.fields_requirements else R.string.fields_attributes)
+            .uppercase(),
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         letterSpacing = 1.sp,
@@ -214,7 +218,7 @@ private fun DetailRows(detail: PostDetail, mode: Mode) {
 
 @Composable
 private fun DetailActions(post: PostSummary, viewModel: PostViewModel, onDelete: () -> Unit) {
-    val open = post.status == "open"
+    val open = post.status == STATUS_OPEN
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -223,7 +227,7 @@ private fun DetailActions(post: PostSummary, viewModel: PostViewModel, onDelete:
         Button(onClick = { viewModel.startEditing(post) }, modifier = Modifier.weight(1f).height(48.dp)) {
             Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Edit")
+            Text(stringResource(R.string.action_edit))
         }
         FilledTonalButton(onClick = { viewModel.toggleStatus(post) }, modifier = Modifier.weight(1f).height(48.dp)) {
             Icon(
@@ -232,7 +236,7 @@ private fun DetailActions(post: PostSummary, viewModel: PostViewModel, onDelete:
                 modifier = Modifier.size(18.dp),
             )
             Spacer(Modifier.width(8.dp))
-            Text(if (open) "Close" else "Reopen")
+            Text(stringResource(if (open) R.string.action_close else R.string.action_reopen))
         }
         IconButton(
             onClick = onDelete,
@@ -241,20 +245,9 @@ private fun DetailActions(post: PostSummary, viewModel: PostViewModel, onDelete:
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
             ),
         ) {
-            Icon(Icons.Filled.Delete, contentDescription = "Delete")
+            Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.action_delete))
         }
     }
-}
-
-@Composable
-private fun DeleteDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Delete this post?") },
-        text = { Text("This can't be undone.") },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Delete") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
 }
 
 @Composable
@@ -286,7 +279,7 @@ private fun DetailLine(row: DetailRow) {
                 Spacer(Modifier.width(12.dp))
                 if (hard) {
                     Text(
-                        "Must have",
+                        stringResource(R.string.field_must_have),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimary,
@@ -296,7 +289,7 @@ private fun DetailLine(row: DetailRow) {
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                     )
                 } else {
-                    ImportanceDots(row.importance ?: 3)
+                    ImportanceDots(row.importance ?: DEFAULT_IMPORTANCE)
                 }
             }
         }
@@ -307,13 +300,13 @@ private fun DetailLine(row: DetailRow) {
 private fun ImportanceDots(level: Int) {
     Column(horizontalAlignment = Alignment.End) {
         Text(
-            "Nice to have",
+            stringResource(R.string.field_nice_to_have),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            repeat(5) { i ->
+            repeat(MAX_IMPORTANCE) { i ->
                 Box(
                     Modifier
                         .size(8.dp)
@@ -330,7 +323,7 @@ private fun ImportanceDots(level: Int) {
 
 @Composable
 internal fun StatusChip(status: String) {
-    val open = status == "open"
+    val open = status == STATUS_OPEN
     val container = if (open) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
     val content = if (open) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
     Row(

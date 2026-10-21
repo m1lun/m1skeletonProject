@@ -1,6 +1,6 @@
 import type { Router } from 'express';
 
-import { CONDITIONS } from '../models/common';
+import { CONDITIONS, isOneOf } from '../models/common';
 import type { BuyerRequest } from '../models/request';
 import type { Store } from '../store/types';
 import { createPostRouter } from './posts';
@@ -25,7 +25,7 @@ export function createRequestsRouter(store: Store): Router {
       const condition = fields.find((field) => field.kind === 'builtin' && field.key === 'condition');
       if (
         condition !== undefined &&
-        (typeof condition.value !== 'string' || !(CONDITIONS as readonly string[]).includes(condition.value))
+        (typeof condition.value !== 'string' || !isOneOf(CONDITIONS, condition.value))
       ) {
         errors.push(`min condition must be one of: ${CONDITIONS.join(', ')}`);
       }
