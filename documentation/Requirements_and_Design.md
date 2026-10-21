@@ -19,6 +19,8 @@
 | 2026-10-12 | 3.2, 3.4, 3.5, 4.1, 4.6, 5 | Confirmed Feature 1 scope and clarified required inputs, saved defaults, photo counts, ownership, and the open/closed lifecycle. Added Manage Own Posts to the use-case coverage and recorded cross-component decisions still awaiting team agreement. |
 | 2026-10-19 | 2-5 | Cross-checked the draft against main and active branches; corrected API and data-model descriptions; separated intended requirements from implementation status; recorded unresolved scope and behaviour differences. |
 | 2026-10-21 | All | Fixed the document's formatting: headings, lists, escaped characters, use case anchors, and the Mermaid diagrams in 4.5 and 4.6. No requirements were changed. |
+| 2026-10-21 | 3.4, 3.5 | Restructured the five formal use cases to match the code and the four features: Manage Posts (merges Create Buyer Request, Create Seller Listing and Manage Own Posts), Respond to Proposal (planned, Feature 3), View Recommendations for a Post (now includes setting preferences), Send and Receive Messages (planned, Feature 4), and Browse and Filter Feed. Rewrote the 3.4 use case list to match, grouped by feature, and removed the Feature 1 Intended Behaviour and Observed Implementation tables, which the new Use Case 1 replaces. |
+| 2026-10-21 | 3.7, 4.7 | Replaced the non-functional requirements with three measurable, automatically testable ones (recommendation latency, routing service failure, authentication and ownership), removed System Uptime and Ease of Posting, and made 4.7 describe the same three. |
 
 ---
 
@@ -41,9 +43,9 @@ The primary audience is buyers who know what they want and would rather be match
 1. **Buyer Requests and Seller Listings**: Signed-in users create persistent buyer requests and seller listings, view their own posts, edit them, close and reopen them, and delete them. Listings include 1–10 item photos and requests may include up to 10 reference photos. Closed posts stay in the owner's list and are excluded from the feeds.
 2. **Two-Sided Matching and Recommended Feeds**: hard-constraint filtering and soft-preference ranking, with location, search radius, and travel time, producing a buyer feed of listings and a seller feed of requests. It produces a buyer feed of listings for each request and a seller feed of requests for each listing. Addresses are geocoded and travel times computed with the OpenRouteService API.
 3. **Offers, Acceptance, Transactions, and Live Updates**: From a feed, a buyer expresses interest in a listing or a seller sends an offer on a request. The recipient accepts or declines. Accepting creates a transaction, reserves the listing and declines the other pending proposals on it. Every proposal and transaction change appears on the other user's open screen within seconds over a WebSocket connection; Firebase Cloud Messaging adds a background push only when the app is closed.
-4. **Messaging**: Authentication is a baseline requirement of the app rather than a feature: users sign in with Google, and the backend verifies the Google ID token and issues its own session token.
+4. **Messaging**: Buyers and sellers message each other in the app about a listing or a request, to ask about the item and arrange collection. New messages appear on the other user's open screen without refreshing.
 
-Planned for a future release: offers and reservations, live updates, and push notifications. Out of scope: in-app messaging between users.
+Authentication is a baseline requirement of the app rather than a feature: users sign in with Google, and the backend verifies the Google ID token and issues its own session token.
 
 ### **3.2. Use Case Diagram**
 
@@ -83,209 +85,183 @@ flowchart LR
 
 ### **3.4. Use Case Description**
 
-- Authentication (baseline requirement, not counted as a feature)
-1. **Sign in with Google**: The user signs in with their Google account and gains access to their saved posts and basic profile. Saving location and ranking preferences remains planned.
+**Authentication** (baseline requirement, not counted as a feature)
 
-- Use cases for feature 1: Buyer Requests and Seller Listings
-2. **Create buyer request**: A buyer creates a persistent request with a category, maximum price, valid location, and search radius, and may add minimum condition, maximum dimensions, preferred brand/colour, and reference photos. These saved requirements describe the item the buyer wants.
-3. **Create seller listing**: A seller creates a persistent listing with a category, price, condition, valid location, and at least one item photo. The listing may include brand and colour; the applicable dimension requirements will follow the shared category rules recorded in PD1.
-4. **Manage own posts**: A user views their own requests and listings, opens a post's details, edits it, closes or reopens it, or permanently deletes it after confirming. Closed posts stay in My Posts and are excluded from the feeds.
+1. **Sign in with Google**: The user signs in with their Google account and gains access to their posts and the feed.
 
-- Use cases for feature 2: Two-Sided Matching and Recommended Feeds
-5. **Set preferences**: A user sets their address, default search radius, travel mode, and how much price, condition, distance, and brand/colour match matter (0 to 5 each).
-6. **View ranked feed**: A buyer sees the listings that satisfy their request, and a seller sees the requests their listing satisfies, ordered by the viewer's weights and each with its travel time.
-7. **Filter feed temporarily**: A user narrows or re-sorts the feed (maximum price, minimum condition, smaller radius, sort order) without changing the saved post or their preferences.
+**Feature 1: Buyer Requests and Seller Listings**
 
-- Use cases for feature 3: Interest, Offers, Transactions and Live Updates
-8. **Express interest**: From the feed of one of their requests, a buyer tells the seller they want a recommended listing, creating a pending interest.
-9. **Send offer**: From the feed of one of their listings, a seller offers that listing to a recommended request, creating a pending offer.
-10. **Respond to interest**: A seller sees incoming interests on their listings appear live and accepts or declines one; accepting reserves the listing and creates a transaction.
-11. **Respond to offer**: A buyer sees incoming offers on their requests appear live and accepts or declines one, with the same effects as responding to an interest.
-12. **Track proposal status**: A user watches the proposals they sent change from pending to accepted or declined on screen, as the other party responds, without refreshing.
-13. **Withdraw proposal**: The user who sent a pending proposal cancels it before the other party responds.
-14. **Manage transactions**: Either party marks a transaction completed, which closes the listing and the request, or cancels it, which reopens the listing.
+2. **Manage posts** ([Use Case 1](#uc1)): A user creates a buyer request or a seller listing, and later edits, closes, reopens or deletes their own posts.
 
-#### Feature 1 Intended Behaviour
+**Feature 2: Two-Sided Matching and Recommended Feeds**
 
-| **Area** | **Behaviour** |
-| -------- | ------------- |
-| Scope | Feature 1 covers Create Buyer Request, Create Seller Listing, and Manage Own Posts, including validation, photos, persistence, and ownership. Authentication, profile settings, and Matching are cooperating components. |
-| Required request inputs | Category, maximum price, and a valid effective location are required. Minimum condition, maximum dimensions, preferred brand/colour, and reference photos are optional. Search radius is saved on the request using its selected or default value. |
-| Required listing inputs | Category, price, condition, valid effective location, and at least one item photo are required. Brand and colour are optional. Category-dependent dimension requirements remain under PD1. |
-| Location and defaults | A new post may use the saved profile address/location as its starting value. If a valid saved location is unavailable, the user must supply an address that can be located. The selected address and coordinates are saved with the post. |
-| Request radius | A new request copies the user's default search radius, or 10 km if no default has been saved. The request radius may be set from 1 to 50 km. Later profile address or radius changes do not modify existing posts. |
-| Optional buyer fields | A missing minimum condition or maximum dimension means no restriction on that attribute. A missing preferred brand or colour means no preference. Missing values must not be interpreted as zero. Handling of missing seller attributes during matching remains under PD1. |
-| Units and condition | Prices use CAD, dimensions use cm, and search radius uses km. Prices may be zero but must not be negative. Condition values, best to worst, are new, like new, good, fair, and poor. |
-| Photos | Requests allow 0–10 photos; listings require 1–10 photos. Each photo must be no larger than 5 MB. These counts also apply after editing. Supported formats, upload transport, and cleanup details remain under PD4. |
-| Lifecycle | A newly saved post is open. An owner may edit an open post or close it after confirmation. Closed posts remain readable in My Posts, are read-only, and are excluded from active matching. Reopening and permanent deletion are outside this version. |
-| Ownership | The backend obtains the owner identity from the verified session. Only the owner may edit or close a post. Non-owner detail and photo access rules remain under PD3. |
-| Display labels | This version uses category-based labels, such as "Looking for: Desk" for a request and "Desk" for a listing. Custom title and description fields are not introduced by this revision. |
-| Responsibility boundary | Hard requirements and brand/colour preferences are stored on requests. Ranking weights belong to user preferences, and temporary feed filters do not modify saved posts. |
-| Basic failure handling | Entered form values are retained while the user remains in the editing flow. Submission controls prevent repeated taps during an active save. The app does not automatically repeat a create request after an uncertain timeout or claim that a post was not saved without confirmation. Retry/reconciliation details remain under PD5. |
+3. **View recommendations for a post** ([Use Case 3](#uc3)): A user sees the posts that match one of their open posts, ranked by how well they fit, with the distance to each. Once built, each match will also show its travel time, and the user will be able to set the radius, travel mode and importance weights used for the ranking.
+4. **Browse and filter feed** ([Use Case 5](#uc5)): A user browses other users' open posts, newest first, and narrows them by category, price or distance.
 
-#### Feature 1 Observed Implementation
+**Feature 3: Offers, Acceptance, Transactions and Live Updates** *(planned)*
 
-| **Topic** | **Observed Implementation** |
-| --------- | --------------------------- |
-| Photo limits | Both frontend and backend enforce 5 MiB per photo (5 × 1024 × 1024 bytes), not the draft's 5 MB. Requests allow 0–10 photos and listings 1–10. Confirm the final size requirement. |
-| Location and radius | The user selects an Android Geocoder address suggestion. No saved profile address or radius is loaded. Request radius is optional in the current form; the 1–50 km rule is not enforced by the inspected backend. |
-| Fields and labels | Categories can be extended. Posts support a description and reusable custom fields. Buyer fields carry hard/soft flags and optional importance values; maximum price is not forced to be hard. Confirm this against the intended matching rules. |
-| Lifecycle | Owners can edit closed posts, reopen posts and permanently delete them. Closing uses PATCH with status=closed. DELETE removes the record. The current UI confirms deletion, but does not request a separate close confirmation. |
-| Visibility | Individual request/listing detail endpoints are owner-only. Photo reads are public. The signed-in listings feed returns open listings from other users. |
-| Save failures | The editor retains entered state after a caught API error and blocks repeated submit taps while saving. A distinct unknown-save-status message, reconciliation flow and idempotent create mechanism are not established. |
+5. **Send proposal**: A buyer expresses interest in a listing, or a seller offers one of their listings for a request. The sender can withdraw it while it is still pending.
+6. **Respond to proposal** ([Use Case 2](#uc2)): The other user sees the proposal appear live and accepts or declines it. Accepting reserves the listing and creates a transaction, and the sender sees the answer without refreshing.
+7. **Manage transactions**: Either user marks the transaction completed, which closes the listing and the request, or cancels it, which reopens the listing.
+
+**Feature 4: Messaging** *(planned)*
+
+8. **Send and receive messages** ([Use Case 4](#uc4)): Buyers and sellers message each other about a listing or a request, and new messages appear live.
 
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
 
 <a name="uc1"></a>
 
-#### Use Case 1: Create Buyer Request
+#### Use Case 1: Manage Posts
 
-**Description**: A buyer creates a persistent request describing the item they want, with hard requirements, soft preferences, and optional reference photos.
+**Description**: A user creates a buyer request or a seller listing, then views, edits, closes, reopens or deletes their own posts.
 
-**Primary actor(s)**: Buyer
+**Primary actor(s)**: Buyer, Seller
 
 **Main success scenario**:
-1. The buyer opens the create-request screen.
-2. The app shows the request form.
-3. The buyer selects a category and enters a maximum price, confirms or enters a valid address, and sets the search radius. The address may be prefilled from the saved profile, and the radius starts from the profile default or 10 km. The buyer may also enter a minimum condition, maximum dimensions, preferred brand and colour, and up to 10 reference photos. Each photo must be no larger than 5 MB. The permitted radius is 1–50 km.
-4. The buyer submits the form.
-5. The app confirms the request was saved and shows it in "My posts".
+1. The user opens My Posts and chooses "I'm buying" (requests) or "I'm selling" (listings).
+2. The app shows the user's open and closed posts of that kind, or "Nothing here yet. Tap the button below to create your first one." if there are none.
+3. The user taps "New request" or "New listing".
+4. The app shows the post form.
+5. The user enters a category and picks an address from the suggestions.
+    - For a request: a maximum price (required), and optionally a minimum condition, maximum size, search radius, brand and colour. Each of these fields, including the maximum price, is marked Hard or Soft, and a Soft field gets an importance from 1 to 5. The user may also add a description, custom fields, and up to 10 reference photos.
+    - For a listing: a price, a condition and 1–10 photos, and optionally a brand, colour, size, description and custom fields.
+6. The user taps "Create request" or "Create listing".
+7. The app saves the post and shows it in My Posts.
+8. The user opens one of their posts, or its ⋮ menu, and either edits it and taps "Save changes", taps "Close" or "Reopen", or taps "Delete" and confirms.
+9. The app shows the updated post, or removes the deleted post from the list.
 
 **Failure scenario(s)**:
-- 3a. A required field is missing or invalid (for example negative price, unknown category).
-    - 3a1. The app highlights the field and shows an error message.
-- 3b. A photo is larger than 5 MB or is not an image.
-    - 3b1. The app rejects the photo and shows an error message.
-- 3c. The buyer adds more than 10 photos.
-    - 3c1. The app rejects the extra photos and shows an error message.
-- 4a. The typed address cannot be located.
-    - 4a1. The app shows "Address not picked from suggestions" and asks the buyer to correct it.
-- 4b. The submission is not sent because the app is offline, or the server confirms that the post was not saved.
-    - 4b1. The app explains the failure and retains the entered values and selected photos in the current form so the user can correct the issue or try again.
-- 4c. The connection is lost or the request times out before the app receives a definite save result.
-    - 4c1. The app retains the form data, explains that the save status is unknown, and provides a way to check My Posts after reconnecting. It does not automatically resubmit the form or state that nothing was saved. The reliable retry/reconciliation mechanism remains to be finalized under PD5.
+- 2a. The posts cannot be loaded.
+    - 2a1. The app shows an error message.
+- 5a. A required field is missing or invalid.
+    - 5a1. The app shows an error message, such as "Choose a category", "Max price is required", "Enter a price", "Add at least one photo", or for a price below 0 "max price must be at least 0" (request) or "price must be a number of at least 0" (listing). Nothing is saved.
+- 5b. The address was typed but not picked from the suggestions.
+    - 5b1. The app highlights the address field and shows "Choose your address from the suggestions list".
+- 5c. A photo is larger than 5 MB.
+    - 5c1. The app shows "Each photo must be at most 5 MB" and the post is not saved.
+- 5d. The user tries to add more than 10 photos.
+    - 5d1. The photo picker only lets the user select as many photos as are still allowed, and the app disables adding photos once there are 10.
+- 6a. The network or server is unavailable when the post is submitted.
+    - 6a1. The app shows "Could not reach the server. Check your connection." and the form keeps what the user entered.
+- 8a. The network or server is unavailable when a post is saved, closed, reopened or deleted.
+    - 8a1. The app shows "Could not reach the server. Check your connection." and the post is unchanged.
+- 8b. An edit makes a field invalid.
+    - 8b1. The app shows an error message and the post is unchanged.
 
 <a name="uc2"></a>
 
-#### Use Case 2: Create Seller Listing
+#### Use Case 2: Respond to Proposal *(planned)*
 
-**Description**: A seller creates a listing for an item they have available, with photos.
+**Description**: A user receives a buyer's interest in their listing, or a seller's offer on their request, sees it appear live, and accepts or declines it. The other user sees the answer without refreshing.
 
-**Primary actor(s)**: Seller
+**Primary actor(s)**: Buyer, Seller
 
 **Main success scenario**:
-1. The seller opens the create-listing screen.
-2. The app shows the listing form.
-3. The seller selects a category, enters the price and condition, confirms or enters a valid address, and adds 1–10 item photos, each no larger than 5 MB. The address may be prefilled from the saved profile. Brand and colour are optional; dimension fields follow the shared category rules, which remain to be finalized under PD1.
-4. The seller submits the form.
-5. The app confirms the listing was saved and shows it in "My posts".
+1. Another user expresses interest in the user's listing, or sends an offer on the user's request.
+2. The proposal appears on the user's open screen within seconds; if the app is closed, a push notification is shown.
+3. The user opens the proposal and sees the post and the other user.
+4. The user taps "Accept" or "Decline".
+5. On accept, the system creates a transaction, reserves the listing, and declines the other pending proposals on it.
+6. The other user's screen shows "Accepted" or "Declined" within seconds, without refreshing.
 
 **Failure scenario(s)**:
-- 3a. A required field is missing or invalid (for example negative price, unknown category).
-    - 3a1. The app highlights the field and shows an error message.
-- 3b. A photo is larger than 5 MB or is not an image.
-    - 3b1. The app rejects the photo and shows an error message.
-- 3c. The seller adds more than 10 photos.
-    - 3c1. The app rejects the extra photos and shows an error message.
-- 4a. The typed address cannot be located.
-    - 4a1. The app shows "Address not found" and asks the seller to correct it.
-- 4b. The submission is not sent because the app is offline, or the server confirms that the post was not saved.
-    - 4b1. The app explains the failure and retains the entered values and selected photos in the current form so the user can correct the issue or try again.
-- 4c. The connection is lost or the request times out before the app receives a definite save result.
-    - 4c1. The app retains the form data, explains that the save status is unknown, and provides a way to check My Posts after reconnecting. It does not automatically resubmit the form or state that nothing was saved. The reliable retry/reconciliation mechanism remains to be finalized under PD5.
+- 3a. The other user withdrew the proposal.
+    - 3a1. The app shows that the proposal was withdrawn, and it cannot be answered.
+- 5a. The listing is already reserved, closed or deleted.
+    - 5a1. The app shows that the item is no longer available, and the proposal is declined.
+- 5b. The network or server is unavailable.
+    - 5b1. The app shows an error message and the proposal stays pending.
+- 6a. The other user's connection is lost.
+    - 6a1. They see the new status when they reconnect.
 
 <a name="uc3"></a>
 
-#### Use Case 3: View Ranked Feed
+#### Use Case 3: View Recommendations for a Post
 
-**Description**: A user views the feed for one of their posts: listings for a buyer's request, requests for a seller's listing. Items are ordered by how well they fit the viewer's importance weights, and each shows its travel time, computed with the OpenRouteService API.
+**Description**: A user sees the posts that match one of their own open posts (listings for a request, requests for a listing), ranked by how well they fit, and can change the preferences used for the ranking.
 
 **Primary actor(s)**: Buyer, Seller
 
 **Main success scenario**:
-1. The user opens the feed screen and selects one of their requests (buyer) or listings (seller).
-2. The system removes candidates that fail the hard requirements: same category, price within the maximum, condition at or above the minimum, dimensions that fit, and straight-line distance within the radius. Both feeds use the same rule, so a listing appears in a buyer's feed exactly when the request appears in the seller's feed.
-3. The system scores each remaining candidate on price (cheaper is better), condition (better is better), distance (nearer is better), and brand/colour match, and orders them by the viewer's importance weights.
-4. The system requests travel times for the first page of results (20 items) from the external routing service.
-5. The app shows the ranked list, each item with its travel time.
-6. The user applies temporary filters (maximum price, minimum condition, a smaller radius) or changes the sort order (best match, nearest, cheapest), and the list updates. Filters can only be stricter than the saved requirements, and the saved post is not changed.
+1. The user opens one of their open posts and taps "See recommendations", or picks the post under "Recommended for" in the feed filters.
+2. The app shows "Recommended for: <post>".
+3. The system takes other users' open posts in the same category and keeps those that meet the request's hard requirements: within the request's radius (10 km if none was set) and every field the buyer marked Hard. Any feed filters (Use Case 5) also apply.
+4. The system scores each remaining post on price, condition, distance and preference match, weights the scores by the user's importance settings (3 each until the user saves preferences), and orders the best first.
+5. *(Planned)* The system requests travel times for the first 20 results from OpenRouteService.
+6. The app shows the ranked list, 20 at a time; each item shows its price or budget, its condition (listings), and its distance, plus its travel time *(planned)*.
+7. *(Planned)* The user opens preferences, sets a default search radius (1–50 km), a travel mode (walk, bike or drive) and the importance (0–5) of price, condition, distance and preference match, and taps "Save"; the recommendations re-rank with them.
 
 **Failure scenario(s)**:
-- 2a. No candidates satisfy the hard requirements.
-    - 2a1. The app shows an empty state explaining that no matches were found and suggesting the user relax a requirement or widen the radius.
-- 3a. The user has not set a post to match against.
-    - 3a1. The app prompts the user to create a request or listing first.
-- 4a. The routing service is unavailable or rate-limited.
-    - 4a1. The app shows the ranked list without travel times and a message that travel time is unavailable.
-- 4b. No route exists for the request owner's travel mode to an item.
-    - 4b1. The app shows "No route available" for that item.
-- 5a. The network or server is unavailable.
-    - 5a1. The app shows an error message and a retry button.
-- 6a. A filter value is looser than the saved requirement (for example a maximum price above the request's maximum).
-    - 6a1. The system applies the saved requirement instead and the app shows the effective value.
+- 1a. The user has no open posts.
+    - 1a1. The feed filters show "You have no open posts to get recommendations for".
+- 1b. The post is closed.
+    - 1b1. "See recommendations" is not shown, and the server returns no feed for it (409).
+- 3a. No posts meet the hard requirements.
+    - 3a1. The app shows "Nothing here yet. Try changing the filters or check back soon." and a "Refresh" button.
+- 5a. *(Planned)* The routing service is unavailable or rate-limited.
+    - 5a1. The app shows the ranked list without travel times.
+- 5b. *(Planned)* No route exists for the user's travel mode.
+    - 5b1. The app shows "No route available" for that item.
+- 6a. The network or server is unavailable.
+    - 6a1. The app shows "Couldn't load the feed. Check your connection and try again." and a "Retry" button.
+- 7a. *(Planned)* A preference value is out of range.
+    - 7a1. The app highlights the field and shows an error message, and nothing is saved.
 
 <a name="uc4"></a>
 
-#### Use Case 4: Manage Own Posts
+#### Use Case 4: Send and Receive Messages *(planned)*
 
-**Description**: A signed-in user views their own buyer requests and seller listings, opens their details, edits an open post, or closes it. Closed posts remain readable in My Posts and are excluded from active matching.
+**Description**: Two users connected by an interest or an offer message each other in the app to discuss the item and arrange collection, and new messages appear live.
 
 **Primary actor(s)**: Buyer, Seller
 
 **Main success scenario**:
-1. The user opens My Posts.
-2. The app displays the user's open and closed requests and listings.
-3. The user selects a post and views its details. Closed posts are read-only.
-4. For an open post, the user either edits permitted fields and submits the changes, or selects Close and confirms the action.
-5. The system checks ownership and the current post status, validates the operation, saves the change, and returns confirmation. The app displays the updated post. A closed post remains in My Posts and is excluded from active matching.
+1. From a proposal, the user opens the conversation with the other user.
+2. The app shows the earlier messages.
+3. The user types a message and taps "Send".
+4. The system saves the message and delivers it to the other user, where it appears on their open screen within seconds, or as a push notification if the app is closed.
+5. The other user's reply appears on the user's screen without refreshing.
 
 **Failure scenario(s)**:
-- 2a. The user has no posts.
-    - 2a1. The app displays an empty state with an option to create a request or listing.
-- 2b. The user's posts cannot be loaded.
-    - 2b1. The app displays a loading error and a retry option.
-- 4a. An edited field or photo selection is invalid.
-    - 4a1. The app identifies the invalid input and retains the edited form values. The invalid changes are not saved.
-- 4b. The user cancels the close confirmation.
-    - 4b1. The app returns to the post details without sending a close operation.
-- 5a. The authenticated user is not the post owner.
-    - 5a1. The server rejects the operation and the app displays an access error. The post is unchanged.
-- 5b. An edit is submitted for a post that has already been closed.
-    - 5b1. The server rejects the edit and the app refreshes the post to show its closed, read-only state.
-- 5c. The system confirms that an update or close operation was not saved.
-    - 5c1. The app explains the failure and allows the user to retry when appropriate. The previously saved post is unchanged.
-- 5d. The save result is unknown because the response was lost or timed out.
-    - 5d1. The app reports that the result is unknown and allows the user to refresh the post details after reconnecting. It does not claim the operation failed without confirmation; reliable reconciliation is addressed under PD5.
+- 1a. The proposal was declined or withdrawn.
+    - 1a1. The conversation can be read but not added to.
+- 3a. The message is empty.
+    - 3a1. "Send" is disabled.
+- 4a. The network or server is unavailable.
+    - 4a1. The message is marked as not sent and the user can retry.
+- 5a. The connection is lost.
+    - 5a1. Missed messages appear when the user reconnects.
 
 <a name="uc5"></a>
 
-#### Use Case 5: Set Preferences
+#### Use Case 5: Browse and Filter Feed
 
-**Description**: A user sets their address, a default search radius, how they travel, and how important price, condition, distance, and brand/colour match are when results are ordered.
+**Description**: A user browses other users' open posts, newest first, and narrows them by category, price or distance.
 
 **Primary actor(s)**: Buyer, Seller
 
 **Main success scenario**:
-1. The user opens the preferences screen, which shows their current settings (or the defaults if none are saved).
-2. The user types an address.
-3. The user sets the default search radius with a slider from 1 to 50 km (default 10 km). New requests start with this radius, and each request can override it.
-4. The user chooses a travel mode: walk, bike, or drive (default walk).
-5. The user sets the importance of each preference with a slider from 0 ("doesn't matter") to 5 ("very important"): price, condition, distance, and brand/colour match. Each defaults to 3.
-6. The user taps "Save".
-7. The system converts the address to coordinates through the external geocoding service and stores the settings.
-8. The app confirms the settings were saved, and the next feed uses them.
-
-The importance values are relative: the system divides each value by the sum of the four to get the ranking weights (for example 5, 3, 2, 2 gives weights of about 0.42, 0.25, 0.17, and 0.17). Setting all four to 0 gives equal weights. A tap on "Reset to defaults" restores 10 km, walk, and 3 / 3 / 3 / 3. Hard requirements are not set here; they belong to each request.
+1. The user opens the Feed tab and chooses "I'm buying" (listings) or "I'm selling" (requests).
+2. The app shows other users' open posts of that kind, newest first, 20 at a time.
+3. The user scrolls, and the app loads more posts.
+4. The user taps "Filters" and sets any of: category, minimum and maximum price ("Min budget" and "Max budget" for requests), and "Near address" with "Within (km)".
+5. The user taps "Apply", and the list reloads with only the matching posts; "Clear" removes the filters.
+6. The user taps a post to see its details.
 
 **Failure scenario(s)**:
-- 2a. The address field is empty.
-    - 2a1. The app highlights the field and shows an error message.
-- 6a. A value is out of range (for example a radius of zero).
-    - 6a1. The app highlights the field and shows an error message.
-- 7a. The address cannot be located.
-    - 7a1. The app shows "Address not found" and keeps the previous settings.
-- 7b. The geocoding service is unavailable.
-    - 7b1. The app shows an error message asking the user to try again later; the previous settings are kept.
+- 2a. No posts match.
+    - 2a1. The app shows "Nothing here yet. Try changing the filters or check back soon." and a "Refresh" button.
+- 2b. The network or server is unavailable.
+    - 2b1. The app shows "Couldn't load the feed. Check your connection and try again." and a "Retry" button.
+- 4a. A price is not a number of 0 or more.
+    - 4a1. The app shows "Enter a number of 0 or more".
+- 4b. The minimum is more than the maximum.
+    - 4b1. The app shows "Min must not be more than max".
+- 4c. A distance is set without an address.
+    - 4c1. The app shows "Pick an address to filter by distance".
+- 4d. The distance is outside 0–100 km.
+    - 4d1. The app shows "Enter a distance from 0 to 100".
 
 ### **3.6. Screen Mock-ups**
 
@@ -295,33 +271,21 @@ The importance values are relative: the system divides each value by the sum of 
 
 <a name="nfr1"></a>
 
-1. **Performance: Listing Page Loading**
-    - **Description**: The listing page should display the first 20 listings within 1 second for 95% of requests under normal conditions.
-    - **Justification**: Ensures smooth and efficient browsing for buyers and sellers.
+1. **Performance: Recommendation latency**
+    - **Description**: With 1,000 open candidate posts in the same category, `GET /api/feed?postId=<id>` returns the first page of 20 ranked matches within 1 second for 95% of requests, not counting the travel-time lookup.
+    - **Justification**: Recommendations are the core of the app, so they must feel instant. 1 second is the limit for a user's flow of thought to stay uninterrupted ([Nielsen Norman Group, "Response Times: The 3 Important Limits"](https://www.nngroup.com/articles/response-times-3-important-limits/)), and 1,000 open posts in one category is several times more than we expect from a student community.
 
 <a name="nfr2"></a>
 
-2. **Reliability: System Uptime**
-    - **Description**: The system should maintain 99.99% uptime, allowing less than 1 hour of unplanned downtime per year.
-    - **Justification**: Ensures the marketplace remains consistently accessible.
+2. **Reliability: Routing service failure**
+    - **Description**: When the external routing service fails or does not answer within 2 seconds, `GET /api/feed?postId=<id>` still returns the ranked matches within 3 seconds, with travel time left out (`travelMinutes: null`).
+    - **Justification**: OpenRouteService's free tier has a daily request limit and no uptime guarantee, so outages and rate limits are expected; matching and ranking must keep working without it. 3 seconds is the 2-second timeout plus a margin for ranking.
 
 <a name="nfr3"></a>
 
-3. **Reliability: External Service Failure**
-    - **Description**: If the external routing service is unavailable, the app should still display listings and matching results without travel-time estimates.
-    - **Justification**: Prevents third-party service failures from disrupting core functionality.
-
-<a name="nfr4"></a>
-
-4. **Security: User Data Protection**
-    - **Description**: Only authenticated users can access protected features, and users can modify only their own listings and requests.
-    - **Justification**: Protects user information and prevents unauthorized modifications.
-
-<a name="nfr5"></a>
-
-5. **Usability: Ease of Posting**
-    - **Description**: At least 80% of first-time users should be able to create a buyer request or seller listing within 3 minutes without assistance.
-    - **Justification**: Makes the marketplace easy to use for new users.
+3. **Security: Authentication and ownership**
+    - **Description**: Every request, listing, feed, option and custom-field route, and photo uploads, return 401 without a valid session token. Reading, editing, closing or deleting another user's post returns 403 and leaves the post unchanged.
+    - **Justification**: Posts hold users' addresses and are tied to their account, so only signed-in users may use the app and only a post's owner may see its private details or change it.
 
 ---
 
@@ -553,16 +517,13 @@ sequenceDiagram
 
 ### **4.7. Design of Non-Functional Requirements**
 
-1. **Feed ranking latency**
-    - **Implementation**: The design filters out ineligible candidates before calculating ranking scores. It then ranks the qualifying candidates and paginates the results. This supports the feed-ranking latency requirement in Section 3.7.
+1. [**Performance: Recommendation latency**](#nfr1)
+    - **Implementation**: The candidates are loaded with one query on an index of status and category (`listOpenInCategory`), so only open posts in the same category are read. The hard-requirement filter (`satisfies`) runs before any scoring, so only matching posts are ranked. The matches are ranked once in memory and only one page of 20 is returned, and travel times are requested for that first page only.
+2. [**Reliability: Routing service failure**](#nfr2)
+    - **Implementation**: The feed requests travel times only for the first page, and any error from the routing call is caught, so the feed is returned with `travelMinutes: null` instead of failing (`routes/feed.ts`). When OpenRouteService is connected, the call will be given a 2-second timeout that is treated the same way as an error.
+3. [**Security: Authentication and ownership**](#nfr3)
+    - **Implementation**: The `requireAuth` middleware verifies the session token (a JWT signed with `JWT_SECRET`, valid for 15 minutes) on every post, feed, option and custom-field route and on photo uploads, and answers 401 otherwise. Post routes load the post and compare its `ownerId` with the signed-in user, answering 403 for anyone else (`loadOwned` in `routes/posts.ts`). `ownerId` is always taken from the session, never from the request body. Reading a photo stays public, because the app's image loader fetches photos without a token.
 
-      Performance will be measured using the agreed candidate workload and deployment environment. These details remain pending:
-        - Candidate workload: ____ posts.
-        - Target ranking latency: ____ seconds at the 95th percentile.
-        - Measurement environment: ____.
-2. **Graceful degradation without the routing service**
-    - **Implementation**: The planned design requests travel times only for the first page of matches. The routing request will have a timeout of ____ seconds. If the service fails, times out or is rate-limited, the feed will return the ranked matches without travel times and indicate that travel time is unavailable. The timeout must allow the feed to meet the 3-second response target in Section 3.7.
-    - **Implementation status**: At the reviewed repository snapshot, the matching branch filters candidates and ranks them before pagination. Its travel-time function is a placeholder and is not connected to an external routing service. Routing timeout behaviour and compliance with both performance requirements remain unverified.
 
 ---
 
