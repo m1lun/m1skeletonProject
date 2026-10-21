@@ -20,6 +20,7 @@
 | 2026-10-19 | 2-5 | Cross-checked the draft against main and active branches; corrected API and data-model descriptions; separated intended requirements from implementation status; recorded unresolved scope and behaviour differences. |
 | 2026-10-21 | All | Fixed the document's formatting: headings, lists, escaped characters, use case anchors, and the Mermaid diagrams in 4.5 and 4.6. No requirements were changed. |
 | 2026-10-21 | 4 | Matched Section 4 to the code on main: feed routes and filters, the hard-requirement rule, collections, libraries and test tools, and route prefixes in the sequence diagrams. |
+| 2026-10-21 | 5 | Matched the data model to the code on main: request and listing fields, the options, custom fields and sessions collections, and request number validation. |
 
 ---
 
@@ -581,14 +582,17 @@ sequenceDiagram
 | **Collection** | **Key fields** |
 | -------------- | -------------- |
 | users | googleSub, name, email, address, location (GeoJSON), defaultRadiusKm, travelMode (walk, bike, drive), weights {price, condition, distance, match} (each an integer 0 to 5, default 3) |
-| requests | ownerId, category (fixed list), maxPrice, minCondition, maxDimensions {width, height, depth}, radiusKm, preferredBrand, preferredColour, address, location, photoIds[] (optional GridFS file ids), status (open, closed) |
-| listings | ownerId, category, price, condition, brand, dimensions {width, height, depth}, colour, address, location, photoIds[] (GridFS file ids), status (open, closed) |
+| requests | ownerId, category, description, requestFields[] (built-in price (max), condition (min), dimensions {width, height, depth} (max), radiuskm, brand, colour, plus custom fields; each hard, or soft with an importance 1 to 5), address, location, photoIds[] (optional GridFS file ids), status (open, closed) |
+| listings | ownerId, category, description, price, condition, listingFields[] (built-in brand, dimensions {width, height, depth}, colour, plus custom fields), address, location, photoIds[] (GridFS file ids), status (open, closed) |
+| options | field, key, label, builtin, createdBy |
+| customFields | ownerId, key, label, type (text, number, bool) |
+| sessions | tokenHash, familyId, userId, expiresAt, usedAt |
 
 Condition is one of five ordered levels: new, like new, good, fair, poor.
 
 **Feature 1 data rules:**
 - The backend obtains ownerId from the authenticated session. New posts start open. Closing retains a record; the current API also supports reopening and permanent deletion.
-- Both post types require category, address and coordinates. Requests require a built-in price field. Listings require non-negative top-level price, a valid condition and at least one photo ID. Request price non-negativity and the 1–50 km radius rule are not enforced by the inspected request-field validation; they must not be claimed as completed validation.
+- Both post types require category, address and coordinates. Requests require a built-in price field. Listings require non-negative top-level price, a valid condition and at least one photo ID. Request price, radius and size cannot be negative. The 1–50 km radius rule is not enforced by the inspected request-field validation; it must not be claimed as completed validation.
 - Requests allow 0–10 photo IDs and listings 1–10. Actual upload size is at most 5 MiB per file. Post validation checks ID format/count; photo existence and ownership checks are not established by that validation.
 - Categories are normalized, extendable option values rather than a fixed list. Description is supported, up to 2,000 characters. No separate custom title field is defined. Dimensions use cm and radius uses km; CAD remains the intended currency.
 - Unfilled optional editor rows are omitted. Existing post addresses and coordinates are saved with each post. Profile-based defaults are planned. Closed listings are excluded from the current open-listings feed.
