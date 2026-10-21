@@ -223,8 +223,6 @@ class TestPhotos : ExternalResource() {
         )
     }
 
-    // Every photo added in the same second shares one timestamp, so the picker's order among them is
-    // arbitrary. Leaving the oversized photo alone makes it the newest, and so the first in the picker.
     fun replaceWithOversized(): String {
         deleteAll()
         return insert("e2e_oversized.jpg", oversizedJpeg()).lastPathSegment.orEmpty()
