@@ -139,8 +139,6 @@ Shared test steps are in `support/PostRobot.kt`, and the differences between the
     | ------------------ | ------------------- |
     | 1. The user opens "My posts". | Create a request with the category "e2e chair" through the UI (Use Case 1, steps 1-5). The app ends on "My posts". |
     | 2. The app shows the user's open and closed requests and listings. | Check that the "My requests (" header is shown with the new request. |
-    | 2a. The user has no posts. | Not covered by an automated test yet. |
-    | 2a1. The app shows an empty state with a button to create a post. | Not covered by an automated test yet. |
     | 3. The user selects a post and edits its fields, or taps "Close". | **Edit** (`editsPost`): tap "More options" on the post, tap "Edit", check that "Edit request" is shown, replace the maximum price with "175", and tap "Save changes".<br>**Close** (`closesAndReopensPost`): tap "More options" on the post and tap "Close".<br>**Delete** (`deletesPost`): tap "More options" on the post, tap "Delete", and confirm "Delete". |
     | 3a. An edited field is invalid. | (`rejectsInvalidEditAndKeepsPost`) Tap "More options" on the post, tap "Edit", clear "Category \*", and tap "Save changes". |
     | 3a1. The app highlights the field and shows an error message; the post is unchanged. | Check that "Choose a category" is shown.<br>Tap "Back" and check that "My requests (" still lists exactly one "e2e chair" post. |
