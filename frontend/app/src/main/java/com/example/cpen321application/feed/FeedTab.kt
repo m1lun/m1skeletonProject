@@ -85,7 +85,7 @@ private fun ModeToggle(selected: Mode, onSelect: (Mode) -> Unit) {
                 onClick = { onSelect(mode) },
                 shape = SegmentedButtonDefaults.itemShape(index, Mode.entries.size),
                 modifier = Modifier.testTag(if (mode == Mode.BUYING) FeedTags.MODE_BUYING else FeedTags.MODE_SELLING),
-            ) { Text(mode.tabLabel) }
+            ) { Text(stringResource(mode.tabLabel)) }
         }
     }
 }

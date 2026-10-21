@@ -221,13 +221,13 @@ private fun SignInScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Welcome",
+            text = stringResource(R.string.login_welcome),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         Text(
-            text = "Sign in with your Google account",
+            text = stringResource(R.string.login_subtitle),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -265,7 +265,7 @@ private fun SignInButtons(onSignIn: () -> Unit, onBack: () -> Unit) {
             .height(50.dp)
     ) {
         Text(
-            text = "Sign in with Google",
+            text = stringResource(R.string.login_google),
             fontWeight = FontWeight.Medium,
             fontSize = 16.sp
         )

@@ -1,0 +1,90 @@
+<resources>
+    <!-- Navigation and modes -->
+    <string name="tab_feed">Feed</string>
+    <string name="tab_posts">My Posts</string>
+    <string name="tab_profile">Profile</string>
+    <string name="mode_buying">I\'m buying</string>
+    <string name="mode_selling">I\'m selling</string>
+    <string name="mode_new_request">New request</string>
+    <string name="mode_new_listing">New listing</string>
+
+    <!-- Shared actions -->
+    <string name="cd_back">Back</string>
+    <string name="cd_more_options">More options</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_close">Close</string>
+    <string name="action_reopen">Reopen</string>
+    <string name="action_add">Add</string>
+    <string name="action_remove">✕</string>
+
+    <!-- My posts -->
+    <string name="posts_title">Match Market</string>
+    <string name="posts_my_requests">My requests (%1$d)</string>
+    <string name="posts_my_listings">My listings (%1$d)</string>
+    <string name="posts_empty">Nothing here yet.\nTap the button below to create your first one.</string>
+    <string name="posts_delete_title">Delete this post?</string>
+    <string name="posts_delete_message">This can\'t be undone.</string>
+
+    <!-- Post detail -->
+    <string name="detail_request">Request</string>
+    <string name="detail_listing">Listing</string>
+    <string name="detail_posted">Posted %1$s</string>
+    <string name="detail_condition">Condition: %1$s</string>
+    <string name="detail_photo_position">%1$d / %2$d</string>
+    <string name="detail_see_recommendations">See recommendations</string>
+    <string name="field_must_have">Must have</string>
+    <string name="field_nice_to_have">Nice to have</string>
+    <string name="fields_requirements">Requirements</string>
+    <string name="fields_attributes">Attributes</string>
+
+    <!-- Post editor -->
+    <string name="editor_edit_request">Edit request</string>
+    <string name="editor_edit_listing">Edit listing</string>
+    <string name="editor_category">Category *</string>
+    <string name="editor_price">Price *</string>
+    <string name="editor_condition">Condition *</string>
+    <string name="editor_address">Address *</string>
+    <string name="editor_description">Description</string>
+    <string name="editor_add_field">+ Add field</string>
+    <string name="editor_create_request">Create request</string>
+    <string name="editor_create_listing">Create listing</string>
+    <string name="editor_save">Save changes</string>
+    <string name="editor_condition_selected">● %1$s</string>
+    <string name="editor_address_suggestion">📍 %1$s</string>
+    <string name="editor_address_error">Choose your address from the suggestions list</string>
+    <string name="editor_address_confirmed">✓ Address confirmed</string>
+    <string name="editor_address_pick">Pick your address from the list below</string>
+    <string name="editor_address_hint">Start typing your address, then pick it from the list</string>
+    <string name="editor_photos">Photos %1$d/%2$d</string>
+    <string name="editor_photos_required">Photos %1$d/%2$d *</string>
+    <string name="editor_add_photo">+ Add</string>
+    <string name="editor_saved_photo">Photo %1$d ✕</string>
+    <string name="editor_new_photo">%1$s ✕</string>
+    <string name="editor_new_photo_fallback">photo</string>
+    <string name="editor_field_required">%1$s *</string>
+    <string name="editor_field_custom">%1$s (custom)</string>
+    <string name="editor_value">Value</string>
+    <string name="editor_width">W</string>
+    <string name="editor_height">H</string>
+    <string name="editor_depth">D</string>
+    <string name="editor_hard">Hard</string>
+    <string name="editor_soft">Soft</string>
+    <string name="editor_importance">Importance: %1$d/%2$d</string>
+    <string name="editor_new_value">New value \"%1$s\" will be added</string>
+    <string name="editor_add_field_title">Add field</string>
+    <string name="editor_saved_fields">Your saved fields</string>
+    <string name="editor_create_field">Create new</string>
+    <string name="editor_field_name">Name</string>
+    <string name="editor_field_type">Type</string>
+    <string name="editor_type_text">Text</string>
+    <string name="editor_type_number">Number</string>
+    <string name="editor_type_bool">Yes/No</string>
+
+    <!-- Sign-in and profile -->
+    <string name="login_welcome">Welcome</string>
+    <string name="login_subtitle">Sign in with your Google account</string>
+    <string name="login_google">Sign in with Google</string>
+    <string name="profile_sign_out">Sign Out</string>
+</resources>

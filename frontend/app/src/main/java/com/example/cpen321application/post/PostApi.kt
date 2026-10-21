@@ -43,9 +43,9 @@ class PostApi(
                     if (!response.isSuccessful) throw ApiException(errorMessage(body, response.code))
                     body
                 }
-            } catch (e: SessionExpiredException) {
+            } catch (_: SessionExpiredException) {
                 throw ApiException("Your session has expired. Sign in again.")
-            } catch (e: java.io.IOException) {
+            } catch (_: java.io.IOException) {
                 throw ApiException("Could not reach the server. Check your connection.")
             }
         }
@@ -58,7 +58,7 @@ class PostApi(
         } else {
             obj.optString("error", "Request failed ($code)")
         }
-    } catch (e: org.json.JSONException) {
+    } catch (_: org.json.JSONException) {
         "Request failed ($code)"
     }
 
@@ -111,7 +111,9 @@ class PostApi(
         return if (mode == Mode.BUYING) {
             val rows = post.getJSONArray("requestFields").objects()
             val hard = rows.count { it.getBoolean("hard") }
-            val max = rows.lastOrNull { it.getString("key") == "price" }?.let { " · ≤ $${it.get("value")}" }.orEmpty()
+            val max = rows.lastOrNull { it.getString("key") == "price" }
+                ?.let { " · ≤ $${it.get("value")}" }
+                .orEmpty()
             PostSummary(
                 post.getString("id"),
                 category + max,

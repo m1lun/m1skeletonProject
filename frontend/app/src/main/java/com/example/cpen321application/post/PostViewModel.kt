@@ -16,6 +16,9 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
+// Shorter queries match too many places to be useful.
+private const val MIN_ADDRESS_QUERY_LENGTH = 3
+
 class PostViewModel(app: Application) : AndroidViewModel(app) {
     private val api = PostApi(
         BuildConfig.API_BASE_URL.trimEnd('/') + "/api",
@@ -176,7 +179,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
                 kind = o.getString("kind"),
                 type = type,
                 hard = o.optBoolean("hard", false),
-                importance = o.optInt("importance", 3),
+                importance = o.optInt("importance", DEFAULT_IMPORTANCE),
             )
             row = when (type) {
                 "bool" -> row.copy(boolValue = o.getBoolean("value"))
@@ -204,12 +207,12 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         address = text
         showAddressError = false
         suggestJob?.cancel()
-        if (text.trim().length < 3 || text.trim() == pickedAddress) {
+        if (text.trim().length < MIN_ADDRESS_QUERY_LENGTH || text.trim() == pickedAddress) {
             addressSuggestions = emptyList()
             return
         }
         suggestJob = viewModelScope.launch {
-            delay(250)
+            delay(SUGGEST_DELAY_MS)
             addressSuggestions = addressSearch.suggest(text.trim())
         }
     }
@@ -252,7 +255,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         optionCache[field]?.let { return it }
         return try {
             api.options(field).also { optionCache[field] = it }
-        } catch (e: ApiException) {
+        } catch (_: ApiException) {
             emptyList()
         }
     }

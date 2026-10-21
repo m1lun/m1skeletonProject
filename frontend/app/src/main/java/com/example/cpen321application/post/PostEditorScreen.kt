@@ -1,6 +1,7 @@
 package com.example.cpen321application.post
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.annotation.StringRes
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
@@ -44,9 +45,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.cpen321application.R
+
+private const val MAX_SUGGESTIONS = 8
+// Characters of a new photo's file name shown on its remove button.
+private const val PHOTO_NAME_CHARS = 8
 
 @Composable
 fun PostEditorScreen(viewModel: PostViewModel, padding: PaddingValues) {
@@ -63,7 +70,7 @@ fun PostEditorScreen(viewModel: PostViewModel, padding: PaddingValues) {
     ) {
         EditorHeader(viewModel, seller)
         SuggestField(
-            label = "Category *",
+            label = stringResource(R.string.editor_category),
             value = viewModel.category,
             onValueChange = { viewModel.category = it },
             options = viewModel.categories,
@@ -73,13 +80,13 @@ fun PostEditorScreen(viewModel: PostViewModel, padding: PaddingValues) {
         OutlinedTextField(
             value = viewModel.description,
             onValueChange = { viewModel.description = it },
-            label = { Text("Description") },
+            label = { Text(stringResource(R.string.editor_description)) },
             minLines = 2,
             modifier = Modifier.fillMaxWidth(),
         )
         PhotoRow(viewModel, seller)
         FieldRows(viewModel, seller)
-        OutlinedButton(onClick = { showAddField = true }) { Text("+ Add field") }
+        OutlinedButton(onClick = { showAddField = true }) { Text(stringResource(R.string.editor_add_field)) }
         SubmitButton(viewModel, seller)
     }
 
@@ -99,11 +106,15 @@ fun PostEditorScreen(viewModel: PostViewModel, padding: PaddingValues) {
 private fun EditorHeader(viewModel: PostViewModel, seller: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = viewModel::stopEditing) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
         }
-        val noun = if (seller) "listing" else "request"
+        val title = when {
+            viewModel.editingId == null -> viewModel.mode.newLabel
+            seller -> R.string.editor_edit_listing
+            else -> R.string.editor_edit_request
+        }
         Text(
-            if (viewModel.editingId == null) viewModel.mode.newLabel else "Edit $noun",
+            stringResource(title),
             style = MaterialTheme.typography.titleLarge,
         )
     }
@@ -114,12 +125,12 @@ private fun SellerFields(viewModel: PostViewModel) {
     OutlinedTextField(
         value = viewModel.price,
         onValueChange = { viewModel.price = it },
-        label = { Text("Price *") },
+        label = { Text(stringResource(R.string.editor_price)) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
-    Text("Condition *", style = MaterialTheme.typography.labelLarge)
+    Text(stringResource(R.string.editor_condition), style = MaterialTheme.typography.labelLarge)
     ConditionChoices(selected = viewModel.condition, onSelect = { viewModel.condition = it })
 }
 
@@ -131,7 +142,8 @@ private fun ConditionChoices(selected: String, onSelect: (String) -> Unit) {
     ) {
         CONDITIONS.forEach { c ->
             OutlinedButton(onClick = { onSelect(c) }) {
-                Text(if (selected == c) "● ${c.titleCase()}" else c.titleCase())
+                val name = c.titleCase()
+                Text(if (selected == c) stringResource(R.string.editor_condition_selected, name) else name)
             }
         }
     }
@@ -142,10 +154,10 @@ private fun AddressField(viewModel: PostViewModel) {
     OutlinedTextField(
         value = viewModel.address,
         onValueChange = viewModel::onAddressChange,
-        label = { Text("Address *") },
+        label = { Text(stringResource(R.string.editor_address)) },
         singleLine = true,
         isError = viewModel.showAddressError,
-        supportingText = { Text(addressHint(viewModel)) },
+        supportingText = { Text(stringResource(addressHint(viewModel))) },
         modifier = Modifier.fillMaxWidth(),
     )
     if (viewModel.addressSuggestions.isNotEmpty()) {
@@ -157,7 +169,7 @@ private fun AddressField(viewModel: PostViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
-                            "📍 ${suggestion.label}",
+                            stringResource(R.string.editor_address_suggestion, suggestion.label),
                             modifier = Modifier.fillMaxWidth(),
                             style = MaterialTheme.typography.bodyMedium,
                         )
@@ -168,11 +180,12 @@ private fun AddressField(viewModel: PostViewModel) {
     }
 }
 
-private fun addressHint(viewModel: PostViewModel): String = when {
-    viewModel.showAddressError -> "Choose your address from the suggestions list"
-    viewModel.addressConfirmed -> "✓ Address confirmed"
-    viewModel.addressSuggestions.isNotEmpty() -> "Pick your address from the list below"
-    else -> "Start typing your address, then pick it from the list"
+@StringRes
+private fun addressHint(viewModel: PostViewModel): Int = when {
+    viewModel.showAddressError -> R.string.editor_address_error
+    viewModel.addressConfirmed -> R.string.editor_address_confirmed
+    viewModel.addressSuggestions.isNotEmpty() -> R.string.editor_address_pick
+    else -> R.string.editor_address_hint
 }
 
 @Composable
@@ -186,8 +199,11 @@ private fun PhotoRow(viewModel: PostViewModel, seller: Boolean) {
     val pickMany = rememberLauncherForActivityResult(pickManyContract) { viewModel.addPhotos(it) }
     val imagesOnly = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
     Text(
-        "Photos ${viewModel.photos.size + viewModel.existingPhotoIds.size}/$MAX_PHOTOS" +
-            if (seller) " *" else "",
+        stringResource(
+            if (seller) R.string.editor_photos_required else R.string.editor_photos,
+            viewModel.photos.size + viewModel.existingPhotoIds.size,
+            MAX_PHOTOS,
+        ),
         style = MaterialTheme.typography.labelLarge,
     )
     Row(
@@ -197,15 +213,17 @@ private fun PhotoRow(viewModel: PostViewModel, seller: Boolean) {
         OutlinedButton(
             onClick = { if (room == 1) pickOne.launch(imagesOnly) else pickMany.launch(imagesOnly) },
             enabled = room > 0,
-        ) { Text("+ Add") }
+        ) { Text(stringResource(R.string.editor_add_photo)) }
         viewModel.existingPhotoIds.forEachIndexed { index, _ ->
             OutlinedButton(onClick = { viewModel.removeExistingPhoto(index) }) {
-                Text("Photo ${index + 1} ✕")
+                Text(stringResource(R.string.editor_saved_photo, index + 1))
             }
         }
         viewModel.photos.forEachIndexed { index, uri ->
             OutlinedButton(onClick = { viewModel.removePhoto(index) }) {
-                Text("${uri.lastPathSegment?.takeLast(8) ?: "photo"} ✕")
+                val name = uri.lastPathSegment?.takeLast(PHOTO_NAME_CHARS)
+                    ?: stringResource(R.string.editor_new_photo_fallback)
+                Text(stringResource(R.string.editor_new_photo, name))
             }
         }
     }
@@ -214,7 +232,7 @@ private fun PhotoRow(viewModel: PostViewModel, seller: Boolean) {
 @Composable
 private fun FieldRows(viewModel: PostViewModel, seller: Boolean) {
     Text(
-        if (seller) "Attributes" else "Requirements",
+        stringResource(if (seller) R.string.fields_attributes else R.string.fields_requirements),
         style = MaterialTheme.typography.titleMedium,
     )
     viewModel.rows.forEachIndexed { index, row ->
@@ -238,8 +256,12 @@ private fun SubmitButton(viewModel: PostViewModel, seller: Boolean) {
         if (viewModel.saving) {
             CircularProgressIndicator(modifier = Modifier.padding(2.dp))
         } else {
-            val create = if (seller) "Create listing" else "Create request"
-            Text(if (viewModel.editingId == null) create else "Save changes")
+            val label = when {
+                viewModel.editingId != null -> R.string.editor_save
+                seller -> R.string.editor_create_listing
+                else -> R.string.editor_create_request
+            }
+            Text(stringResource(label))
         }
     }
 }
@@ -258,12 +280,17 @@ private fun RowEditor(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                val title = when {
+                    row.required -> stringResource(R.string.editor_field_required, row.label)
+                    row.isCustom -> stringResource(R.string.editor_field_custom, row.label)
+                    else -> row.label
+                }
                 Text(
-                    row.label + if (row.required) " *" else "" + if (row.isCustom) " (custom)" else "",
+                    title,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
-                if (onRemove != null) TextButton(onClick = onRemove) { Text("✕") }
+                if (onRemove != null) TextButton(onClick = onRemove) { Text(stringResource(R.string.action_remove)) }
             }
             RowValueInput(row, viewModel, onChange)
             // Hard/soft and importance only exist on request fields.
@@ -289,7 +316,7 @@ private fun RowValueInput(row: RowState, viewModel: PostViewModel, onChange: (Ro
         else -> OutlinedTextField(
             value = row.value,
             onValueChange = { onChange(row.copy(value = it)) },
-            label = { Text("Value") },
+            label = { Text(stringResource(R.string.editor_value)) },
             keyboardOptions = KeyboardOptions(
                 keyboardType = if (row.type == "number") KeyboardType.Decimal else KeyboardType.Text,
             ),
@@ -302,7 +329,11 @@ private fun RowValueInput(row: RowState, viewModel: PostViewModel, onChange: (Ro
 @Composable
 private fun DimensionInputs(row: RowState, onChange: (RowState) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("W" to row.width, "H" to row.height, "D" to row.depth).forEachIndexed { i, (name, v) ->
+        listOf(
+            R.string.editor_width to row.width,
+            R.string.editor_height to row.height,
+            R.string.editor_depth to row.depth,
+        ).forEachIndexed { i, (name, v) ->
             OutlinedTextField(
                 value = v,
                 onValueChange = {
@@ -314,7 +345,7 @@ private fun DimensionInputs(row: RowState, onChange: (RowState) -> Unit) {
                         },
                     )
                 },
-                label = { Text(name) },
+                label = { Text(stringResource(name)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
                 modifier = Modifier.weight(1f),
@@ -328,7 +359,7 @@ private fun OptionValueInput(row: RowState, viewModel: PostViewModel, onChange: 
     var options by remember(row.key) { mutableStateOf<List<OptionItem>>(emptyList()) }
     LaunchedEffect(row.key) { options = viewModel.suggestions(row.optionField!!) }
     SuggestField(
-        label = "Value",
+        label = stringResource(R.string.editor_value),
         value = row.value,
         onValueChange = { onChange(row.copy(value = it)) },
         options = options,
@@ -339,23 +370,28 @@ private fun OptionValueInput(row: RowState, viewModel: PostViewModel, onChange: 
 @Composable
 private fun RequestControls(row: RowState, onChange: (RowState) -> Unit) {
     SingleChoiceSegmentedButtonRow {
-        listOf(true to "Hard", false to "Soft").forEachIndexed { i, (hard, name) ->
+        listOf(true to R.string.editor_hard, false to R.string.editor_soft).forEachIndexed { i, (hard, name) ->
             SegmentedButton(
                 selected = row.hard == hard,
                 onClick = { onChange(row.copy(hard = hard)) },
                 shape = SegmentedButtonDefaults.itemShape(i, 2),
-            ) { Text(name) }
+            ) { Text(stringResource(name)) }
         }
     }
     Text(
-        if (row.hard) "Must have" else "Importance: ${row.importance}/5",
+        if (row.hard) {
+            stringResource(R.string.field_must_have)
+        } else {
+            stringResource(R.string.editor_importance, row.importance, MAX_IMPORTANCE)
+        },
         style = MaterialTheme.typography.bodySmall,
     )
     Slider(
         value = row.importance.toFloat(),
-        onValueChange = { onChange(row.copy(importance = it.toInt().coerceIn(1, 5))) },
-        valueRange = 1f..5f,
-        steps = 3,
+        onValueChange = { onChange(row.copy(importance = it.toInt().coerceIn(MIN_IMPORTANCE, MAX_IMPORTANCE))) },
+        valueRange = MIN_IMPORTANCE.toFloat()..MAX_IMPORTANCE.toFloat(),
+        // The stops between the two ends, so the slider snaps to whole numbers.
+        steps = MAX_IMPORTANCE - MIN_IMPORTANCE - 1,
         enabled = !row.hard,
     )
 }
@@ -378,7 +414,7 @@ private fun SuggestField(
         SuggestionRow(value, onValueChange, options)
         val exact = options.any { it.key == value.trim().lowercase() }
         if (value.isNotBlank() && !exact) {
-            Text("New value \"${value.trim()}\" will be added", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.editor_new_value, value.trim()), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -389,7 +425,7 @@ private fun SuggestionRow(value: String, onValueChange: (String) -> Unit, option
     val matches = options
         .filter { value.isBlank() || it.key.contains(value.trim().lowercase()) }
         .filter { it.key != value.trim().lowercase() }
-        .take(8)
+        .take(MAX_SUGGESTIONS)
     if (matches.isEmpty()) return
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -411,11 +447,11 @@ private fun AddFieldDialog(
     var type by remember { mutableStateOf("text") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add field") },
+        title = { Text(stringResource(R.string.editor_add_field_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (saved.isNotEmpty()) {
-                    Text("Your saved fields", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.editor_saved_fields), style = MaterialTheme.typography.labelLarge)
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -425,22 +461,31 @@ private fun AddFieldDialog(
                         }
                     }
                 }
-                Text("Create new", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.editor_create_field), style = MaterialTheme.typography.labelLarge)
                 OutlinedTextField(
                     value = label,
                     onValueChange = { label = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.editor_field_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Text("Type", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.editor_field_type), style = MaterialTheme.typography.labelLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    listOf("text" to "Text", "number" to "Number", "bool" to "Yes/No").forEach { (t, name) ->
+                    listOf(
+                        "text" to R.string.editor_type_text,
+                        "number" to R.string.editor_type_number,
+                        "bool" to R.string.editor_type_bool,
+                    ).forEach { (t, name) ->
                         FilterChip(
                             selected = type == t,
                             onClick = { type = t },
                             label = {
-                                Text(name, maxLines = 1, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                                Text(
+                                    stringResource(name),
+                                    maxLines = 1,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center,
+                                )
                             },
                             modifier = Modifier.weight(1f),
                         )
@@ -449,8 +494,10 @@ private fun AddFieldDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onAdd(label, type) }, enabled = label.isNotBlank()) { Text("Add") }
+            TextButton(onClick = { onAdd(label, type) }, enabled = label.isNotBlank()) {
+                Text(stringResource(R.string.action_add))
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }

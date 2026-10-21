@@ -1,16 +1,18 @@
 package com.example.cpen321application.post
 
+import androidx.annotation.StringRes
+import com.example.cpen321application.R
 import org.json.JSONObject
 
-enum class Mode(val path: String, val tabLabel: String, val newLabel: String) {
-    BUYING("requests", "I'm buying", "New request"),
-    SELLING("listings", "I'm selling", "New listing"),
+enum class Mode(val path: String, @StringRes val tabLabel: Int, @StringRes val newLabel: Int) {
+    BUYING("requests", R.string.mode_buying, R.string.mode_new_request),
+    SELLING("listings", R.string.mode_selling, R.string.mode_new_listing),
 }
 
-enum class AppTab(val label: String) {
-    FEED("Feed"),
-    POSTS("My Posts"),
-    PROFILE("Profile"),
+enum class AppTab(@StringRes val label: Int) {
+    FEED(R.string.tab_feed),
+    POSTS(R.string.tab_posts),
+    PROFILE(R.string.tab_profile),
 }
 
 val CONDITIONS = listOf("new", "like new", "good", "fair", "poor")
@@ -18,6 +20,11 @@ val CONDITIONS = listOf("new", "like new", "good", "fair", "poor")
 const val MAX_PHOTOS = 10
 const val MAX_PHOTO_BYTES = 5 * 1024 * 1024
 const val MAX_CUSTOM_FIELDS = 10
+
+// How much a soft request field matters, on the editor's slider.
+const val MIN_IMPORTANCE = 1
+const val MAX_IMPORTANCE = 5
+const val DEFAULT_IMPORTANCE = 3
 
 /** One line on the detail screen; hard/importance are set for request fields only. */
 data class DetailRow(
@@ -73,7 +80,7 @@ data class RowState(
     val depth: String = "",
     val boolValue: Boolean = false,
     val hard: Boolean = false,
-    val importance: Int = 3,
+    val importance: Int = DEFAULT_IMPORTANCE,
     val required: Boolean = false,
 ) {
     val isCustom: Boolean get() = kind == "custom"

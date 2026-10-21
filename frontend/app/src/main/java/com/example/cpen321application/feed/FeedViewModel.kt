@@ -11,6 +11,7 @@ import com.example.cpen321application.auth.SessionManager
 import com.example.cpen321application.post.AddressSearch
 import com.example.cpen321application.post.AddressSuggestion
 import com.example.cpen321application.post.Mode
+import com.example.cpen321application.post.SUGGEST_DELAY_MS
 import java.io.IOException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -18,7 +19,6 @@ import kotlinx.coroutines.launch
 import org.json.JSONException
 
 private const val TAG = "FeedViewModel"
-private const val SUGGEST_DELAY_MS = 250L
 
 // Keeps the feed loaded while the user switches tabs or rotates the screen.
 class FeedViewModel(app: Application) : AndroidViewModel(app) {

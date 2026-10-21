@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -127,11 +128,12 @@ class MainActivity : ComponentActivity() {
 private fun AppNavigationBar(viewModel: PostViewModel) {
     NavigationBar {
         AppTab.entries.forEach { tab ->
+            val label = stringResource(tab.label)
             NavigationBarItem(
                 selected = viewModel.tab == tab,
                 onClick = { viewModel.tab = tab },
-                icon = { Icon(tab.icon(), contentDescription = tab.label) },
-                label = { Text(tab.label) },
+                icon = { Icon(tab.icon(), contentDescription = label) },
+                label = { Text(label) },
             )
         }
     }
