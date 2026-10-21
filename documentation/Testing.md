@@ -4,7 +4,7 @@
 
 | **Change Date** | **Modified Sections** | **Rationale** |
 | --------------- | --------------------- | ------------- |
-| 2026-10-20 | 2 | First version: the front-end end-to-end tests for Feature 1 (Use Cases 1, 2 and 4), how to run them, and how each test maps to its use case scenario steps. Back-end and non-functional requirement tests will be added later. |
+| 2026-10-20 | 2 | First version: the front-end end-to-end tests for Feature 1 (Use Cases 1, 2 and 4), how to run them, how each test maps to its use case scenario steps, and the logs of a full run (25/25 passed). Back-end and non-functional requirement tests will be added later. |
 
 ---
 
@@ -81,7 +81,32 @@ cd frontend
 
   - **Test Logs:**
     ```
-    [Placeholder for CreatePostTest execution logs]
+    Pixel_9(AVD) - 16 (Android 16, API 36), 2026-10-20, ./scripts/run-frontend-e2e-tests.sh
+    Branch fix/e2e-photo-picker-order (main + PR #56), commit 4f8635e
+
+    com.example.cpen321application.e2e.CreatePostTest
+      rejectsMissingPrice[REQUEST]                  PASSED   9.97 s
+      rejectsAddressThatWasNotPicked[REQUEST]       PASSED   5.95 s
+      createsPostAndShowsItInMyPosts[REQUEST]       PASSED   6.64 s
+      showsErrorWhenServerIsUnreachable[REQUEST]    PASSED  10.82 s
+      rejectsMissingCategory[REQUEST]               PASSED   5.10 s
+      limitsPhotosToTen[REQUEST]                    PASSED  10.39 s
+      rejectsNegativePrice[REQUEST]                 PASSED  16.52 s
+      createsPostWithSeveralPhotos[REQUEST]         PASSED   8.69 s
+      photoIsRequiredOnlyOnListings[REQUEST]        PASSED   6.41 s
+      rejectsPhotoOverFiveMegabytes[REQUEST]        PASSED   9.38 s
+      rejectsMissingPrice[LISTING]                  PASSED   8.16 s
+      rejectsAddressThatWasNotPicked[LISTING]       PASSED   7.86 s
+      createsPostAndShowsItInMyPosts[LISTING]       PASSED   8.36 s
+      showsErrorWhenServerIsUnreachable[LISTING]    PASSED  12.61 s
+      rejectsMissingCategory[LISTING]               PASSED   5.06 s
+      limitsPhotosToTen[LISTING]                    PASSED  10.40 s
+      rejectsNegativePrice[LISTING]                 PASSED  10.52 s
+      createsPostWithSeveralPhotos[LISTING]         PASSED   8.21 s
+      photoIsRequiredOnlyOnListings[LISTING]        PASSED   6.21 s
+      rejectsPhotoOverFiveMegabytes[LISTING]        PASSED   9.29 s
+
+    CreatePostTest: 20 tests, 20 passed, 0 failed, 0 skipped
     ```
 
 - **Use Case 4: Manage Own Posts** ([`ManagePostsTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/ManagePostsTest.kt))
@@ -101,5 +126,18 @@ cd frontend
 
   - **Test Logs:**
     ```
-    [Placeholder for ManagePostsTest execution logs]
+    Pixel_9(AVD) - 16 (Android 16, API 36), 2026-10-20, ./scripts/run-frontend-e2e-tests.sh
+    Branch fix/e2e-photo-picker-order (main + PR #56), commit 4f8635e
+
+    com.example.cpen321application.e2e.ManagePostsTest
+      editsPost                                     PASSED   6.80 s
+      deletesPost                                   PASSED   6.93 s
+      keepsPostWhenServerIsUnreachable              PASSED  10.96 s
+      rejectsInvalidEditAndKeepsPost                PASSED  17.79 s
+      closesAndReopensPost                          PASSED   6.82 s
+
+    ManagePostsTest: 5 tests, 5 passed, 0 failed, 0 skipped
+
+    Finished 25 tests on Pixel_9(AVD) - 16
+    BUILD SUCCESSFUL in 3m 52s
     ```
