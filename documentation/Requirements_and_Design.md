@@ -354,15 +354,17 @@ The importance values are relative: the system divides each value by the sum of 
 
 2. **Matching**
     - **Purpose**: Hard-requirement filtering and weighted ranking in both directions, plus travel time.
-    - **Rationale**: Isolated from storage and HTTP so the team-written logic can be unit-tested directly; alternative of database-only filtering was rejected because ranking needs weighted scoring.
+    - **Rationale**: Isolated from storage and HTTP so the team-written logic can be tested through the feed's interface tests; alternative of database-only filtering was rejected because ranking needs weighted scoring.
     - **Interfaces**:
-        1. `GET /feed?postId=<id>&maxPrice=&minCondition=&radiusKm=&sort=best|nearest|cheapest`
-            - **Purpose**: Return the feed for the user's own request or listing, with travel times for the first page. The post type decides the direction: a request returns listings, a listing returns requests. Every parameter except postId is an optional temporary filter. maxPrice and minCondition apply to request feeds only; radiusKm and sort apply to both. A value looser than the saved requirement is ignored, and an unsupported parameter returns 400.
-        2. `boolean satisfies(Request request, Listing listing)`
-            - **Purpose**: The single hard-requirement rule (category, price, condition, dimensions, straight-line distance within radius) used by both feed directions.
-        3. `List<RankedMatch> rank(Post source, List<Post> candidates, Weights weights)`
+        1. `GET /api/feed?postId=<id>&limit=&cursor=&category=&minPrice=&maxPrice=&lat=&lng=&radiusKm=`
+            - **Purpose**: Return the feed for the user's own request or listing, with travel times for the first page. The post type decides the direction: a request returns listings, a listing returns requests. Every parameter except postId is an optional temporary filter. A value looser than the saved requirement is ignored, and an unsupported parameter returns 400. Returns 403 for another user's post and 409 for a closed post. The planned minCondition filter (request feeds only) and sort=best|nearest|cheapest are not implemented yet.
+        2. `GET /api/feed/listings` and `GET /api/feed/requests`
+            - **Purpose**: Return other users' open posts, newest first, with the same filters; `before` pages through them.
+        3. `boolean satisfies(Request request, Listing listing)`
+            - **Purpose**: The single hard-requirement rule (category and straight-line distance within radius, plus price, condition, dimensions or any other field the buyer marked hard) used by both feed directions.
+        4. `List<RankedMatch> rank(Post source, List<Post> candidates, Weights weights)`
             - **Purpose**: Score each candidate on price, condition, distance, and brand/colour match, and order by the viewer's weights.
-        4. `List<Duration> travelTimes(Location origin, List<Location> destinations, TravelMode mode)`
+        5. `List<Duration> travelTimes(Location origin, List<Location> destinations, TravelMode mode)`
             - **Purpose**: Get travel times from the external routing service for one page of results; returns empty when it is unavailable.
 
 3. **Users & Auth**
@@ -377,13 +379,13 @@ The importance values are relative: the system divides each value by the sum of 
             - **Purpose**: Revokes the refresh-token family. Session tokens last 15 minutes; refresh tokens have a 30-day lifetime. Protected routes use requireAuth and currentUser.
         4. `GET /users/me`, `PATCH /users/me`
             - **Purpose**: Read or update profile, typed address and default radius, travel mode, and the four importance weights.
-        5. `AuthMiddleware: userId authenticate(token)`
+        5. `userId requireAuth(token)`
             - **Purpose**: Internal interface protecting every other route.
 
 ### **4.2. Databases**
 
 1. **MongoDB** (self-hosted in Docker on the cloud VM)
-    - **Purpose**: Stores users, requests, and listings. Photos for requests and listings are stored in the same database using GridFS (fs.files and fs.chunks), and each post keeps the ids of its photos. Geospatial index on post locations.
+    - **Purpose**: Stores users (planned), requests, listings, options, custom fields, and sessions. Photos for requests and listings are stored in the same database using GridFS (fs.files and fs.chunks), and each post keeps the ids of its photos. Geospatial index on post locations.
 
 ### **4.3. External Modules**
 
@@ -392,7 +394,7 @@ The importance values are relative: the system divides each value by the sum of 
 2. **Android Geocoder**
     - **Purpose**: Provides address suggestions and coordinates in the current frontend. The implemented lookup uses the Android 13+ callback API; the older-version path returns no suggestions.
 3. **OpenRouteService**
-    - **Purpose**: Intended for external geocoding and travel-time results. It is not connected in main, and the matching branch still uses a travel-time stub.
+    - **Purpose**: Intended for external geocoding and travel-time results. It is not connected in main, and Matching still uses a travel-time stub.
 
 ### **4.4. Frameworks and Libraries**
 
@@ -421,11 +423,14 @@ The importance values are relative: the system divides each value by the sum of 
     - **Purpose**: Loads and caches post photos in Compose screens.
     - **Reason**: Kotlin-first image loader with Compose support.
 9. **Jest and Supertest** (backend), **Compose testing** (frontend)
-    - **Purpose**: Backend interface tests and frontend Compose test dependencies are present. The frontend also includes AndroidX JUnit and Espresso. UI Automator is not declared in the inspected main app build file; its planned use must be confirmed. Feature 1 end-to-end tests are in open PR #43 and are not part of the inspected main commit.
+    - **Purpose**: Backend interface tests and frontend Compose test dependencies are present. The frontend also includes AndroidX JUnit and Espresso. UI Automator is also declared; the end-to-end tests use it for the system photo picker. Feature 1 end-to-end tests (`CreatePostTest` and `ManagePostsTest`) are in the frontend's `androidTest` `e2e` package.
+10. **Multer** (backend)
+    - **Purpose**: Parses multipart photo uploads and enforces the photo count and size limits.
+    - **Reason**: Standard Express middleware for multipart uploads.
 
 ### **4.5. Dependencies Diagram**
 
-OpenRouteService connections and stored user preferences are not implemented in the inspected main commit. In the current post-creation flow, the frontend calls Android Geocoder, then sends coordinates to Posts. Matching is implemented separately on the matching branch and is not integrated into main.
+OpenRouteService connections and stored user preferences are not implemented in the inspected main commit. In the current post-creation flow, the frontend calls Android Geocoder, then sends coordinates to Posts. Matching is on main.
 
 ```mermaid
 flowchart LR
@@ -466,11 +471,13 @@ sequenceDiagram
     participant ORS as OpenRouteService
     participant DB as MongoDB
     B->>FE: Fill request form, optionally add photos, submit
-    FE->>P: POST /requests (multipart)
-    P->>UA: authenticate(token)
+    FE->>P: POST /api/photos (multipart), if any
+    P->>DB: store photos in GridFS, if any
+    P-->>FE: photo ids
+    FE->>P: POST /api/requests (JSON with photo ids)
+    P->>UA: requireAuth(token)
     P->>ORS: geocode(address)
     ORS-->>P: coordinates
-    P->>DB: store photos in GridFS, if any
     P->>DB: insert request with photo ids
     P-->>FE: 201 request
 ```
@@ -486,11 +493,13 @@ sequenceDiagram
     participant ORS as OpenRouteService
     participant DB as MongoDB
     S->>FE: Fill listing form, add photos, submit
-    FE->>P: POST /listings (multipart)
-    P->>UA: authenticate(token)
+    FE->>P: POST /api/photos (multipart)
+    P->>DB: store photos in GridFS
+    P-->>FE: photo ids
+    FE->>P: POST /api/listings (JSON with photo ids)
+    P->>UA: requireAuth(token)
     P->>ORS: geocode(address)
     ORS-->>P: coordinates
-    P->>DB: store photos in GridFS
     P->>DB: insert listing with photo ids
     P-->>FE: 201 listing
 ```
@@ -506,7 +515,7 @@ sequenceDiagram
     participant UA as Users and Auth
     participant ORS as OpenRouteService
     U->>FE: Open feed
-    FE->>M: GET /feed?postId=...
+    FE->>M: GET /api/feed?postId=...
     M->>P: getPost, getOpenPosts
     M->>UA: user weights
     M->>M: satisfies(request, listing) for each candidate
@@ -525,11 +534,11 @@ sequenceDiagram
     participant P as Posts
     participant DB as MongoDB
     U->>FE: Open My posts
-    FE->>P: GET /requests and /listings
+    FE->>P: GET /api/requests and /api/listings
     P->>DB: find posts by owner
     P-->>FE: posts
     U->>FE: Edit or close a post
-    FE->>P: PATCH or DELETE /requests/:id
+    FE->>P: PATCH or DELETE /api/requests/:id
     P->>DB: update permitted fields or set status to closed
     P-->>FE: 200 updated post
 ```
@@ -562,7 +571,7 @@ sequenceDiagram
         - Measurement environment: ____.
 2. **Graceful degradation without the routing service**
     - **Implementation**: The planned design requests travel times only for the first page of matches. The routing request will have a timeout of ____ seconds. If the service fails, times out or is rate-limited, the feed will return the ranked matches without travel times and indicate that travel time is unavailable. The timeout must allow the feed to meet the 3-second response target in Section 3.7.
-    - **Implementation status**: At the reviewed repository snapshot, the matching branch filters candidates and ranks them before pagination. Its travel-time function is a placeholder and is not connected to an external routing service. Routing timeout behaviour and compliance with both performance requirements remain unverified.
+    - **Implementation status**: Matching on main filters candidates and ranks them before pagination. Its travel-time function is a placeholder and is not connected to an external routing service. Routing timeout behaviour and compliance with both performance requirements remain unverified.
 
 ---
 
