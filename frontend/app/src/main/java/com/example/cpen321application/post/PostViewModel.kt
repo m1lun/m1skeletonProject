@@ -243,14 +243,6 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         photos.addAll(uris.take(room))
     }
 
-    fun removePhoto(index: Int) {
-        photos.removeAt(index)
-    }
-
-    fun removeExistingPhoto(index: Int) {
-        existingPhotoIds.removeAt(index)
-    }
-
     suspend fun suggestions(field: String): List<OptionItem> {
         optionCache[field]?.let { return it }
         return try {

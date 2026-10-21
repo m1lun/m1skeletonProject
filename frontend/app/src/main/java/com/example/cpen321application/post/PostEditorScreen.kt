@@ -215,12 +215,12 @@ private fun PhotoRow(viewModel: PostViewModel, seller: Boolean) {
             enabled = room > 0,
         ) { Text(stringResource(R.string.editor_add_photo)) }
         viewModel.existingPhotoIds.forEachIndexed { index, _ ->
-            OutlinedButton(onClick = { viewModel.removeExistingPhoto(index) }) {
+            OutlinedButton(onClick = { viewModel.existingPhotoIds.removeAt(index) }) {
                 Text(stringResource(R.string.editor_saved_photo, index + 1))
             }
         }
         viewModel.photos.forEachIndexed { index, uri ->
-            OutlinedButton(onClick = { viewModel.removePhoto(index) }) {
+            OutlinedButton(onClick = { viewModel.photos.removeAt(index) }) {
                 val name = uri.lastPathSegment?.takeLast(PHOTO_NAME_CHARS)
                     ?: stringResource(R.string.editor_new_photo_fallback)
                 Text(stringResource(R.string.editor_new_photo, name))
