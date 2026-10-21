@@ -98,6 +98,9 @@ fun MainRule.back() {
 fun MainRule.firstValueField(): SemanticsNodeInteraction =
     onAllNodes(hasSetTextAction() and hasText("Value")).onFirst().scrolled()
 
+fun MainRule.valueField(index: Int): SemanticsNodeInteraction =
+    onAllNodes(hasSetTextAction() and hasText("Value"))[index].scrolled()
+
 fun MainRule.openMode(label: String) {
     if (onAllNodesWithText(label).fetchSemanticsNodes().isEmpty()) click("My Posts")
     click(label)
@@ -130,6 +133,11 @@ fun MainRule.openForm(form: PostForm) {
 
 fun MainRule.enterPrice(form: PostForm, price: String) {
     if (form == PostForm.REQUEST) firstValueField().performTextInput(price) else type("Price *", price)
+}
+
+fun MainRule.replacePrice(form: PostForm, price: String) {
+    val priceField = if (form == PostForm.REQUEST) firstValueField() else field("Price *")
+    priceField.performTextReplacement(price)
 }
 
 fun MainRule.fillForm(
