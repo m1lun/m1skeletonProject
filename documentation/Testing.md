@@ -4,106 +4,13 @@
 
 | **Change Date** | **Modified Sections** | **Rationale** |
 | --------------- | --------------------- | ------------- |
-| 2026-10-20 | 2.1, 2.2, 4 | First version: how to run every test suite, the back-end test locations, and the front-end end-to-end tests for Feature 1 (Use Cases 1, 2 and 4) mapped to their use case scenario steps. |
+| 2026-10-20 | 2 | First version: the front-end end-to-end tests for Feature 1 (Use Cases 1, 2 and 4), how to run them, and how each test maps to its use case scenario steps. Back-end and non-functional requirement tests will be added later. |
 
 ---
 
-## 2. Back-end Test Specification: APIs
+## 2. Front-end Test Specification
 
-### 2.1. Locations of Back-end Tests and Instructions to Run Them
-
-#### 2.1.1. Tests
-
-| **Interface** | **Describe Group Location, No Mocks** | **Describe Group Location, With Mocks** | **Mocked Components** |
-| ------------- | ------------------------------------- | --------------------------------------- | --------------------- |
-| **GET /health** | [`backend/tests/no-mock/health.test.ts#L9`](../backend/tests/no-mock/health.test.ts#L9) | None (no external component to fail) | None |
-| **Unregistered routes (404)** | [`backend/tests/no-mock/health.test.ts#L23`](../backend/tests/no-mock/health.test.ts#L23) | None (no external component to fail) | None |
-| **POST /api/requests**, **POST /api/listings** | Not yet implemented | Not yet implemented | Posts DB, Photos (GridFS) |
-| **GET /api/requests**, **GET /api/listings**, **GET /api/requests/:id**, **GET /api/listings/:id** | Not yet implemented | Not yet implemented | Posts DB |
-| **PATCH /api/requests/:id**, **PATCH /api/listings/:id** | Not yet implemented | Not yet implemented | Posts DB |
-| **DELETE /api/requests/:id**, **DELETE /api/listings/:id** | Not yet implemented | Not yet implemented | Posts DB, Photos (GridFS) |
-
-The back-end tests call the Express app built by `createApp(...)` in `backend/src/app.ts` through [supertest](https://github.com/ladjs/supertest), so no server needs to be running. No-mock tests use in-memory stand-ins only where a database would otherwise be needed (`backend/tests/helpers/memorySessionRepo.ts`). Each interface has a `describe` group named after it and saying whether it uses mocks, and each test is annotated with its input, expected status code, expected behavior and expected output.
-
-#### 2.1.2. Commit Hash Where Tests Run
-
-`[Insert the main-branch commit SHA at submission]`
-
-#### 2.1.3. Explanation on How to Run the Tests
-
-1. **Clone the repository and install dependencies:**
-   ```bash
-   git clone https://github.com/m1lun/m1skeletonProject.git
-   cd m1skeletonProject
-   cp backend/.env.example backend/.env   # then set GOOGLE_CLIENT_ID and JWT_SECRET, see README.md
-   ```
-   Node.js 22+ and npm 10+ are required. The scripts run `npm install` in `backend/` if `node_modules` is missing.
-
-2. **Run the back-end interface tests** from the project root:
-   ```bash
-   ./scripts/run-backend-interface-tests.sh      # Windows: scripts\run-backend-interface-tests.ps1
-   ```
-   This runs the tests with mocks (`backend/tests/mock/`), then without mocks (`backend/tests/no-mock/`), then both together, each with coverage. The coverage reports are written to `backend/coverage/mock/`, `backend/coverage/no-mock/` and `backend/coverage/interface/`; open `lcov-report/index.html` in each for the per-file report.
-
-3. **Run the back-end non-functional requirement tests:**
-   ```bash
-   ./scripts/run-backend-nfr-tests.sh            # Windows: scripts\run-backend-nfr-tests.ps1
-   ```
-
-4. **Run a single test file** while developing:
-   ```bash
-   cd backend
-   npx jest tests/no-mock/health.test.ts
-   ```
-
-5. **Run the front-end end-to-end tests:** see [4.1](#41-location-in-git-of-front-end-test-suite).
-
-### 2.2. GitHub Actions Configuration Location
-
-`.github/workflows/backend-tests.yml`
-
-It runs on every push to `main` and on every pull request: it installs dependencies, typechecks the back-end, and runs `scripts/run-backend-interface-tests.sh` and `scripts/run-backend-nfr-tests.sh`.
-
-### 2.3. Jest Coverage Report Screenshots With Mocks
-
-_(Placeholder for Jest coverage screenshot with mocks enabled)_
-
-### 2.4. Jest Coverage Report Screenshots Without Mocks
-
-_(Placeholder for Jest coverage screenshot without mocks)_
-
----
-
-## 3. Tests of Non-Functional Requirements
-
-### 3.1. Test Locations in Git
-
-| **Non-Functional Requirement** | **Location in Git** |
-| ------------------------------ | ------------------- |
-| **Feed ranking latency** ([NFR 1](Requirements_and_Design.md#nfr1)) | Not yet implemented (`backend/tests/nfr/`) |
-| **Graceful degradation without the routing service** ([NFR 2](Requirements_and_Design.md#nfr2)) | Not yet implemented (`backend/tests/nfr/`) |
-
-### 3.2. Test Verification and Logs
-
-- **Feed ranking latency**
-  - **Verification:** _To be added with the test._
-  - **Log Output**
-    ```
-    [Placeholder for feed ranking latency test logs]
-    ```
-
-- **Graceful degradation without the routing service**
-  - **Verification:** _To be added with the test._
-  - **Log Output**
-    ```
-    [Placeholder for routing degradation test logs]
-    ```
-
----
-
-## 4. Front-end Test Specification
-
-### 4.1. Location in Git of Front-end Test Suite:
+### 2.1. Location in Git of Front-end Test Suite:
 
 `frontend/app/src/androidTest/java/com/example/cpen321application/e2e/`
 
@@ -148,7 +55,7 @@ cd frontend
 - If every test fails with "Your session has expired. Sign in again.", the app is signed out: sign in on the emulator again and rerun.
 - If Google sign-in fails on the emulator, it has probably lost DNS, which can happen when the host changes network or wakes from sleep. `adb shell ping -c1 google.com` reports `unknown host` when that is the cause. Cold boot the emulator (Device Manager → ⋮ → Cold Boot Now).
 
-### 4.2. Tests
+### 2.2. Tests
 
 - **Use Cases 1 and 2: Create Buyer Request / Create Seller Listing** ([`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt), each test runs for both forms)
 

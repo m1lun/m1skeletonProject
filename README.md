@@ -209,7 +209,7 @@ Run these from the project root.
 
 Backend tests use Jest. Frontend tests use the Jetpack Compose testing APIs and UI Automator.
 
-See [documentation/Testing.md](documentation/Testing.md) for how to run each suite, the test locations, and how the end-to-end tests map to the use cases.
+See [documentation/Testing.md](documentation/Testing.md) for the end-to-end tests: how to run them and how they map to the use cases.
 
 ## Continuous integration
 
