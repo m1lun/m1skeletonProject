@@ -4,7 +4,7 @@ import { createServer as createHttpsServer } from 'node:https';
 
 import { createApp } from './app';
 import { env } from './config/env';
-import { describe } from './googleAuth';
+import { errorMessage } from './errors';
 import { createMongoStore } from './store/mongoStore';
 import { seedOptions } from './store/seed';
 import type { Store } from './store/types';
@@ -37,7 +37,7 @@ function start(store: Store): void {
       // running, so Node exits on its own.
       server.close(() => {
         store.close().catch((cause: unknown) => {
-          console.error(`Could not close MongoDB cleanly: ${describe(cause)}`);
+          console.error(`Could not close MongoDB cleanly: ${errorMessage(cause)}`);
           process.exitCode = 1;
         });
       });
@@ -51,6 +51,6 @@ createMongoStore(env.mongoUri, env.mongoDb)
     return store;
   })
   .then(start, (cause: unknown) => {
-    console.error(`Could not set up MongoDB: ${describe(cause)}`);
+    console.error(`Could not set up MongoDB: ${errorMessage(cause)}`);
     process.exitCode = 1;
   });

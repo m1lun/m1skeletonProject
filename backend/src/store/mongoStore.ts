@@ -34,7 +34,7 @@ const WITHOUT_ID = { projection: { _id: 0 } };
 
 class MongoPostCollection<T extends PostDoc & { category: string }> implements PostCollection<T> {
   constructor(
-    private readonly collection: Collection<Document>,
+    private readonly collection: Collection,
     // Tidies a post (lower-case keys, trimmed text, no duplicate fields) before it is saved.
     private readonly normalise: (doc: Omit<T, 'id'>) => Omit<T, 'id'>,
     // Listings and requests store their price in different places.
@@ -107,16 +107,11 @@ class MongoPostCollection<T extends PostDoc & { category: string }> implements P
 }
 
 class MongoOptionCollection implements OptionCollection {
-  constructor(private readonly collection: Collection<Document>) {}
+  constructor(private readonly collection: Collection) {}
 
   async list(field: string): Promise<Option[]> {
     const found = await this.collection.find({ field }, WITHOUT_ID).sort({ label: 1 }).toArray();
     return found as unknown as Option[];
-  }
-
-  async find(field: string, key: string): Promise<Option | null> {
-    const found = await this.collection.findOne({ field, key }, WITHOUT_ID);
-    return found as Option | null;
   }
 
   async ensure(option: Option): Promise<Option> {
@@ -146,7 +141,7 @@ class MongoOptionCollection implements OptionCollection {
 }
 
 class MongoCustomFieldCollection implements CustomFieldCollection {
-  constructor(private readonly collection: Collection<Document>) {}
+  constructor(private readonly collection: Collection) {}
 
   async list(ownerId: string): Promise<CustomField[]> {
     const found = await this.collection.find({ ownerId }, WITHOUT_ID).toArray();
@@ -169,7 +164,7 @@ class MongoCustomFieldCollection implements CustomFieldCollection {
 }
 
 class MongoSessionRepo implements SessionRepo {
-  constructor(private readonly collection: Collection<Document>) {}
+  constructor(private readonly collection: Collection) {}
 
   async insert(session: RefreshSession): Promise<void> {
     await this.collection.insertOne({ ...session });

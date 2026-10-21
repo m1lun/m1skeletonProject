@@ -38,7 +38,3 @@ export async function verifyGoogleIdToken(idToken: string): Promise<GoogleUser> 
     email: payload.email ?? '',
   };
 }
-
-export function describe(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause);
-}

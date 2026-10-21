@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import { currentUser } from '../sessions';
 import { BadRequestError } from '../errors';
-import { FIELD_TYPES, MAX_LABEL_LENGTH, RESERVED_KEYS, normaliseKey } from '../models/common';
+import { FIELD_TYPES, MAX_LABEL_LENGTH, RESERVED_KEYS, isOneOf, normaliseKey } from '../models/common';
 import type { Store } from '../store/types';
 import { isObject, isText } from './checks';
 import { handle } from './handle';
@@ -10,7 +10,7 @@ import { handle } from './handle';
 export function createCustomFieldsRouter(store: Store): Router {
   const router = Router();
 
-  router.get('/', handle(async (req, res) => {
+  router.get('/', handle(async (_req, res) => {
     res.json(await store.customFields.list(currentUser(res).id));
   }));
 
@@ -21,7 +21,7 @@ export function createCustomFieldsRouter(store: Store): Router {
     const key = normaliseKey(label);
     if (label === '' || label.length > MAX_LABEL_LENGTH) {
       errors.push(`label must be 1 to ${MAX_LABEL_LENGTH} characters`);
-    } else if ((RESERVED_KEYS as readonly string[]).includes(key)) {
+    } else if (isOneOf(RESERVED_KEYS, key)) {
       errors.push(`"${label}" is already a built-in field, so there is no need to add it`);
     }
     const type = FIELD_TYPES.find((fieldType) => fieldType === body.type);

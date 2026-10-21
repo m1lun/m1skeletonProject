@@ -1,6 +1,6 @@
 import type { Router } from 'express';
 
-import { CONDITIONS } from '../models/common';
+import { CONDITIONS, isOneOf } from '../models/common';
 import type { Listing } from '../models/listing';
 import type { Store } from '../store/types';
 import { isNumber } from './checks';
@@ -20,7 +20,7 @@ export function createListingsRouter(store: Store): Router {
       if (!isNumber(body.price) || body.price < 0) {
         errors.push('price must be a number of at least 0');
       }
-      if (typeof body.condition !== 'string' || !(CONDITIONS as readonly string[]).includes(body.condition)) {
+      if (typeof body.condition !== 'string' || !isOneOf(CONDITIONS, body.condition)) {
         errors.push(`condition must be one of: ${CONDITIONS.join(', ')}`);
       }
       return { price: body.price, condition: body.condition };

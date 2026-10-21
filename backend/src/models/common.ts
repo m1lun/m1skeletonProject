@@ -61,6 +61,11 @@ export const postIndexes = [
   { key: { ownerId: 1, createdAt: -1 } },
 ] as const;
 
+// Whether a string is one of a fixed list such as CONDITIONS, narrowing it to that list's type.
+export function isOneOf<T extends string>(list: readonly T[], value: string): value is T {
+  return (list as readonly string[]).includes(value);
+}
+
 // Lower-cases, trims and collapses whitespace so "IKEA" and " ikea " are one key.
 export function normaliseKey(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ');

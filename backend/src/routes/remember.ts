@@ -1,4 +1,4 @@
-import { FIELD_TYPES, normaliseKey, type PostField, type FieldType } from '../models/common';
+import { FIELD_TYPES, isOneOf, normaliseKey, type PostField } from '../models/common';
 import type { Option } from '../models/option';
 import type { Store } from '../store/types';
 
@@ -35,8 +35,8 @@ export async function rememberNewValues(
   for (const field of fields) {
     const key = normaliseKey(field.key);
     const value = textValue(field);
-    if (field.kind === 'custom' && (FIELD_TYPES as readonly string[]).includes(field.type)) {
-      saves.push(store.customFields.upsert({ ownerId, key, label: field.label.trim(), type: field.type as FieldType }));
+    if (field.kind === 'custom' && isOneOf(FIELD_TYPES, field.type)) {
+      saves.push(store.customFields.upsert({ ownerId, key, label: field.label.trim(), type: field.type }));
     }
     if (value !== null && (field.kind === 'custom' || OPTION_FIELDS.includes(key))) {
       saves.push(store.options.ensure(newOption(key, value, ownerId)));
