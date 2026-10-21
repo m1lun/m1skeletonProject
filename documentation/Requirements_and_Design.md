@@ -19,6 +19,7 @@
 | 2026-10-12 | 4.4 | Listed the auth, JWT, multipart upload, and image-loading libraries as approved for use. |
 | 2026-10-12 | 2, 3.4, 3.5, 4.1, 4.7, 5 | Defined hard requirements vs soft preferences vs temporary filters: fields per post, one shared hard-requirement rule for both feeds, four importance weights, per-request radius with a profile default, optional filters and sort on a single /feed endpoint, travel times for the first page only. |
 | 2026-10-12 | All | Removed offers, reservations, transactions, live updates, and push notifications everywhere; deferred to a future release. Replaced formal use cases 4 and 5, and the removed non-functional requirements. |
+| 2026-10-20 | 3.5, 4.1 | Lowered the photo size limit from 10 MB to 5 MB to match the app and back-end, which both reject photos over 5 MB. |
 
 ---
 
@@ -112,7 +113,7 @@ flowchart LR
 **Failure scenario(s)**:
 - 3a. A required field is missing or invalid (for example negative price, unknown category).
     - 3a1. The app highlights the field and shows an error message.
-- 3b. A photo is larger than 10 MB or is not an image.
+- 3b. A photo is larger than 5 MB or is not an image.
     - 3b1. The app rejects the photo and shows an error message.
 - 3c. The buyer adds more than 10 photos.
     - 3c1. The app rejects the extra photos and shows an error message.
@@ -139,7 +140,7 @@ flowchart LR
 **Failure scenario(s)**:
 - 3a. A required field is missing or invalid (for example negative price, unknown category).
     - 3a1. The app highlights the field and shows an error message.
-- 3b. A photo is larger than 10 MB or is not an image.
+- 3b. A photo is larger than 5 MB or is not an image.
     - 3b1. The app rejects the photo and shows an error message.
 - 3c. The seller adds more than 10 photos.
     - 3c1. The app rejects the extra photos and shows an error message.
@@ -257,7 +258,7 @@ _TODO: add after the team agrees on screen layout._
     - **Rationale**: Both post types share most fields and lifecycle, so one component avoids duplicate logic; alternative of separate Requests and Listings components was rejected because every matching and feed operation needs both.
     - **Interfaces**:
         1. `POST /requests`, `POST /listings`
-            - **Purpose**: Create a post (multipart for photos, which are optional for requests; at most 10 photos of at most 10 MB each). Returns the created post, or 400 if invalid.
+            - **Purpose**: Create a post (multipart for photos, which are optional for requests; at most 10 photos of at most 5 MB each). Returns the created post, or 400 if invalid.
         2. `GET /requests`, `GET /listings` (own posts), `GET /requests/:id`, `GET /listings/:id`
             - **Purpose**: List or fetch posts.
         3. `PATCH /requests/:id`, `PATCH /listings/:id`, `DELETE /requests/:id`, `DELETE /listings/:id`
