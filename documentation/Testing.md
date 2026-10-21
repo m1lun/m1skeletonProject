@@ -16,7 +16,8 @@
 
 | **Test class** | **Use cases** |
 | -------------- | ------------- |
-| [`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt) | [Use Case 1: Create Buyer Request](Requirements_and_Design.md#uc1), [Use Case 2: Create Seller Listing](Requirements_and_Design.md#uc2) |
+| [`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt), tests marked `[REQUEST]` | [Use Case 1: Create Buyer Request](Requirements_and_Design.md#uc1) |
+| [`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt), tests marked `[LISTING]` | [Use Case 2: Create Seller Listing](Requirements_and_Design.md#uc2) |
 | [`ManagePostsTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/ManagePostsTest.kt) | [Use Case 4: Manage Own Posts](Requirements_and_Design.md#uc4) |
 
 Shared test steps are in `support/PostRobot.kt`, and the differences between the request and listing forms are in `support/PostForm.kt`.
@@ -57,27 +58,27 @@ cd frontend
 
 ### 2.2. Tests
 
-- **Use Cases 1 and 2: Create Buyer Request / Create Seller Listing** ([`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt), each test runs for both forms)
+- **Use Case 1: Create Buyer Request** ([`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt), the `[REQUEST]` runs)
 
   - **Expected Behaviors:**
 
     | **Scenario Steps** | **Test Case Steps** |
     | ------------------ | ------------------- |
-    | 1. The buyer/seller opens the create-request/create-listing screen. | Tap "My Posts", then "I'm buying" (request) or "I'm selling" (listing).<br>Tap "New request" or "New listing". |
-    | 2. The app shows the request/listing form. | Check that the "Category \*" field is present on screen. |
-    | 3. The buyer/seller enters the fields and a typed address, and adds photos (optional for requests). | Input "e2e chair" in "Category \*".<br>Input "6335 Thunderbird Crescent, Vancouver" in "Address \*", tap the first suggestion, and check that "✓ Address confirmed" is shown.<br>Input "150" as the maximum price (request) or in "Price \*" (listing).<br>Listing only: tap "+ Add", select one photo in the system photo picker, tap "Done", and check that "Photos 1/10" is shown. |
-    | 4. The buyer/seller submits the form. | Tap "Create request" or "Create listing". |
-    | 5. The app confirms the post was saved and shows it in "My posts". | Check that the "My requests (" or "My listings (" header is shown.<br>Check that exactly one post with the category "e2e chair" is listed.<br>(`createsPostAndShowsItInMyPosts`; `createsPostWithSeveralPhotos` repeats steps 1-5 with three photos.) |
-    | 3a. A required field is missing or invalid. | **Missing category** (`rejectsMissingCategory`): open the form and tap "Create request"/"Create listing" without filling it.<br>**Missing price** (`rejectsMissingPrice`): fill everything except the price and submit.<br>**Negative price** (`rejectsNegativePrice`): fill the form with the price "-5" and submit.<br>**Missing photo** (`photoIsRequiredOnlyOnListings`): fill the form without a photo and submit. |
-    | 3a1. The app shows an error message. | **Missing category:** check that "Choose a category" is shown and the create button is still on screen.<br>**Missing price:** check that "Max price is required" (request) or "Enter a price" (listing) is shown and the back-end has no test posts.<br>**Negative price:** check that the error ("at least 0" for requests, "price must be" for listings) is shown and the back-end has no test posts.<br>**Missing photo:** for listings, check that "Add at least one photo" is shown and the back-end has no test posts; for requests, where photos are optional, check that the request is saved and listed. |
-    | 3b. A photo is too large. | (`rejectsPhotoOverFiveMegabytes`) Add an oversized JPEG to the gallery. Fill the form without photos, select that photo in the photo picker, and submit. |
+    | 1. The buyer opens the create-request screen. | Tap "My Posts", then "I'm buying".<br>Tap "New request". |
+    | 2. The app shows the request form. | Check that the "Category \*" field is present on screen. |
+    | 3. The buyer enters the hard requirements, soft preferences and a typed address, and optionally adds reference photos. | Input "e2e chair" in "Category \*".<br>Input "6335 Thunderbird Crescent, Vancouver" in "Address \*", tap the first suggestion, and check that "✓ Address confirmed" is shown.<br>Input "150" as the maximum price. |
+    | 4. The buyer submits the form. | Tap "Create request". |
+    | 5. The app confirms the request was saved and shows it in "My posts". | Check that the "My requests (" header is shown.<br>Check that exactly one request with the category "e2e chair" is listed.<br>(`createsPostAndShowsItInMyPosts`; `createsPostWithSeveralPhotos` repeats steps 1-5 with three reference photos; `photoIsRequiredOnlyOnListings` repeats them with no photo, since photos are optional for requests.) |
+    | 3a. A required field is missing or invalid. | **Missing category** (`rejectsMissingCategory`): open the form and tap "Create request" without filling it.<br>**Missing maximum price** (`rejectsMissingPrice`): fill everything except the maximum price and submit.<br>**Negative maximum price** (`rejectsNegativePrice`): fill the form with the maximum price "-5" and submit. |
+    | 3a1. The app shows an error message. | **Missing category:** check that "Choose a category" is shown and the "Create request" button is still on screen.<br>**Missing maximum price:** check that "Max price is required" is shown and the back-end has no test posts.<br>**Negative maximum price:** check that an error containing "at least 0" is shown and the back-end has no test posts. |
+    | 3b. A photo is too large. | (`rejectsPhotoOverFiveMegabytes`) Add an oversized JPEG to the gallery. Fill the form, select that photo in the photo picker, and submit. |
     | 3b1. The app rejects the photo and shows an error message. | Check that "Each photo must be at most 5 MB" is shown and the back-end has no test posts. |
-    | 3c. The user adds more than 10 photos. | (`limitsPhotosToTen`) Open the form, select 6 photos in the photo picker, then try to select 6 more. |
+    | 3c. The buyer adds more than 10 photos. | (`limitsPhotosToTen`) Open the form, select 6 photos in the photo picker, then try to select 6 more. |
     | 3c1. The app rejects the extra photos. | Check that "Photos 10/10" is shown and the "+ Add" button is disabled. |
     | 4a. The typed address cannot be located. | (`rejectsAddressThatWasNotPicked`) Fill the form without picking an address, input "zzzzqqqqxxxx nowhere" in "Address \*", and submit. |
-    | 4a1. The app asks the user to correct the address. | Check that "Choose your address from the suggestions list" is shown and the back-end has no test posts. |
-    | 4b. The network or server is unavailable. | (`showsErrorWhenServerIsUnreachable`) Fill the form, turn on airplane mode, and submit. |
-    | 4b1. The app shows an error message; no post is created. | Check that "Could not reach the server" is shown.<br>Turn off airplane mode and check that the form, with its create button, is still on screen. |
+    | 4a1. The app asks the buyer to correct the address. | Check that "Choose your address from the suggestions list" is shown and the back-end has no test posts. |
+    | 4b. The network or server is unavailable. | (`showsErrorWhenServerIsUnreachable`) Fill the form, turn on airplane mode, and tap "Create request". |
+    | 4b1. The app shows an error message; no request is created. | Check that "Could not reach the server" is shown.<br>Turn off airplane mode and check that the form, with its "Create request" button, is still on screen. |
 
   - **Test Logs:**
     ```
@@ -95,6 +96,38 @@ cd frontend
       createsPostWithSeveralPhotos[REQUEST]         PASSED   8.69 s
       photoIsRequiredOnlyOnListings[REQUEST]        PASSED   6.41 s
       rejectsPhotoOverFiveMegabytes[REQUEST]        PASSED   9.38 s
+
+    CreatePostTest [REQUEST]: 10 tests, 10 passed, 0 failed, 0 skipped
+    ```
+
+- **Use Case 2: Create Seller Listing** ([`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt), the `[LISTING]` runs)
+
+  - **Expected Behaviors:**
+
+    | **Scenario Steps** | **Test Case Steps** |
+    | ------------------ | ------------------- |
+    | 1. The seller opens the create-listing screen. | Tap "My Posts", then "I'm selling".<br>Tap "New listing". |
+    | 2. The app shows the listing form. | Check that the "Category \*" field is present on screen. |
+    | 3. The seller enters the category, price, condition, brand, dimensions, colour and a typed address, and adds photos. | Input "e2e chair" in "Category \*".<br>Input "6335 Thunderbird Crescent, Vancouver" in "Address \*", tap the first suggestion, and check that "✓ Address confirmed" is shown.<br>Input "150" in "Price \*".<br>Tap "+ Add", select one photo in the system photo picker, tap "Done", and check that "Photos 1/10" is shown. |
+    | 4. The seller submits the form. | Tap "Create listing". |
+    | 5. The app confirms the listing was saved and shows it in "My posts". | Check that the "My listings (" header is shown.<br>Check that exactly one listing with the category "e2e chair" is listed.<br>(`createsPostAndShowsItInMyPosts`; `createsPostWithSeveralPhotos` repeats steps 1-5 with three photos.) |
+    | 3a. A required field is missing or invalid. | **Missing category** (`rejectsMissingCategory`): open the form and tap "Create listing" without filling it.<br>**Missing price** (`rejectsMissingPrice`): fill everything except the price and submit.<br>**Negative price** (`rejectsNegativePrice`): fill the form with the price "-5" and submit.<br>**Missing photo** (`photoIsRequiredOnlyOnListings`): fill everything except the photo and submit. |
+    | 3a1. The app shows an error message. | **Missing category:** check that "Choose a category" is shown and the "Create listing" button is still on screen.<br>**Missing price:** check that "Enter a price" is shown and the back-end has no test posts.<br>**Negative price:** check that an error containing "price must be" is shown and the back-end has no test posts.<br>**Missing photo:** check that "Add at least one photo" is shown and the back-end has no test posts. |
+    | 3b. A photo is too large. | (`rejectsPhotoOverFiveMegabytes`) Add an oversized JPEG to the gallery. Fill the form without photos, select that photo in the photo picker, and submit. |
+    | 3b1. The app rejects the photo and shows an error message. | Check that "Each photo must be at most 5 MB" is shown and the back-end has no test posts. |
+    | 3c. The seller adds more than 10 photos. | (`limitsPhotosToTen`) Open the form, select 6 photos in the photo picker, then try to select 6 more. |
+    | 3c1. The app rejects the extra photos. | Check that "Photos 10/10" is shown and the "+ Add" button is disabled. |
+    | 4a. The typed address cannot be located. | (`rejectsAddressThatWasNotPicked`) Fill the form without picking an address, input "zzzzqqqqxxxx nowhere" in "Address \*", and submit. |
+    | 4a1. The app asks the seller to correct the address. | Check that "Choose your address from the suggestions list" is shown and the back-end has no test posts. |
+    | 4b. The network or server is unavailable. | (`showsErrorWhenServerIsUnreachable`) Fill the form, turn on airplane mode, and tap "Create listing". |
+    | 4b1. The app shows an error message; no listing is created. | Check that "Could not reach the server" is shown.<br>Turn off airplane mode and check that the form, with its "Create listing" button, is still on screen. |
+
+  - **Test Logs:**
+    ```
+    Pixel_9(AVD) - 16 (Android 16, API 36), 2026-10-20, ./scripts/run-frontend-e2e-tests.sh
+    Branch fix/e2e-photo-picker-order (main + PR #56), commit 4f8635e
+
+    com.example.cpen321application.e2e.CreatePostTest
       rejectsMissingPrice[LISTING]                  PASSED   8.16 s
       rejectsAddressThatWasNotPicked[LISTING]       PASSED   7.86 s
       createsPostAndShowsItInMyPosts[LISTING]       PASSED   8.36 s
@@ -106,7 +139,7 @@ cd frontend
       photoIsRequiredOnlyOnListings[LISTING]        PASSED   6.21 s
       rejectsPhotoOverFiveMegabytes[LISTING]        PASSED   9.29 s
 
-    CreatePostTest: 20 tests, 20 passed, 0 failed, 0 skipped
+    CreatePostTest [LISTING]: 10 tests, 10 passed, 0 failed, 0 skipped
     ```
 
 - **Use Case 4: Manage Own Posts** ([`ManagePostsTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/ManagePostsTest.kt))
