@@ -51,7 +51,6 @@ private const val ADDRESS_ATTEMPTS = 3
 private const val ONLINE_WAIT_MS = 60_000L
 private const val RETRY_DELAY_MS = 1_000L
 private const val PICKER_PHOTO = "Photo taken on"
-private const val PICK_ATTEMPTS = 3
 private const val OPEN_ATTEMPTS = 3
 private const val FORM_WAIT_MS = 5_000L
 
@@ -165,14 +164,8 @@ fun MainRule.pickPhotos(count: Int, total: Int? = count) {
 fun MainRule.pickPhoto() = pickPhotos(1)
 
 fun MainRule.pickPhotoWithId(id: String) {
-    repeat(PICK_ATTEMPTS) {
-        pickPhotos(1)
-        if (onAllNodesWithText("${id.takeLast(8)} ✕").fetchSemanticsNodes().isNotEmpty()) return
-        onNode(hasText(" ✕", substring = true)).scrolled().performClick()
-        waitForText("Photos 0/10", substring = true)
-        Thread.sleep(RETRY_DELAY_MS * 2)
-    }
-    error("Photo $id was never first in the picker")
+    pickPhotos(1)
+    waitForText("${id.takeLast(8)} ✕")
 }
 
 fun MainRule.openFirstPostMenu() {
@@ -216,32 +209,35 @@ fun MainRule.clearField(label: String) {
 
 class TestPhotos : ExternalResource() {
     private val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
-    private val inserted = mutableListOf<Uri>()
 
     override fun before() {
-        val now = System.currentTimeMillis()
-        repeat(SMALL_PHOTOS) { insert("e2e_photo_$it.jpg", smallJpeg(it), now - it * 1_000L) }
+        deleteAll()
+        repeat(SMALL_PHOTOS) { insert("e2e_photo_$it.jpg", smallJpeg(it)) }
     }
 
-    override fun after() {
-        inserted.forEach { resolver.delete(it, null, null) }
+    override fun after() = deleteAll()
+
+    private fun deleteAll() {
+        device.executeShellCommand(
+            "content delete --uri ${MediaStore.Images.Media.EXTERNAL_CONTENT_URI} --where relative_path='$FOLDER'",
+        )
     }
 
-    fun addOversized(): String =
-        insert("e2e_oversized.jpg", oversizedJpeg(), System.currentTimeMillis()).lastPathSegment.orEmpty()
+    fun replaceWithOversized(): String {
+        deleteAll()
+        return insert("e2e_oversized.jpg", oversizedJpeg()).lastPathSegment.orEmpty()
+    }
 
-    private fun insert(name: String, bytes: ByteArray, takenAt: Long): Uri {
+    private fun insert(name: String, bytes: ByteArray): Uri {
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, name)
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/e2e")
-            put(MediaStore.Images.Media.DATE_TAKEN, takenAt)
+            put(MediaStore.Images.Media.RELATIVE_PATH, FOLDER)
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
         val uri = checkNotNull(resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
         resolver.openOutputStream(uri)!!.use { it.write(bytes) }
         resolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
-        inserted.add(uri)
         return uri
     }
 
@@ -269,6 +265,7 @@ class TestPhotos : ExternalResource() {
         ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, quality, it) }.toByteArray()
 
     private companion object {
+        const val FOLDER = "Pictures/e2e/"
         const val SMALL_PHOTOS = 12
         const val OVERSIZED_BYTES = 5 * 1024 * 1024 + 256 * 1024
     }

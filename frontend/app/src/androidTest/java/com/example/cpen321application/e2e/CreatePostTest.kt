@@ -136,7 +136,7 @@ class CreatePostTest(private val form: PostForm) {
 
     @Test
     fun rejectsPhotoOverFiveMegabytes() {
-        val oversized = photos.addOversized()
+        val oversized = photos.replaceWithOversized()
         rule.openForm(form)
         rule.fillForm(form, photos = 0)
         rule.pickPhotoWithId(oversized)
