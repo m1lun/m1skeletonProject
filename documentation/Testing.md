@@ -61,7 +61,7 @@ Shared test steps are in `support/PostRobot.kt`, and the differences between the
     | 3b. A photo is larger than 5 MB or is not an image. | (`rejectsPhotoOverFiveMegabytes`) Replace the test photos in the gallery with a single JPEG larger than 5 MB. Fill the form without photos, select that photo in the photo picker, and submit. |
     | 3b1. The app rejects the photo and shows an error message. | Check that "Each photo must be at most 5 MB" is shown and the back-end has no test posts. |
     | 3c. The buyer adds more than 10 photos. | (`limitsPhotosToTen`) Open the form, select 6 photos in the photo picker, then try to select 6 more. |
-    | 3c1. The app rejects the extra photos and shows an error message. | Check that "Photos 10/10" is shown and the "+ Add" button is disabled. |
+    | 3c1. The photo picker only lets the user select as many photos as are still allowed, and the app disables adding photos once there are 10. | Check that "Photos 10/10" is shown and the "+ Add" button is disabled. |
     | 4. The buyer submits the form. | Tap "Create request". |
     | 4a. The typed address cannot be located. | (`rejectsAddressThatWasNotPicked`) Fill the form without picking an address, input "zzzzqqqqxxxx nowhere" in "Address \*", and submit. |
     | 4a1. The app shows "Address not found" and asks the buyer to correct it. | Check that "Choose your address from the suggestions list" is shown and the back-end has no test posts. |
@@ -103,7 +103,7 @@ Shared test steps are in `support/PostRobot.kt`, and the differences between the
     | 3b. A photo is larger than 5 MB or is not an image. | (`rejectsPhotoOverFiveMegabytes`) Replace the test photos in the gallery with a single JPEG larger than 5 MB. Fill the form without photos, select that photo in the photo picker, and submit. |
     | 3b1. The app rejects the photo and shows an error message. | Check that "Each photo must be at most 5 MB" is shown and the back-end has no test posts. |
     | 3c. The seller adds more than 10 photos. | (`limitsPhotosToTen`) Open the form, select 6 photos in the photo picker, then try to select 6 more. |
-    | 3c1. The app rejects the extra photos and shows an error message. | Check that "Photos 10/10" is shown and the "+ Add" button is disabled. |
+    | 3c1. The photo picker only lets the user select as many photos as are still allowed, and the app disables adding photos once there are 10. | Check that "Photos 10/10" is shown and the "+ Add" button is disabled. |
     | 4. The seller submits the form. | Tap "Create listing". |
     | 4a. The typed address cannot be located. | (`rejectsAddressThatWasNotPicked`) Fill the form without picking an address, input "zzzzqqqqxxxx nowhere" in "Address \*", and submit. |
     | 4a1. The app shows "Address not found" and asks the seller to correct it. | Check that "Choose your address from the suggestions list" is shown and the back-end has no test posts. |
