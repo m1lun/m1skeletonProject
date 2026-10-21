@@ -45,10 +45,6 @@ Shared test steps are in `support/PostRobot.kt`, and the differences between the
    The script starts the back-end and the `Pixel_9` emulator (set `AVD_NAME=<name>` for another AVD), then builds and installs the app. When prompted, sign in inside the app on the emulator, wait for the main screen, and press Enter. The full suite takes about 5 minutes.
 4. The report is at `frontend/app/build/reports/androidTests/connected/debug/index.html`.
 
-**Troubleshooting.**
-- If every test fails with "Your session has expired. Sign in again.", the app is signed out: sign in on the emulator again and rerun.
-- If Google sign-in fails on the emulator, it has probably lost DNS, which can happen when the host changes network or wakes from sleep. `adb shell ping -c1 google.com` reports `unknown host` when that is the cause. Cold boot the emulator (Device Manager → ⋮ → Cold Boot Now).
-
 ### 2.2. Tests
 
 - **Use Case 1: Create Buyer Request** ([`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt), the `[REQUEST]` runs)
