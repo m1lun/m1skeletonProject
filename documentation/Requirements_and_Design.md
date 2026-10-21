@@ -20,6 +20,7 @@
 | 2026-10-19 | 2-5 | Cross-checked the draft against main and active branches; corrected API and data-model descriptions; separated intended requirements from implementation status; recorded unresolved scope and behaviour differences. |
 | 2026-10-21 | 4 | Matched Section 4 to the code on main: feed routes and filters, the hard-requirement rule, collections, libraries and test tools, and route prefixes in the sequence diagrams. |
 | 2026-10-21 | 5 | Matched the data model to the code on main: request and listing fields, the options, custom fields and sessions collections, and request number validation. |
+| 2026-10-21 | 3.7, 4.7 | Filled in the NFR values: 1 second at the 95th percentile with 1,000 candidate posts for feed ranking, the NFR test that measures it, and a 2-second routing timeout so the feed stays within 3 seconds. |
 
 ---
 
@@ -271,8 +272,8 @@ flowchart LR
 <a name="nfr1"></a>
 
 1. **Performance: Feed ranking latency**
-    - **Description**: The feed returns the first page of ranked matches for a post within ____ seconds for 95% of requests, with ____ candidate posts. The workload, target and measurement environment are still to be agreed (see Section 4.7).
-    - **Justification**: Recommendations are the core of the app, so the feed must load quickly.
+    - **Description**: The feed returns the first page of ranked matches for a post within 1 second for 95% of requests, with 1,000 open candidate posts in the same category, not counting the travel-time lookup. Section 4.7 describes how it is measured.
+    - **Justification**: Recommendations are the core of the app, so the feed must load quickly. 1 second is the limit for a user's flow of thought to stay uninterrupted ([Nielsen Norman Group, "Response Times: The 3 Important Limits"](https://www.nngroup.com/articles/response-times-3-important-limits/)), and 1,000 open posts in one category is several times more than we expect from a student community.
 
 <a name="nfr2"></a>
 
@@ -525,12 +526,12 @@ sequenceDiagram
 1. **Feed ranking latency**
     - **Implementation**: The design filters out ineligible candidates before calculating ranking scores. It then ranks the qualifying candidates and paginates the results. This supports the feed-ranking latency requirement in Section 3.7.
 
-      Performance will be measured using the agreed candidate workload and deployment environment. These details remain pending:
-        - Candidate workload: ____ posts.
-        - Target ranking latency: ____ seconds at the 95th percentile.
-        - Measurement environment: ____.
+      Performance will be measured using this candidate workload and environment:
+        - Candidate workload: 1,000 open posts in the same category as the user's post.
+        - Target ranking latency: 1 second at the 95th percentile, not counting the travel-time lookup.
+        - Measurement environment: a backend Jest NFR test in `backend/tests/nfr/`, run with `scripts/run-backend-nfr-tests.sh`, that sends 100 `GET /api/feed?postId=<id>` requests through Supertest. It measures the backend's response time only, without the phone's network.
 2. **Graceful degradation without the routing service**
-    - **Implementation**: The planned design requests travel times only for the first page of matches. The routing request will have a timeout of ____ seconds. If the service fails, times out or is rate-limited, the feed will return the ranked matches without travel times and indicate that travel time is unavailable. The timeout must allow the feed to meet the 3-second response target in Section 3.7.
+    - **Implementation**: The planned design requests travel times only for the first page of matches. The routing request will have a timeout of 2 seconds. If the service fails, times out or is rate-limited, the feed will return the ranked matches without travel times and indicate that travel time is unavailable. The timeout must allow the feed to meet the 3-second response target in Section 3.7.
     - **Implementation status**: Matching on main filters candidates and ranks them before pagination. Its travel-time function is a placeholder and is not connected to an external routing service. Routing timeout behaviour and compliance with both performance requirements remain unverified.
 
 ---
