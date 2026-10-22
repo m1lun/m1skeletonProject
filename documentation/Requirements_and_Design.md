@@ -457,14 +457,14 @@ sequenceDiagram
     U->>FE: Open My Posts, choose "I'm buying" or "I'm selling"
     FE->>P: GET /api/requests or /api/listings
     activate P
-    P->>DB: find posts by ownerId
+    P->>DB: find the user's posts
     activate DB
     DB--)P: posts
     deactivate DB
     P--)FE: 200 posts
     deactivate P
     U->>FE: Tap "New request" or "New listing", type an address
-    FE->>GEO: getFromLocationName(address)
+    FE->>GEO: look up the typed address
     activate GEO
     GEO--)FE: address suggestions with coordinates
     deactivate GEO
@@ -485,7 +485,7 @@ sequenceDiagram
         deactivate DB
         P--)FE: 201 post
     else a field is missing or invalid
-        P--)FE: 400 error details
+        P--)FE: 400 with the error messages
         FE--)U: show the error message
     end
     deactivate P
@@ -519,7 +519,7 @@ sequenceDiagram
     participant O as Other user's front-end
     Note over U,FE: Precondition: the user is signed in and another user sent a proposal
     T-)FE: proposal.created (proposal) over WebSocket
-    T-)FCM: send push (userId, proposal), if the app is closed
+    T-)FCM: push notification of the new proposal, if the app is closed
     U->>FE: Open the proposal, tap "Accept" or "Decline"
     FE->>T: PATCH /api/proposals/:id (status)
     activate T
@@ -544,7 +544,7 @@ sequenceDiagram
         T--)FE: 409 item no longer available
     end
     T-)O: proposal.updated (proposal) over WebSocket
-    T-)FCM: send push (otherUserId, proposal), if the other user's app is closed
+    T-)FCM: push notification of the answer to the other user, if their app is closed
     deactivate T
 ```
 
@@ -581,7 +581,7 @@ sequenceDiagram
         activate ORS
         ORS--)M: durations
         deactivate ORS
-        M--)FE: 200 ranked matches with distances and nextCursor
+        M--)FE: 200 ranked matches with distances, and the cursor for the next page
         FE--)U: "Recommended for" list
     end
     deactivate M
@@ -601,7 +601,7 @@ sequenceDiagram
     U->>FE: Open the conversation from the proposal
     FE->>MS: GET /api/proposals/:id/messages
     activate MS
-    MS->>DB: find messages by proposalId
+    MS->>DB: find the proposal's messages
     activate DB
     DB--)MS: messages
     deactivate DB
@@ -616,7 +616,7 @@ sequenceDiagram
         deactivate DB
         MS--)FE: 201 message
         MS-)O: message.created (message) over WebSocket
-        MS-)FCM: send push (otherUserId, message), if the other user's app is closed
+        MS-)FCM: push notification of the message to the other user, if their app is closed
     else the proposal was declined or withdrawn
         MS--)FE: 409 conversation is read-only
     end
@@ -640,10 +640,10 @@ sequenceDiagram
     activate DB
     DB--)M: posts
     deactivate DB
-    M--)FE: 200 posts and nextCursor
+    M--)FE: 200 posts and the cursor for the next page
     deactivate M
     U->>FE: Tap "Filters", type an address
-    FE->>GEO: getFromLocationName(address)
+    FE->>GEO: look up the typed address
     activate GEO
     GEO--)FE: address suggestions with coordinates
     deactivate GEO
@@ -655,9 +655,9 @@ sequenceDiagram
         activate DB
         DB--)M: matching posts
         deactivate DB
-        M--)FE: 200 posts and nextCursor
+        M--)FE: 200 posts and the cursor for the next page
     else a filter is invalid
-        M--)FE: 400 error details
+        M--)FE: 400 with the error messages
         FE--)U: show the error message
     end
     deactivate M
