@@ -23,6 +23,7 @@
 | 2026-10-21 | 3.2, 3.3, 4.6 | Redrew the use case diagram (one User actor, use cases grouped and colour-coded by feature), the actors and the sequence diagrams for the five current use cases; removed OpenRouteService geocoding; added Firebase Cloud Messaging. |
 | 2026-10-21 | 4.1, 4.3, 4.5, 4.6 | Added the planned Transactions and Messaging components and Firebase Cloud Messaging; limited the dependency and sequence diagrams to the components and interfaces in 4.1; added error paths, loops, return messages and activation bars to the sequence diagrams. |
 | 2026-10-21 | 2, 3.1, 3.6, 4.1, 4.2, 5 | Restored offers, transactions, live updates and messaging as planned features, reversing the 2026-10-12 removal; requests mark each field hard or soft; added browsing and filtering to Feature 2 and screen mock-ups; marked the user profile store and travel times as planned; added the planned proposals, transactions and messages collections. |
+| 2026-10-21 | 3.7, 4.7 | Filled in the NFR values: 1 second at the 95th percentile with 1,000 candidate posts for feed ranking, the NFR test that measures it, and a 2-second routing timeout so the feed stays within 3 seconds. Justified the 3-second limit of the routing-service NFR. |
 
 ---
 
@@ -260,14 +261,14 @@ Both screens are built and will be extended with the planned features: feed item
 <a name="nfr1"></a>
 
 1. **Performance: Feed ranking latency**
-    - **Description**: The feed returns the first page of ranked matches for a post within ____ seconds for 95% of requests, with ____ candidate posts. The workload, target and measurement environment are still to be agreed (see Section 4.7).
-    - **Justification**: Recommendations are the core of the app, so the feed must load quickly.
+    - **Description**: The feed returns the first page of ranked matches for a post within 1 second for 95% of requests, with 1,000 open candidate posts in the same category, not counting the travel-time lookup. Section 4.7 describes how it is measured.
+    - **Justification**: Recommendations are the core of the app, so the feed must load quickly. 1 second is the limit for a user's flow of thought to stay uninterrupted ([Nielsen Norman Group, "Response Times: The 3 Important Limits"](https://www.nngroup.com/articles/response-times-3-important-limits/)), and 1,000 open posts in one category is several times more than we expect from a student community.
 
 <a name="nfr2"></a>
 
 2. **Reliability: Graceful degradation without the routing service**
     - **Description**: If the external routing service fails, times out or is rate-limited, the feed still returns the ranked matches within 3 seconds, without travel times, and shows that travel time is unavailable.
-    - **Justification**: Prevents third-party service failures from disrupting core functionality.
+    - **Justification**: Prevents third-party service failures from disrupting core functionality. 3 seconds is the 1-second feed target in NFR 1 plus the 2-second routing timeout in Section 4.7, and stays well under the 10-second limit for keeping a user's attention.
 
 ---
 
@@ -668,12 +669,12 @@ sequenceDiagram
 1. **Feed ranking latency**
     - **Implementation**: The design filters out ineligible candidates before calculating ranking scores. It then ranks the qualifying candidates and paginates the results. This supports the feed-ranking latency requirement in Section 3.7.
 
-      Performance will be measured using the agreed candidate workload and deployment environment. These details remain pending:
-        - Candidate workload: ____ posts.
-        - Target ranking latency: ____ seconds at the 95th percentile.
-        - Measurement environment: ____.
+      Performance will be measured using this candidate workload and environment:
+        - Candidate workload: 1,000 open posts in the same category as the user's post.
+        - Target ranking latency: 1 second at the 95th percentile, not counting the travel-time lookup.
+        - Measurement environment: a backend Jest NFR test in `backend/tests/nfr/`, run with `scripts/run-backend-nfr-tests.sh`, that sends 100 `GET /api/feed?postId=<id>` requests through Supertest. It measures the backend's response time only, without the phone's network.
 2. **Graceful degradation without the routing service**
-    - **Implementation**: The planned design requests travel times only for the first page of matches. The routing request will have a timeout of ____ seconds. If the service fails, times out or is rate-limited, the feed will return the ranked matches without travel times and indicate that travel time is unavailable. The timeout must allow the feed to meet the 3-second response target in Section 3.7.
+    - **Implementation**: The planned design requests travel times only for the first page of matches. The routing request will have a timeout of 2 seconds. If the service fails, times out or is rate-limited, the feed will return the ranked matches without travel times and indicate that travel time is unavailable. The timeout must allow the feed to meet the 3-second response target in Section 3.7.
     - **Implementation status**: Matching on main filters candidates and ranks them before pagination. Its travel-time function is a placeholder and is not connected to an external routing service. Routing timeout behaviour and compliance with both performance requirements remain unverified.
 
 ---
