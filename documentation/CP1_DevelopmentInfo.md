@@ -6,7 +6,7 @@
 | Repository | https\://github.com/m1lun/m1skeletonProject  |
 | :---- | :---- |
 | Submission branch | main |
-| Submission commit SHA | TODO |
+| Submission commit SHA | 97fb7382f6dcfb3ec2806eaac9f772542600330b |
 
    
 
