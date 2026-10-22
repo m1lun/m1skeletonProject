@@ -20,17 +20,20 @@
 | 2026-10-19 | 2-5 | Cross-checked the draft against main and active branches; corrected API and data-model descriptions; separated intended requirements from implementation status; recorded unresolved scope and behaviour differences. |
 | 2026-10-21 | 4 | Matched Section 4 to the code on main: feed routes and filters, the hard-requirement rule, collections, libraries and test tools, and route prefixes in the sequence diagrams. |
 | 2026-10-21 | 5 | Matched the data model to the code on main: request and listing fields, the options, custom fields and sessions collections, and request number validation. |
+| 2026-10-21 | 3.2, 3.3, 4.6 | Redrew the use case diagram (one User actor, use cases grouped and colour-coded by feature), the actors and the sequence diagrams for the five current use cases; removed OpenRouteService geocoding; added Firebase Cloud Messaging. |
+| 2026-10-21 | 4.1, 4.3, 4.5, 4.6 | Added the planned Transactions and Messaging components and Firebase Cloud Messaging; limited the dependency and sequence diagrams to the components and interfaces in 4.1; added error paths, loops, return messages and activation bars to the sequence diagrams. |
+| 2026-10-21 | 2, 3.1, 3.6, 4.1, 4.2, 5 | Restored offers, transactions, live updates and messaging as planned features, reversing the 2026-10-12 removal; requests mark each field hard or soft; added browsing and filtering to Feature 2 and screen mock-ups; marked the user profile store and travel times as planned; added the planned proposals, transactions and messages collections. |
 | 2026-10-21 | 3.7, 4.7 | Filled in the NFR values: 1 second at the 95th percentile with 1,000 candidate posts for feed ranking, the NFR test that measures it, and a 2-second routing timeout so the feed stays within 3 seconds. Justified the 3-second limit of the routing-service NFR. |
 
 ---
 
 ## 2. Project Description
 
-**Match Market** is an Android app, "the marketplace where buyers post too". Traditional marketplaces are one-way: sellers post and buyers hunt, re-running the same searches across several sites for days, while sellers never see who is already looking for what they own. Match Market makes the marketplace two-sided. A buyer posts a persistent *request* once, with must-haves (hard requirements: category, maximum price, minimum condition, maximum size, and search radius) and preferences (soft requirements: brand and colour). Sellers post *listings* with photos, and can browse buyer requests that fit what they have.
+**Match Market** is an Android app, "the marketplace where buyers post too". Traditional marketplaces are one-way: sellers post and buyers hunt, re-running the same searches across several sites for days, while sellers never see who is already looking for what they own. Match Market makes the marketplace two-sided. A buyer posts a persistent *request* once, with a category and fields such as maximum price, minimum condition, size, search radius, brand and colour, marking each field as a must-have (hard requirement) or a preference (soft requirement). Sellers post *listings* with photos, and can browse buyer requests that fit what they have.
 
-The app matches both sides automatically, like a dating app for second-hand goods. Buyers and sellers fill in the same structured fields, listings that break a buyer's hard requirements are filtered out, and the remaining matches are ranked by how well they fit the buyer's soft preferences. Users can set their location and search radius to find nearby matches and check the travel time to an item.
+The app matches both sides automatically, like a dating app for second-hand goods. Buyers and sellers fill in the same structured fields, listings that break a buyer's hard requirements are filtered out, and the remaining matches are ranked by how well they fit the buyer's soft preferences. Users see how far away each match is and can also browse and filter all open posts; checking the travel time to an item is planned.
 
-When a buyer finds a listing they want, they express interest; a seller can likewise send an offer on a buyer's request. The other party accepts or declines. An accepted proposal becomes a transaction that reserves the item, and both users see the change on their screen as it happens, without refreshing.
+When a buyer finds a listing they want, they express interest; a seller can likewise send an offer on a buyer's request. The other party accepts or declines. An accepted proposal becomes a transaction that reserves the item, and both users see the change on their screen as it happens, without refreshing. Once connected by a proposal, the two users can message each other in the app to discuss the item and arrange collection.
 
 The primary audience is buyers who know what they want and would rather be matched to it than scroll listings until one appears. The secondary audience is sellers with a specific item to move, who want it in front of the right buyer quickly. One account can act as both buyer and seller.
 
@@ -41,7 +44,7 @@ The primary audience is buyers who know what they want and would rather be match
 ### **3.1. List of Features**
 
 1. **Buyer Requests and Seller Listings**: Signed-in users create persistent buyer requests and seller listings, view their own posts, edit them, close and reopen them, and delete them. Listings include 1–10 item photos and requests may include up to 10 reference photos. Closed posts stay in the owner's list and are excluded from the feeds.
-2. **Two-Sided Matching and Recommended Feeds**: hard-constraint filtering and soft-preference ranking, with location, search radius, and travel time, producing a buyer feed of listings and a seller feed of requests. It produces a buyer feed of listings for each request and a seller feed of requests for each listing. Addresses are geocoded and travel times computed with the OpenRouteService API.
+2. **Two-Sided Matching and Recommended Feeds**: Users browse other users' open listings or requests, newest first, and narrow them by category, price and distance. For each of their own open posts they also get recommendations: hard-constraint filtering and soft-preference ranking produce a buyer feed of listings for each request and a seller feed of requests for each listing, with the distance to each. Addresses are picked through the Android Geocoder, and travel times will be computed with the OpenRouteService API *(planned)*.
 3. **Offers, Acceptance, Transactions, and Live Updates**: From a feed, a buyer expresses interest in a listing or a seller sends an offer on a request. The recipient accepts or declines. Accepting creates a transaction, reserves the listing and declines the other pending proposals on it. Every proposal and transaction change appears on the other user's open screen within seconds over a WebSocket connection; Firebase Cloud Messaging adds a background push only when the app is closed.
 4. **Messaging**: Buyers and sellers message each other in the app about a listing or a request, to ask about the item and arrange collection. New messages appear on the other user's open screen without refreshing.
 
@@ -49,39 +52,17 @@ Authentication is a baseline requirement of the app rather than a feature: users
 
 ### **3.2. Use Case Diagram**
 
-```mermaid
-flowchart LR
-    Buyer([Buyer])
-    Seller([Seller])
-    Google([Google Auth])
-    ORS([OpenRouteService])
-
-    subgraph MM["Match Market"]
-        UC1[Sign in with Google]
-        UC2[Create buyer request]
-        UC3[Create seller listing]
-        UC4[Set preferences]
-        UC5[View ranked feed]
-        UC6[Filter feed temporarily]
-        UC7[Manage own posts]
-    end
-
-    Buyer --- UC1 & UC2 & UC4 & UC5 & UC6 & UC7
-    Seller --- UC1 & UC3 & UC4 & UC5 & UC6 & UC7
-
-    UC1 --- Google
-    UC4 --- ORS
-    UC5 --- ORS
-    UC2 --- ORS
-    UC3 --- ORS
-```
+![Use case diagram](images/UseCaseCP1.drawio.png)
 
 ### **3.3. Actors Description**
 
-1. **Buyer**: A signed-in user who posts item requests and reviews matching listings in the intended product.
-2. **Seller**: A signed-in user who posts listings with photos and reviews matching buyer requests in the intended product. The same account can act as buyer and seller.
+The use case diagram shows a single **User (Buyer or Seller)** actor because every signed-in account can act as both a buyer and a seller and has access to the same use cases; the two roles are described separately below because they post and receive different kinds of posts and proposals.
+
+1. **Buyer**: A signed-in user who posts item requests, reviews recommended listings, expresses interest in listings, responds to offers, and messages sellers.
+2. **Seller**: A signed-in user who posts listings with photos, reviews recommended buyer requests, sends offers on requests, responds to interest, and messages buyers. The same account can act as buyer and seller.
 3. **Google Authentication Service** (external): Verifies the user's identity at sign-in.
-4. **OpenRouteService** (external): Converts typed addresses to coordinates and computes travel times.
+4. **OpenRouteService** (external): Computes travel times between the user and recommended posts *(planned)*.
+5. **Firebase Cloud Messaging** (external): Delivers push notifications for new proposals, answers and messages when the app is closed *(planned)*.
 
 ### **3.4. Use Case Description**
 
@@ -265,7 +246,15 @@ flowchart LR
 
 ### **3.6. Screen Mock-ups**
 
-*Pending team input: Add the agreed screen mock-ups or labelled screenshots. My Posts, post details, the editor and the basic Profile screen exist in main; the complete preference and ranked-feed screens are not verified in main.*
+1. **Feed** ([Use Case 5](#uc5), [Use Case 3](#uc3)): other users' listings ("I'm buying") or requests ("I'm selling"), with the Filters button.
+
+    ![Feed](images/mockup_feed.png)
+
+2. **New request** ([Use Case 1](#uc1)): the request form, where each requirement is marked Hard or Soft with an importance.
+
+    ![New request](images/mockup_new_request.png)
+
+Both screens are built and will be extended with the planned features: feed items will gain an "Interested" or "Make an offer" button and travel times, and posts will link to their proposals and messages. The design keeps the same bottom-tab layout (Feed, My Posts, Profile).
 
 ### **3.7. Non-Functional Requirements**
 
@@ -314,7 +303,7 @@ flowchart LR
     - **Rationale**: Isolated from storage and HTTP so the team-written logic can be tested through the feed's interface tests; alternative of database-only filtering was rejected because ranking needs weighted scoring.
     - **Interfaces**:
         1. `GET /api/feed?postId=<id>&limit=&cursor=&category=&minPrice=&maxPrice=&lat=&lng=&radiusKm=`
-            - **Purpose**: Return the feed for the user's own request or listing, with travel times for the first page. The post type decides the direction: a request returns listings, a listing returns requests. Every parameter except postId, limit and cursor is an optional temporary filter. A value looser than the saved requirement is ignored, and an unsupported parameter returns 400. Returns 403 for another user's post and 409 for a closed post. The planned minCondition filter (request feeds only) and sort=best|nearest|cheapest are not implemented yet.
+            - **Purpose**: Return the feed for the user's own request or listing, with travel times for the first page *(planned)*. The post type decides the direction: a request returns listings, a listing returns requests. Every parameter except postId, limit and cursor is an optional temporary filter. A value looser than the saved requirement is ignored, and an unsupported parameter returns 400. Returns 403 for another user's post and 409 for a closed post. The planned minCondition filter (request feeds only) and sort=best|nearest|cheapest are not implemented yet.
         2. `GET /api/feed/listings` and `GET /api/feed/requests`
             - **Purpose**: Return other users' open posts, newest first, with the same filters; `before` pages through them.
         3. `boolean satisfies(Request request, Listing listing)`
@@ -325,7 +314,7 @@ flowchart LR
             - **Purpose**: Get travel times from the external routing service for one page of results; returns empty when it is unavailable.
 
 3. **Users & Auth**
-    - **Purpose**: Verifies Google sign-in, issues session tokens, and stores profile, location, and preferences.
+    - **Purpose**: Verifies Google sign-in and issues session tokens. Storing each user's profile, location and preferences is planned.
     - **Rationale**: Keeps identity and per-user settings in one place so Posts and Matching only depend on a user id; alternative of storing settings on each post was rejected because settings apply across all of a user's posts.
     - **Interfaces**:
         1. `POST /api/auth/google`
@@ -334,15 +323,41 @@ flowchart LR
             - **Purpose**: Rotates the token pair.
         3. `POST /api/auth/logout`
             - **Purpose**: Revokes the refresh-token family. Session tokens last 15 minutes; refresh tokens have a 30-day lifetime. Protected routes use requireAuth and currentUser.
-        4. `GET /users/me`, `PATCH /users/me`
+        4. `GET /api/users/me`, `PATCH /api/users/me` *(planned)*
             - **Purpose**: Read or update profile, typed address and default radius, travel mode, and the four importance weights.
         5. `userId requireAuth(token)`
             - **Purpose**: Internal interface protecting every other route.
 
+4. **Transactions** *(planned)*
+    - **Purpose**: Owns proposals (a buyer's interest in a listing or a seller's offer on a request) and the transactions created when one is accepted, and pushes their changes to both users live.
+    - **Rationale**: Kept separate from Posts because a proposal links two users' posts and has its own lifecycle (pending, accepted, declined, withdrawn); alternative of storing proposals on each post was rejected because accepting one must update the listing, the transaction and every other pending proposal together.
+    - **Interfaces**:
+        1. `POST /api/proposals`
+            - **Purpose**: Send an interest (listing id) or an offer (request id and the sender's listing id). Returns the pending proposal with status 201.
+        2. `GET /api/proposals`
+            - **Purpose**: Retrieve the proposals the user sent and received, with their status.
+        3. `PATCH /api/proposals/:id`
+            - **Purpose**: The recipient accepts or declines, or the sender withdraws, a pending proposal. Accepting creates a transaction, reserves the listing and declines the other pending proposals on it. Returns the proposal (and the transaction on accept); 409 if the proposal is no longer pending or the listing is reserved, closed or deleted.
+        4. `PATCH /api/transactions/:id`
+            - **Purpose**: Either user marks the transaction completed, which closes the listing and the request, or cancels it, which reopens the listing. Returns the transaction.
+        5. WebSocket events `proposal.created` and `proposal.updated`
+            - **Purpose**: Deliver a new proposal, or its new status, to the other user's open app.
+
+5. **Messaging** *(planned)*
+    - **Purpose**: Stores and delivers the messages between the two users of a proposal.
+    - **Rationale**: Separate from Transactions so conversations can grow without changing proposal logic; alternative of a general chat between any two users was rejected because messages are only needed once users are connected by a proposal.
+    - **Interfaces**:
+        1. `GET /api/proposals/:id/messages`
+            - **Purpose**: Retrieve the conversation for a proposal the user is part of, oldest first; 403 otherwise.
+        2. `POST /api/proposals/:id/messages`
+            - **Purpose**: Send a non-empty message. Returns the message with status 201; 409 if the proposal was declined or withdrawn, which makes the conversation read-only.
+        3. WebSocket event `message.created`
+            - **Purpose**: Deliver a new message to the other user's open app.
+
 ### **4.2. Databases**
 
 1. **MongoDB** (self-hosted in Docker on the cloud VM)
-    - **Purpose**: Stores users, requests, listings, options, custom fields, and sessions. Photos for requests and listings are stored in the same database using GridFS (fs.files and fs.chunks), and each post keeps the ids of its photos. Geospatial index on post locations.
+    - **Purpose**: Stores requests, listings, options, custom fields, and sessions, and will store users *(planned)*. Photos for requests and listings are stored in the same database using GridFS (fs.files and fs.chunks), and each post keeps the ids of its photos. Geospatial index on post locations.
 
 ### **4.3. External Modules**
 
@@ -351,7 +366,9 @@ flowchart LR
 2. **Android Geocoder**
     - **Purpose**: Provides address suggestions and coordinates in the current frontend. The implemented lookup uses the Android 13+ callback API; the older-version path returns no suggestions.
 3. **OpenRouteService**
-    - **Purpose**: Intended for external geocoding and travel-time results. It is not connected in main, and Matching still uses a travel-time stub.
+    - **Purpose**: Travel times between the user and recommended posts *(planned)*. It is not connected in main, and Matching still uses a travel-time stub.
+4. **Firebase Cloud Messaging** *(planned)*
+    - **Purpose**: Push notifications for new proposals, answers and messages when the app is closed. Transactions and Messaging send them; live updates in the open app use WebSocket events instead.
 
 ### **4.4. Frameworks and Libraries**
 
@@ -387,7 +404,7 @@ flowchart LR
 
 ### **4.5. Dependencies Diagram**
 
-OpenRouteService connections and stored user preferences are not implemented in the inspected main commit. In the current post-creation flow, the frontend calls Android Geocoder, then sends coordinates to Posts. Matching is on main.
+Every back-end route except `/health` calls `requireAuth` in Users and Auth. Dashed links are planned: Transactions and Messaging are not built yet, and Matching's travel-time function is not connected to OpenRouteService. The two-way links are the planned WebSocket events, which the back-end sends to the app.
 
 ```mermaid
 flowchart LR
@@ -396,129 +413,255 @@ flowchart LR
         UA[Users and Auth]
         P[Posts]
         M[Matching]
+        T[Transactions]
+        MS[Messaging]
     end
     DB[(MongoDB)]
     G[Google identity]
+    GEO[Android Geocoder]
     ORS[OpenRouteService]
+    FCM[Firebase Cloud Messaging]
 
     FE --> UA
     FE --> P
     FE --> M
+    FE --> GEO
+    FE <-.-> T
+    FE <-.-> MS
     UA --> G
     UA --> DB
-    UA --> ORS
-    P --> DB
     P --> UA
-    P --> ORS
-    M --> P
+    P --> DB
     M --> UA
-    M --> ORS
+    M --> DB
+    M -.-> ORS
+    T -.-> UA
+    T -.-> DB
+    T -.-> FCM
+    MS -.-> UA
+    MS -.-> DB
+    MS -.-> FCM
 ```
 
 ### **4.6. Use Case Sequence Diagram (5 Most Major Use Cases)**
 
-1. [**Create Buyer Request**](#uc1)
+1. [**Manage Posts**](#uc1)
 
 ```mermaid
 sequenceDiagram
-    actor B as Buyer
+    actor U as User
     participant FE as Front-end
-    participant UA as Users and Auth
+    participant GEO as Android Geocoder
     participant P as Posts
-    participant ORS as OpenRouteService
     participant DB as MongoDB
-    B->>FE: Fill request form, optionally add photos, submit
-    FE->>P: POST /api/photos (multipart), if any
-    P->>DB: store photos in GridFS, if any
-    P-->>FE: photo ids
-    FE->>P: POST /api/requests (JSON with photo ids)
-    P->>UA: requireAuth(token)
-    P->>ORS: geocode(address)
-    ORS-->>P: coordinates
-    P->>DB: insert request with photo ids
-    P-->>FE: 201 request
-```
-
-2. [**Create Seller Listing**](#uc2)
-
-```mermaid
-sequenceDiagram
-    actor S as Seller
-    participant FE as Front-end
-    participant UA as Users and Auth
-    participant P as Posts
-    participant ORS as OpenRouteService
-    participant DB as MongoDB
-    S->>FE: Fill listing form, add photos, submit
-    FE->>P: POST /api/photos (multipart)
+    Note over U,FE: Precondition: the user is signed in
+    U->>FE: Open My Posts, choose "I'm buying" or "I'm selling"
+    FE->>P: GET /api/requests or /api/listings
+    activate P
+    P->>DB: find the user's posts
+    activate DB
+    DB--)P: posts
+    deactivate DB
+    P--)FE: 200 posts
+    deactivate P
+    U->>FE: Tap "New request" or "New listing", type an address
+    FE->>GEO: look up the typed address
+    activate GEO
+    GEO--)FE: address suggestions with coordinates
+    deactivate GEO
+    U->>FE: Pick an address, fill the form, add photos, submit
+    FE->>P: POST /api/photos (multipart photos), if any
+    activate P
     P->>DB: store photos in GridFS
-    P-->>FE: photo ids
-    FE->>P: POST /api/listings (JSON with photo ids)
-    P->>UA: requireAuth(token)
-    P->>ORS: geocode(address)
-    ORS-->>P: coordinates
-    P->>DB: insert listing with photo ids
-    P-->>FE: 201 listing
+    activate DB
+    DB--)P: photo ids
+    deactivate DB
+    P--)FE: 201 photo ids
+    deactivate P
+    FE->>P: POST /api/requests or /api/listings (fields, coordinates, photo ids)
+    activate P
+    alt fields are valid
+        P->>DB: insert post
+        activate DB
+        deactivate DB
+        P--)FE: 201 post
+    else a field is missing or invalid
+        P--)FE: 400 with the error messages
+        FE--)U: show the error message
+    end
+    deactivate P
+    U->>FE: Edit, close or reopen a post
+    FE->>P: PATCH /api/requests/:id or /api/listings/:id (fields or status)
+    activate P
+    P->>DB: update the post
+    activate DB
+    deactivate DB
+    P--)FE: 200 updated post
+    deactivate P
+    U->>FE: Delete a post and confirm
+    FE->>P: DELETE /api/requests/:id or /api/listings/:id
+    activate P
+    P->>DB: delete the post
+    activate DB
+    deactivate DB
+    P--)FE: 204
+    deactivate P
 ```
 
-3. [**View Ranked Feed**](#uc3)
+2. [**Respond to Proposal**](#uc2) *(planned)*
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant FE as Front-end
+    participant T as Transactions
+    participant DB as MongoDB
+    participant FCM as Firebase Cloud Messaging
+    participant O as Other user's front-end
+    Note over U,FE: Precondition: the user is signed in and another user sent a proposal
+    T-)FE: proposal.created (proposal) over WebSocket
+    T-)FCM: push notification of the new proposal, if the app is closed
+    U->>FE: Open the proposal, tap "Accept" or "Decline"
+    FE->>T: PATCH /api/proposals/:id (status)
+    activate T
+    T->>DB: find the proposal and its listing
+    activate DB
+    DB--)T: proposal, listing
+    deactivate DB
+    alt declined
+        T->>DB: set the proposal to declined
+        activate DB
+        deactivate DB
+        T--)FE: 200 proposal
+    else accepted and the listing is still open
+        T->>DB: insert transaction, reserve the listing, decline other pending proposals
+        activate DB
+        deactivate DB
+        T--)FE: 200 proposal and transaction
+    else accepted but the listing is reserved, closed or deleted
+        T->>DB: set the proposal to declined
+        activate DB
+        deactivate DB
+        T--)FE: 409 item no longer available
+    end
+    T-)O: proposal.updated (proposal) over WebSocket
+    T-)FCM: push notification of the answer to the other user, if their app is closed
+    deactivate T
+```
+
+3. [**View Recommendations for a Post**](#uc3)
 
 ```mermaid
 sequenceDiagram
     actor U as User
     participant FE as Front-end
     participant M as Matching
-    participant P as Posts
-    participant UA as Users and Auth
+    participant DB as MongoDB
     participant ORS as OpenRouteService
-    U->>FE: Open feed
-    FE->>M: GET /api/feed?postId=...
-    M->>P: getPost, getOpenPosts
-    M->>UA: user weights
-    M->>M: satisfies(request, listing) for each candidate
-    M->>M: rank(source, candidates, weights)
-    M->>ORS: matrix(origin, destinations, mode) for first page
-    ORS-->>M: durations
-    M-->>FE: ranked matches with travel times
+    Note over U,FE: Precondition: the user is signed in and has an open post
+    U->>FE: Tap "See recommendations" on the post
+    FE->>M: GET /api/feed?postId (category, minPrice, maxPrice, lat, lng, radiusKm)
+    activate M
+    M->>DB: find the post by postId
+    activate DB
+    DB--)M: source post or null
+    deactivate DB
+    alt post not found, not the user's, or closed
+        M--)FE: 404, 403 or 409
+        FE--)U: show the error message
+    else
+        M->>DB: find other users' open posts in the same category
+        activate DB
+        DB--)M: candidates
+        deactivate DB
+        loop each candidate that passes the query filters
+            M->>M: satisfies(request, listing)
+        end
+        M->>M: rank(source, candidates, weights)
+        M->>ORS: travelTimes(origin, destinations, mode) for the first page (planned)
+        activate ORS
+        ORS--)M: durations
+        deactivate ORS
+        M--)FE: 200 ranked matches with distances, and the cursor for the next page
+        FE--)U: "Recommended for" list
+    end
+    deactivate M
 ```
 
-4. [**Manage Own Posts**](#uc4)
+4. [**Send and Receive Messages**](#uc4) *(planned)*
 
 ```mermaid
 sequenceDiagram
     actor U as User
     participant FE as Front-end
-    participant P as Posts
+    participant MS as Messaging
     participant DB as MongoDB
-    U->>FE: Open My posts
-    FE->>P: GET /api/requests and /api/listings
-    P->>DB: find posts by owner
-    P-->>FE: posts
-    U->>FE: Edit, close or reopen a post
-    FE->>P: PATCH /api/requests/:id
-    P->>DB: update the fields or set status to closed or open
-    P-->>FE: 200 updated post
-    U->>FE: Delete a post
-    FE->>P: DELETE /api/requests/:id
-    P->>DB: remove the post
-    P-->>FE: 204
+    participant FCM as Firebase Cloud Messaging
+    participant O as Other user's front-end
+    Note over U,FE: Precondition: the user is signed in and has a proposal with the other user
+    U->>FE: Open the conversation from the proposal
+    FE->>MS: GET /api/proposals/:id/messages
+    activate MS
+    MS->>DB: find the proposal's messages
+    activate DB
+    DB--)MS: messages
+    deactivate DB
+    MS--)FE: 200 messages
+    deactivate MS
+    U->>FE: Type a message, tap "Send"
+    FE->>MS: POST /api/proposals/:id/messages (text)
+    activate MS
+    alt the proposal is pending or accepted
+        MS->>DB: insert message
+        activate DB
+        deactivate DB
+        MS--)FE: 201 message
+        MS-)O: message.created (message) over WebSocket
+        MS-)FCM: push notification of the message to the other user, if their app is closed
+    else the proposal was declined or withdrawn
+        MS--)FE: 409 conversation is read-only
+    end
+    deactivate MS
 ```
 
-5. [**Set Preferences**](#uc5)
+5. [**Browse and Filter Feed**](#uc5)
 
 ```mermaid
 sequenceDiagram
     actor U as User
     participant FE as Front-end
-    participant UA as Users and Auth
-    participant ORS as OpenRouteService
+    participant GEO as Android Geocoder
+    participant M as Matching
     participant DB as MongoDB
-    U->>FE: Enter address, radius, mode, weights
-    FE->>UA: PATCH /users/me
-    UA->>ORS: geocode(address)
-    ORS-->>UA: coordinates
-    UA->>DB: update user settings
-    UA-->>FE: 200 settings
+    Note over U,FE: Precondition: the user is signed in
+    U->>FE: Open the Feed tab, choose "I'm buying" or "I'm selling"
+    FE->>M: GET /api/feed/listings or /api/feed/requests (limit)
+    activate M
+    M->>DB: find other users' open posts, newest first
+    activate DB
+    DB--)M: posts
+    deactivate DB
+    M--)FE: 200 posts and the cursor for the next page
+    deactivate M
+    U->>FE: Tap "Filters", type an address
+    FE->>GEO: look up the typed address
+    activate GEO
+    GEO--)FE: address suggestions with coordinates
+    deactivate GEO
+    U->>FE: Set category, price and distance, tap "Apply"
+    FE->>M: GET /api/feed/listings (category, minPrice, maxPrice, lat, lng, radiusKm)
+    activate M
+    alt the filters are valid
+        M->>DB: find other users' open posts that match the filters, newest first
+        activate DB
+        DB--)M: matching posts
+        deactivate DB
+        M--)FE: 200 posts and the cursor for the next page
+    else a filter is invalid
+        M--)FE: 400 with the error messages
+        FE--)U: show the error message
+    end
+    deactivate M
 ```
 
 ### **4.7. Design of Non-Functional Requirements**
@@ -540,12 +683,15 @@ sequenceDiagram
 
 | **Collection** | **Key fields** |
 | -------------- | -------------- |
-| users | googleSub, name, email, address, location (GeoJSON), defaultRadiusKm, travelMode (walk, bike, drive), weights {price, condition, distance, match} (each an integer 0 to 5, default 3) |
+| users *(planned)* | googleSub, name, email, address, location (GeoJSON), defaultRadiusKm, travelMode (walk, bike, drive), weights {price, condition, distance, match} (each an integer 0 to 5, default 3) |
 | requests | ownerId, category, description, requestFields[] (built-in price (max), condition (min), dimensions {width, height, depth} (max), radiuskm, brand, colour, plus custom fields; each hard, or soft with an importance 1 to 5), address, location, photoIds[] (optional GridFS file ids), status (open, closed) |
 | listings | ownerId, category, description, price, condition, listingFields[] (built-in brand, dimensions {width, height, depth}, colour, plus custom fields), address, location, photoIds[] (GridFS file ids), status (open, closed) |
 | options | field, key, label, builtin, createdBy |
 | customFields | ownerId, key, label, type (text, number, bool) |
 | sessions | tokenHash, familyId, userId, expiresAt, usedAt |
+| proposals *(planned)* | type (interest, offer), senderId, recipientId, listingId, requestId (offers only), status (pending, accepted, declined, withdrawn), createdAt |
+| transactions *(planned)* | proposalId, buyerId, sellerId, listingId, requestId (if any), status (reserved, completed, cancelled), createdAt |
+| messages *(planned)* | proposalId, senderId, text, createdAt |
 
 Condition is one of five ordered levels: new, like new, good, fair, poor.
 
