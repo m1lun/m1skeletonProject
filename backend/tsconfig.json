@@ -20,7 +20,8 @@
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "allowJs": true
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts"]
+  "include": ["src/**/*.ts", "tests/**/*.ts", "jest.config.js"]
 }
