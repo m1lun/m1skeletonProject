@@ -1,8 +1,8 @@
 # **CP1 Code Review**
 
 Repository:  [m1lun/m1skeletonProject](https://github.com/m1lun/m1skeletonProject)  
-Inspected main commit: [8a3850283ffd18ab7460812eca31803d685cabd6](https://github.com/m1lun/m1skeletonProject/commit/8a3850283ffd18ab7460812eca31803d685cabd6)   
-Evidence checked: 20 October 2026, Vancouver time.
+Inspected main commit: [97fb7382f6dcfb3ec2806eaac9f772542600330b](https://github.com/m1lun/m1skeletonProject/commit/97fb7382f6dcfb3ec2806eaac9f772542600330b)  
+Evidence checked: 21 October 2026, Vancouver time.
 
 1. **Change History**  
    
@@ -22,7 +22,7 @@ Evidence checked: 20 October 2026, Vancouver time.
 
    Example recorded in the original document: PR \#38, commit fb93124ade8792de5d53a5f43bafc7998f0da6f8. The SHA column below reproduces the values in the supplied draft; for PR \#35, the branch head subsequently advanced.
 
-| PR | SHA (in draft) | Codacy PR summary | Verified PR status  |
+| PR | SHA  | Codacy PR summary | Verified PR status  |
 | :---- | :---- | :---- | :---- |
 | [\#35](https://github.com/m1lun/m1skeletonProject/pull/35)  | 1e7b7f6 | 0 new issues | Merged to main; source SHA predates its final PR head |
 | [\#37](https://github.com/m1lun/m1skeletonProject/pull/37) | 5735ddb | 0 new issues | Merged to main |
@@ -42,6 +42,15 @@ Evidence checked: 20 October 2026, Vancouver time.
 | [\#54](https://github.com/m1lun/m1skeletonProject/pull/54) | 3961584 | 0 new issues | Merged to main |
 | [\#55](https://github.com/m1lun/m1skeletonProject/pull/55) | 749a7f6 | 0 new issues | Open |
 | [\#56](https://github.com/m1lun/m1skeletonProject/pull/56) | 5fe01e0 | 0 new issues | Merged to main |
+| [\#57](https://github.com/m1lun/m1skeletonProject/pull/57) | 956adb2 | 0 new issues | Closed, not merged  |
+| [\#58](https://github.com/m1lun/m1skeletonProject/pull/58) | dd45056 | 0 new issues | Merged to main |
+| [\#59](https://github.com/m1lun/m1skeletonProject/pull/59) | 097c59d | 0 new issues | Merged to main |
+| [\#60](https://github.com/m1lun/m1skeletonProject/pull/60) | 4c7c9b8 | 0 new issues | Merged to main |
+| [\#61](https://github.com/m1lun/m1skeletonProject/pull/61) | dad311a | 0 new issues | Merged to main |
+| [\#62](https://github.com/m1lun/m1skeletonProject/pull/62) | 13abf45 | 0 new issues | Merged to main |
+| [\#63](https://github.com/m1lun/m1skeletonProject/pull/63) | 21de603 | 0 new issues | Merged to main |
+| [\#64](https://github.com/m1lun/m1skeletonProject/pull/64) | 17f2786 | 0 new issues | Merged to main |
+| [\#65](https://github.com/m1lun/m1skeletonProject/pull/65) | 70224df | 0 new issues | Merged to main |
 
    **2.2**	**Unfixed Issues per Codacy Category**
 
