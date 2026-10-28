@@ -72,22 +72,18 @@ export interface SessionRepo {
 export interface DealCollection {
   insert(doc: Omit<Deal, 'id'>): Promise<Deal>;
   findById(id: string): Promise<Deal | null>;
-  // Newest first; passing the last deal's id as `before` starts the next page.
   listByUser(userId: string, limit: number, before?: string): Promise<Deal[]>;
 }
 
 export interface RatingCollection {
-  // Rejects when the rater has already rated the deal.
   insert(doc: Omit<Rating, 'id'>): Promise<Rating>;
   listByDeals(dealIds: string[]): Promise<Rating[]>;
-  // Recounts from the ratings; only for repairing a stale reputation.
   statsFor(userId: string): Promise<{ starSum: number; ratingCount: number }>;
 }
 
 export interface ReputationCollection {
   find(userId: string): Promise<Reputation | null>;
   findMany(userIds: string[]): Promise<Reputation[]>;
-  // Adds to the stored sum and count in one atomic step.
   addRating(userId: string, stars: number, now: Date): Promise<Reputation>;
 }
 
