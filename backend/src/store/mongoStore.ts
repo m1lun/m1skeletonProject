@@ -3,18 +3,33 @@ import { MongoClient, ObjectId, type Collection, type Db, type Document } from '
 import { createGridFsPhotoStorage } from '../photos/storage';
 import { CUSTOM_FIELDS_COLLECTION, type CustomField } from '../models/customField';
 import { postIndexes } from '../models/common';
+import { DEALS_COLLECTION, type Deal } from '../models/deal';
 import { normaliseListing, normaliseRequest } from '../models/normalise';
 import { LISTINGS_COLLECTION, type Listing } from '../models/listing';
 import { OPTIONS_COLLECTION, type Option } from '../models/option';
+import { RATINGS_COLLECTION, type Rating } from '../models/rating';
 import { REQUESTS_COLLECTION, type BuyerRequest } from '../models/request';
+import { REPUTATIONS_COLLECTION, type Reputation } from '../models/reputation';
 import { SESSIONS_COLLECTION, type RefreshSession } from '../models/session';
-import { customFieldSchema, listingSchema, optionSchema, requestSchema, sessionSchema } from '../models/schema';
+import {
+  customFieldSchema,
+  dealSchema,
+  listingSchema,
+  optionSchema,
+  ratingSchema,
+  reputationSchema,
+  requestSchema,
+  sessionSchema,
+} from '../models/schema';
 import type {
   CustomFieldCollection,
+  DealCollection,
   OpenPostFilter,
   OptionCollection,
   PostDoc,
   PostCollection,
+  RatingCollection,
+  ReputationCollection,
   SessionRepo,
   Store,
 } from './types';
@@ -94,6 +109,22 @@ class MongoPostCollection<T extends PostDoc & { category: string }> implements P
     return stored.map((d) => toDoc<T>(d));
   }
 
+  async findByIds(ids: string[], fields: (keyof T)[]): Promise<Partial<T>[]> {
+    const objectIds: ObjectId[] = [];
+    for (const id of ids) {
+      if (ObjectId.isValid(id)) {
+        objectIds.push(new ObjectId(id));
+      }
+    }
+    if (objectIds.length === 0) {
+      return [];
+    }
+    const projection = Object.fromEntries(fields.map((field) => [field, 1]));
+    const found = await this.collection.find({ _id: { $in: objectIds } }, { projection }).toArray();
+    const stored = found as Stored<T>[];
+    return stored.map((d) => toDoc<T>(d));
+  }
+
   async replace(doc: T): Promise<T> {
     const { id, ...rest } = doc;
     const clean = this.normalise(rest);
@@ -163,6 +194,98 @@ class MongoCustomFieldCollection implements CustomFieldCollection {
   }
 }
 
+class MongoDealCollection implements DealCollection {
+  constructor(private readonly collection: Collection) {}
+
+  async insert(doc: Omit<Deal, 'id'>): Promise<Deal> {
+    const _id = new ObjectId();
+    await this.collection.insertOne({ ...doc, _id });
+    return { ...doc, id: _id.toHexString() };
+  }
+
+  async findById(id: string): Promise<Deal | null> {
+    if (!ObjectId.isValid(id)) {
+      return null;
+    }
+    const found = await this.collection.findOne({ _id: new ObjectId(id) });
+    return found === null ? null : toDoc<Deal>(found as Stored<Deal>);
+  }
+
+  async listByUser(userId: string, limit: number, before?: string): Promise<Deal[]> {
+    const query: Document = { $or: [{ sellerId: userId }, { buyerId: userId }] };
+    if (before !== undefined) {
+      query._id = { $lt: new ObjectId(before) };
+    }
+    const found = await this.collection.find(query).sort({ _id: -1 }).limit(limit).toArray();
+    const stored = found as Stored<Deal>[];
+    return stored.map((d) => toDoc<Deal>(d));
+  }
+}
+
+class MongoRatingCollection implements RatingCollection {
+  constructor(private readonly collection: Collection) {}
+
+  async insert(doc: Omit<Rating, 'id'>): Promise<Rating> {
+    const _id = new ObjectId();
+    await this.collection.insertOne({ ...doc, _id });
+    return { ...doc, id: _id.toHexString() };
+  }
+
+  async listByDeals(dealIds: string[]): Promise<Rating[]> {
+    if (dealIds.length === 0) {
+      return [];
+    }
+    const found = await this.collection.find({ dealId: { $in: dealIds } }).toArray();
+    const stored = found as Stored<Rating>[];
+    return stored.map((d) => toDoc<Rating>(d));
+  }
+
+  async statsFor(userId: string): Promise<{ starSum: number; ratingCount: number }> {
+    const [totals] = await this.collection
+      .aggregate<{ starSum: number; ratingCount: number }>([
+        { $match: { ratedUserId: userId } },
+        { $group: { _id: null, starSum: { $sum: '$stars' }, ratingCount: { $sum: 1 } } },
+      ])
+      .toArray();
+    return { starSum: totals?.starSum ?? 0, ratingCount: totals?.ratingCount ?? 0 };
+  }
+}
+
+class MongoReputationCollection implements ReputationCollection {
+  constructor(private readonly collection: Collection) {}
+
+  async find(userId: string): Promise<Reputation | null> {
+    const found = await this.collection.findOne({ userId }, WITHOUT_ID);
+    return found as Reputation | null;
+  }
+
+  async findMany(userIds: string[]): Promise<Reputation[]> {
+    if (userIds.length === 0) {
+      return [];
+    }
+    const found = await this.collection.find({ userId: { $in: userIds } }, WITHOUT_ID).toArray();
+    return found as unknown as Reputation[];
+  }
+
+  // A pipeline update reads and writes in one step, so two ratings at once both count.
+  async addRating(userId: string, stars: number, now: Date): Promise<Reputation> {
+    const updated = await this.collection.findOneAndUpdate(
+      { userId },
+      [
+        {
+          $set: {
+            starSum: { $add: [{ $ifNull: ['$starSum', 0] }, stars] },
+            ratingCount: { $add: [{ $ifNull: ['$ratingCount', 0] }, 1] },
+            updatedAt: now,
+          },
+        },
+      ],
+      { upsert: true, returnDocument: 'after', ...WITHOUT_ID },
+    );
+    return updated as unknown as Reputation;
+  }
+}
+
 class MongoSessionRepo implements SessionRepo {
   constructor(private readonly collection: Collection) {}
 
@@ -207,6 +330,9 @@ async function setupCollections(db: Db): Promise<void> {
     applySchema(db, OPTIONS_COLLECTION, optionSchema),
     applySchema(db, CUSTOM_FIELDS_COLLECTION, customFieldSchema),
     applySchema(db, SESSIONS_COLLECTION, sessionSchema),
+    applySchema(db, DEALS_COLLECTION, dealSchema),
+    applySchema(db, RATINGS_COLLECTION, ratingSchema),
+    applySchema(db, REPUTATIONS_COLLECTION, reputationSchema),
   ]);
   await Promise.all([
     db.collection(LISTINGS_COLLECTION).createIndexes([...postIndexes]),
@@ -219,6 +345,18 @@ async function setupCollections(db: Db): Promise<void> {
       // MongoDB deletes each row once its refresh token has expired.
       { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
     ]),
+    db.collection(DEALS_COLLECTION).createIndexes([
+      { key: { sellerId: 1, _id: -1 } },
+      { key: { buyerId: 1, _id: -1 } },
+      // Partial, so deals without a listing or without a request don't collide on null.
+      { key: { listingId: 1 }, unique: true, partialFilterExpression: { listingId: { $type: 'string' } } },
+      { key: { requestId: 1 }, unique: true, partialFilterExpression: { requestId: { $type: 'string' } } },
+    ]),
+    db.collection(RATINGS_COLLECTION).createIndexes([
+      { key: { dealId: 1, raterId: 1 }, unique: true },
+      { key: { ratedUserId: 1 } },
+    ]),
+    db.collection(REPUTATIONS_COLLECTION).createIndex({ userId: 1 }, { unique: true }),
   ]);
 }
 
@@ -237,6 +375,9 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Sto
     options: new MongoOptionCollection(db.collection(OPTIONS_COLLECTION)),
     customFields: new MongoCustomFieldCollection(db.collection(CUSTOM_FIELDS_COLLECTION)),
     sessions: new MongoSessionRepo(db.collection(SESSIONS_COLLECTION)),
+    deals: new MongoDealCollection(db.collection(DEALS_COLLECTION)),
+    ratings: new MongoRatingCollection(db.collection(RATINGS_COLLECTION)),
+    reputations: new MongoReputationCollection(db.collection(REPUTATIONS_COLLECTION)),
     photos: createGridFsPhotoStorage(db),
     close: async () => {
       await client.close();

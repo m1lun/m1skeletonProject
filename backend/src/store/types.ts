@@ -1,8 +1,11 @@
 import type { GeoPoint } from '../models/common';
 import type { CustomField } from '../models/customField';
+import type { Deal } from '../models/deal';
 import type { Listing } from '../models/listing';
 import type { Option } from '../models/option';
+import type { Rating } from '../models/rating';
 import type { BuyerRequest } from '../models/request';
+import type { Reputation } from '../models/reputation';
 import type { RefreshSession } from '../models/session';
 import type { PhotoStorage } from '../photos/storage';
 
@@ -39,6 +42,8 @@ export interface PostCollection<T extends PostDoc> {
   // Every open post in a category from everyone except excludeOwnerId: the
   // candidates the matching feed filters and ranks.
   listOpenInCategory(category: string, excludeOwnerId: string): Promise<T[]>;
+  // One query for a page of posts; only the named fields are returned.
+  findByIds(ids: string[], fields: (keyof T)[]): Promise<Partial<T>[]>;
 }
 
 export interface OptionCollection {
@@ -64,12 +69,33 @@ export interface SessionRepo {
   revokeFamily(familyId: string): Promise<void>;
 }
 
+export interface DealCollection {
+  insert(doc: Omit<Deal, 'id'>): Promise<Deal>;
+  findById(id: string): Promise<Deal | null>;
+  listByUser(userId: string, limit: number, before?: string): Promise<Deal[]>;
+}
+
+export interface RatingCollection {
+  insert(doc: Omit<Rating, 'id'>): Promise<Rating>;
+  listByDeals(dealIds: string[]): Promise<Rating[]>;
+  statsFor(userId: string): Promise<{ starSum: number; ratingCount: number }>;
+}
+
+export interface ReputationCollection {
+  find(userId: string): Promise<Reputation | null>;
+  findMany(userIds: string[]): Promise<Reputation[]>;
+  addRating(userId: string, stars: number, now: Date): Promise<Reputation>;
+}
+
 export interface Store {
   listings: PostCollection<Listing>;
   requests: PostCollection<BuyerRequest>;
   options: OptionCollection;
   customFields: CustomFieldCollection;
   sessions: SessionRepo;
+  deals: DealCollection;
+  ratings: RatingCollection;
+  reputations: ReputationCollection;
   photos: PhotoStorage;
   close(): Promise<void>;
 }

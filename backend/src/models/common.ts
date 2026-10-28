@@ -22,6 +22,12 @@ export type Condition = (typeof CONDITIONS)[number];
 export const POST_STATUSES = ['open', 'closed'] as const;
 export type PostStatus = (typeof POST_STATUSES)[number];
 
+export const MIN_STARS = 1;
+export const MAX_STARS = 5;
+export const MAX_COMMENT_LENGTH = 300;
+export const DEFAULT_DEALS_PAGE = 20;
+export const MAX_DEALS_PAGE = 50;
+
 export const FIELD_TYPES = ['text', 'number', 'bool'] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 
