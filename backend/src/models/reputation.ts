@@ -4,6 +4,5 @@ export interface Reputation {
   userId: string;
   starSum: number;
   ratingCount: number;
-  score: number;
   updatedAt: Date;
 }
