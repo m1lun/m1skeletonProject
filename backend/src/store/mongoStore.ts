@@ -109,7 +109,7 @@ class MongoPostCollection<T extends PostDoc & { category: string }> implements P
     return stored.map((d) => toDoc<T>(d));
   }
 
-  async findByIds(ids: string[], fields: (keyof T)[]): Promise<Partial<T>[]> {
+  async findByIds(ids: string[], fields: (keyof T)[], firstPhotoOnly = false): Promise<Partial<T>[]> {
     const objectIds: ObjectId[] = [];
     for (const id of ids) {
       if (ObjectId.isValid(id)) {
@@ -119,7 +119,9 @@ class MongoPostCollection<T extends PostDoc & { category: string }> implements P
     if (objectIds.length === 0) {
       return [];
     }
-    const projection = Object.fromEntries(fields.map((field) => [field, 1]));
+    const projection = Object.fromEntries(
+      fields.map((field) => [field, firstPhotoOnly && field === 'photoIds' ? { $slice: 1 } : 1])
+    );
     const found = await this.collection.find({ _id: { $in: objectIds } }, { projection }).toArray();
     const stored = found as Stored<T>[];
     return stored.map((d) => toDoc<T>(d));

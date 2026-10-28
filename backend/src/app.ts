@@ -4,6 +4,7 @@ import { errorHandler, errorMessage } from './errors';
 import { verifyGoogleIdToken } from './googleAuth';
 import { isText } from './routes/checks';
 import { createCustomFieldsRouter } from './routes/customFields';
+import { createDealsRouter } from './routes/deals';
 import { createFeedRouter } from './routes/feed';
 import { createListingsRouter } from './routes/listings';
 import { createPhotosRouter } from './routes/photos';
@@ -87,6 +88,7 @@ export function createApp({ sessions, store }: AppDeps): Express {
   if (store !== undefined) {
     const posts = [express.json({ limit: '1mb' }), requireAuth];
     app.use('/api/feed', requireAuth, createFeedRouter(store));
+    app.use('/api/deals', requireAuth, createDealsRouter(store));
     app.use('/api/listings', ...posts, createListingsRouter(store));
     app.use('/api/requests', ...posts, createRequestsRouter(store));
     app.use('/api/options', ...posts, createOptionsRouter(store));

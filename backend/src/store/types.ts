@@ -43,7 +43,7 @@ export interface PostCollection<T extends PostDoc> {
   // candidates the matching feed filters and ranks.
   listOpenInCategory(category: string, excludeOwnerId: string): Promise<T[]>;
   // One query for a page of posts; only the named fields are returned.
-  findByIds(ids: string[], fields: (keyof T)[]): Promise<Partial<T>[]>;
+  findByIds(ids: string[], fields: (keyof T)[], firstPhotoOnly?: boolean): Promise<Partial<T>[]>;
 }
 
 export interface OptionCollection {
