@@ -6,11 +6,14 @@ import {
   CONDITIONS,
   FIELD_TYPES,
   MAX_ADDRESS_LENGTH,
+  MAX_COMMENT_LENGTH,
   MAX_DESCRIPTION_LENGTH,
   MAX_LABEL_LENGTH,
   MAX_PHOTOS,
+  MAX_STARS,
   MAX_FIELDS,
   MAX_TEXT_VALUE_LENGTH,
+  MIN_STARS,
   NORMALISED_PATTERN,
   PHOTO_ID,
   POST_STATUSES,
@@ -151,4 +154,29 @@ export const sessionSchema = object({
   createdAt: date,
   expiresAt: date,
   usedAt: { bsonType: ['date', 'null'] },
+});
+
+export const dealSchema = object({
+  listingId: { bsonType: ['string', 'null'] },
+  requestId: { bsonType: ['string', 'null'] },
+  sellerId: text(),
+  buyerId: text(),
+  agreedPrice: { bsonType: 'number', minimum: 0 },
+  createdAt: date,
+});
+
+export const ratingSchema = object({
+  dealId: text(),
+  raterId: text(),
+  ratedUserId: text(),
+  stars: { bsonType: 'int', minimum: MIN_STARS, maximum: MAX_STARS },
+  comment: { bsonType: 'string', maxLength: MAX_COMMENT_LENGTH },
+  createdAt: date,
+});
+
+export const reputationSchema = object({
+  userId: text(),
+  starSum: { bsonType: 'number', minimum: 0 },
+  ratingCount: { bsonType: 'number', minimum: 1 },
+  updatedAt: date,
 });
