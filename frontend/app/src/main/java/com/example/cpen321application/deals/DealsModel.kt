@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.example.cpen321application.auth.SessionExpiredException
 import java.io.IOException
+import java.net.HttpURLConnection
 import org.json.JSONException
 
 private const val TAG = "DealsModel"
@@ -22,10 +23,25 @@ data class DealsUiState(
     val signedOut: Boolean = false
 )
 
+sealed interface RateFailure {
+    data object AlreadyRated : RateFailure
+    data object Unreachable : RateFailure
+    data class Rejected(val message: String) : RateFailure
+}
+
+// The dialog: `dealId` is the deal being rated, null while it is closed.
+data class RatingUiState(
+    val dealId: String? = null,
+    val isSubmitting: Boolean = false,
+    val failure: RateFailure? = null
+)
+
 // Main thread only: the isLoading check stops two page loads at once, and `generation`
 // drops a response that arrives after a refresh or stop.
 class DealsModel(private val api: DealsApi) {
     var state by mutableStateOf(DealsUiState())
+        private set
+    var rating by mutableStateOf(RatingUiState())
         private set
     private var generation = 0
     private var loadedAt = 0L
@@ -45,6 +61,46 @@ class DealsModel(private val api: DealsApi) {
     fun stop() {
         generation++
         state = state.copy(isLoading = false, isRefreshing = false)
+    }
+
+    fun startRating(dealId: String) {
+        rating = RatingUiState(dealId)
+    }
+
+    fun dismissRating() {
+        if (!rating.isSubmitting) rating = RatingUiState()
+    }
+
+    // On success the rated deal is updated in place, so the list is not reloaded.
+    suspend fun submitRating(stars: Int, comment: String) {
+        val current = rating
+        val dealId = current.dealId ?: return
+        if (current.isSubmitting) return
+        rating = current.copy(isSubmitting = true, failure = null)
+        rating = try {
+            applyRating(dealId, api.rate(dealId, stars, comment))
+            RatingUiState()
+        } catch (_: SessionExpiredException) {
+            state = state.copy(signedOut = true)
+            RatingUiState()
+        } catch (e: RateRejectedException) {
+            val failure = if (e.code == HttpURLConnection.HTTP_CONFLICT) RateFailure.AlreadyRated else RateFailure.Rejected(e.message.orEmpty())
+            current.copy(failure = failure)
+        } catch (e: IOException) {
+            Log.w(TAG, "Could not submit rating", e)
+            current.copy(failure = RateFailure.Unreachable)
+        } catch (e: JSONException) {
+            Log.w(TAG, "Unexpected rating response", e)
+            current.copy(failure = RateFailure.Unreachable)
+        }
+    }
+
+    // The other user's new score also goes on their other deals on screen.
+    private fun applyRating(dealId: String, result: RatingResult) {
+        state = state.copy(deals = state.deals.map { deal ->
+            val other = if (deal.otherUser.id == result.otherUser.id) result.otherUser else deal.otherUser
+            if (deal.id == dealId) deal.copy(myRating = result.rating, otherUser = other) else deal.copy(otherUser = other)
+        })
     }
 
     fun isStale(): Boolean = loadedAt != 0L && SystemClock.elapsedRealtime() - loadedAt > STALE_AFTER_MS
