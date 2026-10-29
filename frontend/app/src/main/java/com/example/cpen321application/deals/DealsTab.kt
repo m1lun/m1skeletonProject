@@ -42,12 +42,12 @@ import java.text.NumberFormat
 import java.util.Locale
 
 private const val LOAD_AHEAD = 5
-private const val MAX_STARS = 5
 private val PHOTO_SIZE = 56.dp
 
 object DealsTags {
     const val RETRY = "deals_retry"
     const val REFRESH = "deals_refresh"
+    const val RATE = "deals_rate"
 }
 
 @Composable
@@ -67,7 +67,10 @@ fun DealsTab(viewModel: DealsViewModel, onSignedOut: () -> Unit, innerPadding: P
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
         )
-        DealsContent(state, viewModel::loadMore, viewModel::refresh, Modifier.weight(1f))
+        DealsContent(state, viewModel::loadMore, viewModel::refresh, viewModel::startRating, Modifier.weight(1f))
+    }
+    if (viewModel.rating.dealId != null) {
+        RateDealDialog(viewModel.rating, viewModel::submitRating, viewModel::dismissRating)
     }
 }
 
@@ -76,6 +79,7 @@ private fun DealsContent(
     state: DealsUiState,
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
+    onRate: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val nothingShown = state.deals.isEmpty()
@@ -97,7 +101,7 @@ private fun DealsContent(
         nothingShown -> Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
-        else -> DealsList(state, onLoadMore, onRefresh, modifier)
+        else -> DealsList(state, onLoadMore, onRefresh, onRate, modifier)
     }
 }
 
@@ -107,6 +111,7 @@ private fun DealsList(
     state: DealsUiState,
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
+    onRate: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -130,7 +135,7 @@ private fun DealsList(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            items(state.deals, key = { it.id }) { deal -> DealCard(deal) }
+            items(state.deals, key = { it.id }) { deal -> DealCard(deal, onRate) }
             item { DealsFooter(state, onRetry = onLoadMore) }
         }
     }
@@ -150,7 +155,7 @@ private fun DealsFooter(state: DealsUiState, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun DealCard(deal: Deal) {
+private fun DealCard(deal: Deal, onRate: (String) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -164,7 +169,7 @@ private fun DealCard(deal: Deal) {
             )
             deal.listing?.let { PostBlock(stringResource(R.string.deals_listing), it, showPrice = true) }
             deal.request?.let { PostBlock(stringResource(R.string.deals_request), it, showPrice = false) }
-            DealSummary(deal)
+            DealSummary(deal, onRate)
         }
     }
 }
@@ -188,7 +193,7 @@ private fun PostBlock(label: String, post: DealPost, showPrice: Boolean) {
 }
 
 @Composable
-private fun DealSummary(deal: Deal) {
+private fun DealSummary(deal: Deal, onRate: (String) -> Unit) {
     val role = stringResource(if (deal.role == DealRole.SELLER) R.string.deals_sold_to else R.string.deals_bought_from)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
@@ -196,8 +201,12 @@ private fun DealSummary(deal: Deal) {
             style = MaterialTheme.typography.titleMedium
         )
         Text(text = "$role · ${scoreText(deal.otherUser)}", style = MaterialTheme.typography.bodyMedium)
-        deal.myRating?.let {
-            Text(text = stringResource(R.string.deals_you_rated, starsText(it.stars)), style = MaterialTheme.typography.bodyMedium)
+        if (deal.myRating == null) {
+            OutlinedButton(onClick = { onRate(deal.id) }, modifier = Modifier.testTag(DealsTags.RATE)) {
+                Text(text = stringResource(R.string.deals_rate))
+            }
+        } else {
+            Text(text = stringResource(R.string.deals_you_rated, starsText(deal.myRating.stars)), style = MaterialTheme.typography.bodyMedium)
         }
         deal.theirRating?.let {
             Text(text = stringResource(R.string.deals_they_rated, starsText(it.stars)), style = MaterialTheme.typography.bodyMedium)

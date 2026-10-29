@@ -18,6 +18,16 @@ class DealsApi(private val sessions: SessionManager) {
         return parsePage(result.body)
     }
 
+    suspend fun rate(dealId: String, stars: Int, comment: String): RatingResult {
+        val body = JSONObject().put("stars", stars).put("comment", comment.trim())
+        val result = sessions.authorizedRequest("POST", "/api/deals/$dealId/ratings", body)
+        if (!result.isSuccess) {
+            throw RateRejectedException(result.code, result.errorMessage)
+        }
+        val json = JSONObject(result.body)
+        return RatingResult(parseRating(json.getJSONObject("rating")), parseOtherUser(json.getJSONObject("otherUser")))
+    }
+
     companion object {
         const val PAGE_SIZE = 20
     }

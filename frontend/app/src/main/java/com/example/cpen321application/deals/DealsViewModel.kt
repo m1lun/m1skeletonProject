@@ -15,6 +15,18 @@ class DealsViewModel(app: Application) : AndroidViewModel(app) {
     val state: DealsUiState
         get() = model.state
 
+    val rating: RatingUiState
+        get() = model.rating
+
+    fun startRating(dealId: String) = model.startRating(dealId)
+
+    fun dismissRating() = model.dismissRating()
+
+    // Not tied to `job`, so leaving the tab does not cancel a rating already sent.
+    fun submitRating(stars: Int, comment: String) {
+        viewModelScope.launch { model.submitRating(stars, comment) }
+    }
+
     fun refresh() {
         job?.cancel()
         job = viewModelScope.launch { model.refresh() }
@@ -33,5 +45,6 @@ class DealsViewModel(app: Application) : AndroidViewModel(app) {
     fun stop() {
         job?.cancel()
         model.stop()
+        model.dismissRating()
     }
 }
