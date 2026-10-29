@@ -29,6 +29,7 @@ import type {
   PostDoc,
   PostCollection,
   RatingCollection,
+  RatingUpdate,
   ReputationCollection,
   SessionRepo,
   Store,
@@ -233,6 +234,19 @@ class MongoRatingCollection implements RatingCollection {
     return { ...doc, id: _id.toHexString() };
   }
 
+  async update(dealId: string, raterId: string, stars: number, comment: string, now: Date): Promise<RatingUpdate | null> {
+    const before = await this.collection.findOneAndUpdate(
+      { dealId, raterId },
+      { $set: { stars, comment, updatedAt: now } },
+      { returnDocument: 'before' },
+    );
+    if (before === null) {
+      return null;
+    }
+    const previous = toDoc<Rating>(before as Stored<Rating>);
+    return { previousStars: previous.stars, rating: { ...previous, stars, comment, updatedAt: now } };
+  }
+
   async listByDeals(dealIds: string[]): Promise<Rating[]> {
     if (dealIds.length === 0) {
       return [];
@@ -285,6 +299,15 @@ class MongoReputationCollection implements ReputationCollection {
       { upsert: true, returnDocument: 'after', ...WITHOUT_ID },
     );
     return updated as unknown as Reputation;
+  }
+
+  async changeStars(userId: string, delta: number, now: Date): Promise<Reputation | null> {
+    const updated = await this.collection.findOneAndUpdate(
+      { userId },
+      { $inc: { starSum: delta }, $set: { updatedAt: now } },
+      { returnDocument: 'after', ...WITHOUT_ID },
+    );
+    return updated as Reputation | null;
   }
 }
 

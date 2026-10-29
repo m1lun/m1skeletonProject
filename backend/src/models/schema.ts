@@ -155,7 +155,8 @@ export const ratingSchema = object({
   stars: { bsonType: 'int', minimum: MIN_STARS, maximum: MAX_STARS },
   comment: { bsonType: 'string', maxLength: MAX_COMMENT_LENGTH },
   createdAt: date,
-});
+  updatedAt: date,
+}, ['updatedAt']);
 
 export const reputationSchema = object({
   userId: text(),
