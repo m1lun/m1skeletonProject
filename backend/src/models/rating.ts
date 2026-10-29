@@ -8,6 +8,5 @@ export interface Rating {
   stars: number;
   comment: string;
   createdAt: Date;
-  // Set when the rating is edited; ratings made before editing existed do not have it.
   updatedAt?: Date;
 }

@@ -47,7 +47,7 @@ function parseRating(body: unknown): { stars: number; comment: string } {
 }
 
 // The caller's deal and the other party in it. Sends the 404 or 403 itself and returns null when there is none.
-async function findParty(
+async function findMyDeal(
   store: Store,
   req: Request,
   res: Response,
@@ -71,11 +71,11 @@ export function createRatingsRouter(store: Store): Router {
   // POST /api/deals/:id/ratings — the caller rates the other party of their deal and gets back that party's new score.
   router.post('/:id/ratings', handle(async (req, res) => {
     const { stars, comment } = parseRating(req.body);
-    const party = await findParty(store, req, res);
-    if (party === null) {
+    const myDeal = await findMyDeal(store, req, res);
+    if (myDeal === null) {
       return;
     }
-    const { dealId, me, ratedUserId } = party;
+    const { dealId, me, ratedUserId } = myDeal;
     const now = new Date();
 
     let rating: Rating;
@@ -95,11 +95,11 @@ export function createRatingsRouter(store: Store): Router {
   // PUT /api/deals/:id/ratings — the caller replaces their rating of the deal and gets back the other party's new score.
   router.put('/:id/ratings', handle(async (req, res) => {
     const { stars, comment } = parseRating(req.body);
-    const party = await findParty(store, req, res);
-    if (party === null) {
+    const myDeal = await findMyDeal(store, req, res);
+    if (myDeal === null) {
       return;
     }
-    const { dealId, me, ratedUserId } = party;
+    const { dealId, me, ratedUserId } = myDeal;
     const now = new Date();
 
     const updated = await store.ratings.update(dealId, me, stars, comment, now);
