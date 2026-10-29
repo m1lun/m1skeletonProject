@@ -1,0 +1,15 @@
+<resources>
+    <string name="tab_deals">Deals</string>
+    <string name="deals_title">Deals</string>
+    <string name="deals_empty">No deals yet</string>
+    <string name="deals_untitled">Deal</string>
+    <string name="deals_listing">Listing</string>
+    <string name="deals_request">Request</string>
+    <string name="deals_agreed_price">Agreed price: %1$s</string>
+    <string name="deals_sold_to">You sold to the buyer</string>
+    <string name="deals_bought_from">You bought from the seller</string>
+    <string name="deals_score">★ %1$.1f (%2$d)</string>
+    <string name="deals_score_new">New</string>
+    <string name="deals_you_rated">You rated: %1$s</string>
+    <string name="deals_they_rated">They rated you: %1$s</string>
+</resources>
