@@ -75,8 +75,14 @@ export interface DealCollection {
   listByUser(userId: string, limit: number, before?: string): Promise<Deal[]>;
 }
 
+export interface RatingUpdate {
+  previousStars: number;
+  rating: Rating;
+}
+
 export interface RatingCollection {
   insert(doc: Omit<Rating, 'id'>): Promise<Rating>;
+  update(dealId: string, raterId: string, stars: number, comment: string, now: Date): Promise<RatingUpdate | null>;
   listByDeals(dealIds: string[]): Promise<Rating[]>;
   statsFor(userId: string): Promise<{ starSum: number; ratingCount: number }>;
 }
@@ -85,6 +91,7 @@ export interface ReputationCollection {
   find(userId: string): Promise<Reputation | null>;
   findMany(userIds: string[]): Promise<Reputation[]>;
   addRating(userId: string, stars: number, now: Date): Promise<Reputation>;
+  changeStars(userId: string, delta: number, now: Date): Promise<Reputation | null>;
 }
 
 export interface Store {
