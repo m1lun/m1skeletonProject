@@ -102,14 +102,14 @@ export function createRatingsRouter(store: Store): Router {
     const { dealId, me, ratedUserId } = myDeal;
     const now = new Date();
 
-    const updated = await store.ratings.update(dealId, me, stars, comment, now);
-    if (updated === null) {
+    const edited = await store.ratings.edit(dealId, me, stars, comment, now);
+    if (edited === null) {
       res.status(404).json({ error: 'You have not rated this deal' });
       return;
     }
-    const delta = stars - updated.previousStars;
+    const delta = stars - edited.previousStars;
     const reputation = delta === 0 ? await store.reputations.find(ratedUserId) : await store.reputations.changeStars(ratedUserId, delta, now);
-    res.json({ rating: updated.rating, otherUser: summary(ratedUserId, reputation) });
+    res.json({ rating: edited.rating, otherUser: summary(ratedUserId, reputation) });
   }));
 
   return router;
