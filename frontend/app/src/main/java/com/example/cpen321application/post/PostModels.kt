@@ -13,6 +13,7 @@ enum class Mode(val path: String, @StringRes val tabLabel: Int, @StringRes val n
 enum class AppTab(@StringRes val label: Int) {
     FEED(R.string.tab_feed),
     POSTS(R.string.tab_posts),
+    DEALS(R.string.tab_deals),
     PROFILE(R.string.tab_profile),
 }
 
