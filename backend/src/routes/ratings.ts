@@ -48,9 +48,7 @@ function parseRating(body: unknown): { stars: number; comment: string } {
 export function createRatingsRouter(store: Store): Router {
   const router = Router();
 
-  // POST /api/deals/:id/ratings — `{ stars, comment? }`: the caller rates the other party of
-  // their deal, and that party's average is updated. Responds with the rating and the
-  // other party's new score, so the app needs no second request. 3 database operations.
+  // POST /api/deals/:id/ratings — the caller rates the other party of their deal and gets back that party's new score.
   router.post('/:id/ratings', handle(async (req, res) => {
     const { stars, comment } = parseRating(req.body);
     const me = currentUser(res).id;
@@ -66,8 +64,6 @@ export function createRatingsRouter(store: Store): Router {
     const ratedUserId = deal.sellerId === me ? deal.buyerId : deal.sellerId;
     const now = new Date();
 
-    // The rating goes first: the unique (dealId, raterId) index rejects a second one.
-    // If the reputation update then fails, the average is stale until ratings.statsFor repairs it.
     let rating: Rating;
     try {
       rating = await store.ratings.insert({ dealId: deal.id, raterId: me, ratedUserId, stars, comment, createdAt: now });
@@ -88,8 +84,7 @@ export function createRatingsRouter(store: Store): Router {
 export function createReputationRouter(store: Store): Router {
   const router = Router();
 
-  // GET /api/users/:id/reputation — `{ userId, score, ratingCount }`. A user nobody has
-  // rated gets score null and ratingCount 0, not a 404. One lookup.
+  // GET /api/users/:id/reputation — a user's score and rating count; score is null when nobody has rated them.
   router.get('/:id/reputation', handle(async (req, res) => {
     const userId = String(req.params.id);
     const { id, score, ratingCount } = summary(userId, await store.reputations.find(userId));
