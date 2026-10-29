@@ -171,8 +171,8 @@ async function issueTokens(
 async function saveUser(users: UserCollection | undefined, user: SignInProfile): Promise<void> {
   try {
     await users?.upsertFromSignIn(user);
-  } catch (cause) {
-    console.error(`Could not save user ${user.id}: ${errorMessage(cause)}`);
+  } catch (error) {
+    console.error(`Could not save user ${user.id}: ${errorMessage(error)}`);
   }
 }
 
