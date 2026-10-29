@@ -29,7 +29,7 @@ import type {
   PostDoc,
   PostCollection,
   RatingCollection,
-  RatingEdit,
+  RatingUpdate,
   ReputationCollection,
   SessionRepo,
   Store,
@@ -234,7 +234,7 @@ class MongoRatingCollection implements RatingCollection {
     return { ...doc, id: _id.toHexString() };
   }
 
-  async edit(dealId: string, raterId: string, stars: number, comment: string, now: Date): Promise<RatingEdit | null> {
+  async update(dealId: string, raterId: string, stars: number, comment: string, now: Date): Promise<RatingUpdate | null> {
     const before = await this.collection.findOneAndUpdate(
       { dealId, raterId },
       { $set: { stars, comment, updatedAt: now } },

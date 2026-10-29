@@ -75,14 +75,14 @@ export interface DealCollection {
   listByUser(userId: string, limit: number, before?: string): Promise<Deal[]>;
 }
 
-export interface RatingEdit {
+export interface RatingUpdate {
   previousStars: number;
   rating: Rating;
 }
 
 export interface RatingCollection {
   insert(doc: Omit<Rating, 'id'>): Promise<Rating>;
-  edit(dealId: string, raterId: string, stars: number, comment: string, now: Date): Promise<RatingEdit | null>;
+  update(dealId: string, raterId: string, stars: number, comment: string, now: Date): Promise<RatingUpdate | null>;
   listByDeals(dealIds: string[]): Promise<Rating[]>;
   statsFor(userId: string): Promise<{ starSum: number; ratingCount: number }>;
 }
