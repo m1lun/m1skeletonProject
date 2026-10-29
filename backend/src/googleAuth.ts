@@ -8,6 +8,8 @@ export interface GoogleUser {
   firstName: string;
   lastName: string;
   email: string;
+  // Profile photo, or null when Google sends none.
+  pictureUrl: string | null;
 }
 
 // Created once so Google's public signing keys are cached between requests.
@@ -36,5 +38,6 @@ export async function verifyGoogleIdToken(idToken: string): Promise<GoogleUser> 
     firstName: payload.given_name ?? '',
     lastName: payload.family_name ?? '',
     email: payload.email ?? '',
+    pictureUrl: payload.picture ?? null,
   };
 }
