@@ -1,4 +1,4 @@
-import { MongoClient, ObjectId, type Collection, type Db, type Document } from 'mongodb';
+import { MongoClient, ObjectId, type Collection, type Db, type Document, type MongoClientOptions } from 'mongodb';
 
 import { createGridFsPhotoStorage } from '../photos/storage';
 import { CUSTOM_FIELDS_COLLECTION, type CustomField } from '../models/customField';
@@ -439,8 +439,8 @@ async function setupCollections(db: Db): Promise<void> {
   ]);
 }
 
-export async function createMongoStore(uri: string, dbName: string): Promise<Store> {
-  const client = new MongoClient(uri);
+export async function createMongoStore(uri: string, dbName: string, options?: MongoClientOptions): Promise<Store> {
+  const client = new MongoClient(uri, options);
   await client.connect();
   const db = client.db(dbName);
   await setupCollections(db);

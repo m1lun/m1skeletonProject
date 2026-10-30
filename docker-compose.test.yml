@@ -1,0 +1,18 @@
+# A throwaway MongoDB for the backend interface tests. scripts/run-backend-interface-tests.*
+# starts it when TEST_MONGODB_URI is not set, and stops it afterwards. It listens on
+# 127.0.0.1:27018 only and keeps its data in memory, so it never touches the app's database.
+name: cpen321-test
+
+services:
+  mongo-test:
+    image: mongo:7
+    ports:
+      - "127.0.0.1:27018:27017"
+    tmpfs:
+      - /data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s

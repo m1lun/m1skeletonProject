@@ -114,6 +114,27 @@ if (-not (Test-Path (Join-Path $BackendDir 'node_modules'))) {
 }
 
 # ---------------------------------------------------------------------------
+# MongoDB for the tests
+# ---------------------------------------------------------------------------
+# The tests use a real MongoDB. CI provides one and sets TEST_MONGODB_URI; otherwise
+# start the throwaway one from docker-compose.test.yml and stop it when the script ends.
+$TestCompose = Join-Path $Root 'docker-compose.test.yml'
+$StartedMongo = $false
+if ($env:TEST_MONGODB_URI) {
+    Info "Using MongoDB at $($env:TEST_MONGODB_URI)"
+}
+else {
+    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+        Die "Docker not found. Install it, or start a MongoDB and set TEST_MONGODB_URI."
+    }
+    Info "Starting a throwaway MongoDB (docker-compose.test.yml)..."
+    docker compose -f $TestCompose up -d --wait
+    if ($LASTEXITCODE -ne 0) { Die "Could not start the test MongoDB." }
+    $StartedMongo = $true
+    $env:TEST_MONGODB_URI = 'mongodb://127.0.0.1:27018'
+}
+
+# ---------------------------------------------------------------------------
 # Run interface test phases
 # ---------------------------------------------------------------------------
 
@@ -133,6 +154,7 @@ try {
 }
 finally {
     Pop-Location
+    if ($StartedMongo) { docker compose -f $TestCompose down | Out-Null }
 }
 
 Info "All backend interface test suites finished."
