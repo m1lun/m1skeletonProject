@@ -101,3 +101,18 @@ export async function clearDealData(db: Db): Promise<void> {
     })
   );
 }
+
+export interface StoredRating {
+  dealId: string;
+  raterId: string;
+  ratedUserId: string;
+  stars: number;
+  comment: string;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+export async function storedRatings(db: Db): Promise<StoredRating[]> {
+  const found = (await db.collection('ratings').find().sort({ _id: 1 }).toArray()) as unknown[];
+  return found as StoredRating[];
+}
