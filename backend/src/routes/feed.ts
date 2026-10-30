@@ -89,6 +89,19 @@ function browse<T extends PostDoc>(posts: PostCollection<T>, key: string): Reque
   });
 }
 
+// Responds with one post, open or closed, to any signed-in user; 404 for a malformed or unknown id.
+function one<T extends PostDoc>(posts: PostCollection<T>): RequestHandler {
+  return handle(async (req, res) => {
+    const id = String(req.params.id);
+    const post = POST_ID.test(id) ? await posts.findById(id) : null;
+    if (post === null) {
+      res.status(404).json({ error: 'Not Found' });
+      return;
+    }
+    res.json(post);
+  });
+}
+
 export function createFeedRouter(store: Store): Router {
   const router = Router();
 
@@ -150,6 +163,8 @@ export function createFeedRouter(store: Store): Router {
 
   router.get('/listings', browse(store.listings, 'listings'));
   router.get('/requests', browse(store.requests, 'requests'));
+  router.get('/listings/:id', one(store.listings));
+  router.get('/requests/:id', one(store.requests));
 
   return router;
 }
