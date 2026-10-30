@@ -18,9 +18,15 @@ class DealsApi(private val sessions: SessionManager) {
         return parsePage(result.body)
     }
 
-    suspend fun rate(dealId: String, stars: Int, comment: String): RatingResult {
+    suspend fun rate(dealId: String, stars: Int, comment: String): RatingResult =
+        sendRating("POST", dealId, stars, comment)
+
+    suspend fun editRating(dealId: String, stars: Int, comment: String): RatingResult =
+        sendRating("PUT", dealId, stars, comment)
+
+    private suspend fun sendRating(method: String, dealId: String, stars: Int, comment: String): RatingResult {
         val body = JSONObject().put("stars", stars).put("comment", comment.trim())
-        val result = sessions.authorizedRequest("POST", "/api/deals/$dealId/ratings", body)
+        val result = sessions.authorizedRequest(method, "/api/deals/$dealId/ratings", body)
         if (!result.isSuccess) {
             throw RateRejectedException(result.code, result.errorMessage)
         }

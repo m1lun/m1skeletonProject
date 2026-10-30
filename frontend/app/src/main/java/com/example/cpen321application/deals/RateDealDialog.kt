@@ -38,14 +38,17 @@ fun RateDealDialog(
     onSubmit: (stars: Int, comment: String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var stars by rememberSaveable { mutableIntStateOf(0) }
-    var comment by rememberSaveable { mutableStateOf("") }
+    var stars by rememberSaveable { mutableIntStateOf(rating.previous?.stars ?: 0) }
+    var comment by rememberSaveable { mutableStateOf(rating.previous?.comment.orEmpty()) }
+    val isEditing = rating.previous != null
+    // Hidden while the request is out, so the overlay on the tab shows; the draft stays and returns on a failure.
+    if (rating.isSubmitting) return
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = stringResource(R.string.rate_title)) },
+        title = { Text(text = stringResource(if (isEditing) R.string.rate_title_edit else R.string.rate_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                StarPicker(selected = stars, enabled = !rating.isSubmitting, onSelect = { stars = it })
+                StarPicker(selected = stars, onSelect = { stars = it })
                 OutlinedTextField(
                     value = comment,
                     onValueChange = { if (it.length <= MAX_COMMENT_LENGTH) comment = it },
@@ -53,7 +56,6 @@ fun RateDealDialog(
                     supportingText = {
                         Text(text = stringResource(R.string.rate_counter, comment.length, MAX_COMMENT_LENGTH))
                     },
-                    enabled = !rating.isSubmitting,
                     modifier = Modifier.fillMaxWidth().testTag(RateTags.COMMENT)
                 )
                 rating.failure?.let {
@@ -64,12 +66,12 @@ fun RateDealDialog(
         confirmButton = {
             TextButton(
                 onClick = { onSubmit(stars, comment) },
-                enabled = stars > 0 && !rating.isSubmitting,
+                enabled = stars > 0,
                 modifier = Modifier.testTag(RateTags.SUBMIT)
-            ) { Text(text = stringResource(R.string.rate_submit)) }
+            ) { Text(text = stringResource(if (isEditing) R.string.rate_save else R.string.rate_submit)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !rating.isSubmitting, modifier = Modifier.testTag(RateTags.CANCEL)) {
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag(RateTags.CANCEL)) {
                 Text(text = stringResource(R.string.action_cancel))
             }
         }
@@ -77,10 +79,10 @@ fun RateDealDialog(
 }
 
 @Composable
-private fun StarPicker(selected: Int, enabled: Boolean, onSelect: (Int) -> Unit) {
+private fun StarPicker(selected: Int, onSelect: (Int) -> Unit) {
     Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
         for (star in 1..MAX_STARS) {
-            IconButton(onClick = { onSelect(star) }, enabled = enabled, modifier = Modifier.testTag("${RateTags.STAR_PREFIX}$star")) {
+            IconButton(onClick = { onSelect(star) }, modifier = Modifier.testTag("${RateTags.STAR_PREFIX}$star")) {
                 Icon(
                     imageVector = Icons.Filled.Star,
                     contentDescription = stringResource(R.string.rate_star, star),

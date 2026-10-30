@@ -29,9 +29,11 @@ sealed interface RateFailure {
     data class Rejected(val message: String) : RateFailure
 }
 
-// The dialog: `dealId` is the deal being rated, null while it is closed.
+// The dialog: `dealId` is the deal being rated, null while it is closed. `previous` is the
+// rating being edited, null when the deal has not been rated yet.
 data class RatingUiState(
     val dealId: String? = null,
+    val previous: DealRating? = null,
     val isSubmitting: Boolean = false,
     val failure: RateFailure? = null
 )
@@ -64,21 +66,22 @@ class DealsModel(private val api: DealsApi) {
     }
 
     fun startRating(dealId: String) {
-        rating = RatingUiState(dealId)
+        rating = RatingUiState(dealId, previous = state.deals.firstOrNull { it.id == dealId }?.myRating)
     }
 
     fun dismissRating() {
         if (!rating.isSubmitting) rating = RatingUiState()
     }
 
-    // On success the rated deal is updated in place, so the list is not reloaded.
+    // Rates the deal, or edits the rating when there is one. On success the deal is updated in place, so the list is not reloaded.
     suspend fun submitRating(stars: Int, comment: String) {
         val current = rating
         val dealId = current.dealId ?: return
         if (current.isSubmitting) return
         rating = current.copy(isSubmitting = true, failure = null)
         rating = try {
-            applyRating(dealId, api.rate(dealId, stars, comment))
+            val result = if (current.previous == null) api.rate(dealId, stars, comment) else api.editRating(dealId, stars, comment)
+            applyRating(dealId, result)
             RatingUiState()
         } catch (_: SessionExpiredException) {
             state = state.copy(signedOut = true)
