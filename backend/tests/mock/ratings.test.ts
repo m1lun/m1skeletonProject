@@ -35,7 +35,7 @@ function rejecting(target: unknown, method: string): jest.SpyInstance {
 }
 
 function callCount(spy: jest.SpyInstance): number {
-  return spy.mock.calls.length as number;
+  return spy.mock.calls.length;
 }
 
 interface FailureCase {
