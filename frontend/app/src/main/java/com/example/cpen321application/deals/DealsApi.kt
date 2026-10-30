@@ -18,6 +18,16 @@ class DealsApi(private val sessions: SessionManager) {
         return parsePage(result.body)
     }
 
+    // One post, as the backend returns it; the feed's detail screen opens it from this.
+    suspend fun post(isRequest: Boolean, id: String): JSONObject {
+        val kind = if (isRequest) "requests" else "listings"
+        val result = sessions.authorizedRequest("GET", "/api/feed/$kind/$id")
+        if (!result.isSuccess) {
+            throw IOException("HTTP ${result.code}: ${result.errorMessage}")
+        }
+        return JSONObject(result.body)
+    }
+
     suspend fun rate(dealId: String, stars: Int, comment: String): RatingResult =
         sendRating("POST", dealId, stars, comment)
 

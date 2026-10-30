@@ -128,7 +128,7 @@ class MainActivity : ComponentActivity() {
                 viewModel.open(it.raw, if (it.isRequest) Mode.BUYING else Mode.SELLING)
             }
             viewModel.tab == AppTab.POSTS -> PostScreen(viewModel, innerPadding)
-            viewModel.tab == AppTab.DEALS -> DealsTab(dealsViewModel, ::signOut, innerPadding)
+            viewModel.tab == AppTab.DEALS -> DealsTab(dealsViewModel, ::signOut, innerPadding, viewModel::open)
             else -> ProfileScreen(SessionManager.get(this), ::signOut, innerPadding)
         }
     }
