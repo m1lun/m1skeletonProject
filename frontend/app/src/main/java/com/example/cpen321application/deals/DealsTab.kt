@@ -72,7 +72,9 @@ fun DealsTab(
             viewModel.clearOpenFailure()
         }
     }
-    val openPost = { post: DealPost, isRequest: Boolean -> viewModel.openPost(post, isRequest, onOpenPost) }
+    val actions = remember(viewModel, onOpenPost) {
+        DealActions(viewModel::startRating) { post, isRequest -> viewModel.openPost(post, isRequest, onOpenPost) }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
@@ -82,7 +84,7 @@ fun DealsTab(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
             )
-            DealsContent(state, viewModel::loadMore, viewModel::refresh, viewModel::startRating, openPost, Modifier.weight(1f))
+            DealsContent(state, viewModel::loadMore, viewModel::refresh, actions, Modifier.weight(1f))
         }
         if (viewModel.rating.isSubmitting || viewModel.opening.isOpening) BusyOverlay()
     }
@@ -110,8 +112,7 @@ private fun DealsContent(
     state: DealsUiState,
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
-    onRate: (String) -> Unit,
-    onOpenPost: (DealPost, Boolean) -> Unit,
+    actions: DealActions,
     modifier: Modifier = Modifier
 ) {
     val nothingShown = state.deals.isEmpty()
@@ -133,7 +134,7 @@ private fun DealsContent(
         nothingShown -> Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
-        else -> DealsList(state, onLoadMore, onRefresh, onRate, onOpenPost, modifier)
+        else -> DealsList(state, onLoadMore, onRefresh, actions, modifier)
     }
 }
 
@@ -143,8 +144,7 @@ private fun DealsList(
     state: DealsUiState,
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
-    onRate: (String) -> Unit,
-    onOpenPost: (DealPost, Boolean) -> Unit,
+    actions: DealActions,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -168,7 +168,7 @@ private fun DealsList(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            items(state.deals, key = { it.id }) { deal -> DealCard(deal, onRate, onOpenPost) }
+            items(state.deals, key = { it.id }) { deal -> DealCard(deal, actions) }
             item { DealsFooter(state, onRetry = onLoadMore) }
         }
     }

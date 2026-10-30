@@ -39,6 +39,27 @@ data class RatingUiState(
     val failure: RateFailure? = null
 )
 
+// How a call to the backend ended: with its result, with the session gone, or without one
+// (the server could not be reached or its answer could not be read).
+private sealed interface Outcome<out T> {
+    data class Done<T>(val value: T) : Outcome<T>
+    data object SignedOut : Outcome<Nothing>
+    data object Failed : Outcome<Nothing>
+}
+
+// Runs a backend call and logs why it failed. A rejection such as RateRejectedException passes through.
+private suspend fun <T> attempt(what: String, call: suspend () -> T): Outcome<T> = try {
+    Outcome.Done(call())
+} catch (_: SessionExpiredException) {
+    Outcome.SignedOut
+} catch (e: IOException) {
+    Log.w(TAG, "Could not $what", e)
+    Outcome.Failed
+} catch (e: JSONException) {
+    Log.w(TAG, "Unexpected response: $what", e)
+    Outcome.Failed
+}
+
 // Fetching a post to open: `failed` is set until the screen has shown the error.
 data class OpenPostState(val isOpening: Boolean = false, val failed: Boolean = false)
 
@@ -74,21 +95,10 @@ class DealsModel(private val api: DealsApi) {
     suspend fun openPost(post: DealPost, isRequest: Boolean): JSONObject? {
         if (opening.isOpening) return null
         opening = OpenPostState(isOpening = true)
-        return try {
-            api.post(isRequest, post.id).also { opening = OpenPostState() }
-        } catch (_: SessionExpiredException) {
-            state = state.copy(signedOut = true)
-            opening = OpenPostState()
-            null
-        } catch (e: IOException) {
-            Log.w(TAG, "Could not open post", e)
-            opening = OpenPostState(failed = true)
-            null
-        } catch (e: JSONException) {
-            Log.w(TAG, "Unexpected post response", e)
-            opening = OpenPostState(failed = true)
-            null
-        }
+        val outcome = attempt("open post") { api.post(isRequest, post.id) }
+        opening = OpenPostState(failed = outcome is Outcome.Failed)
+        if (outcome is Outcome.SignedOut) state = state.copy(signedOut = true)
+        return (outcome as? Outcome.Done)?.value
     }
 
     fun stopOpening() {
@@ -110,21 +120,16 @@ class DealsModel(private val api: DealsApi) {
         if (current.isSubmitting) return
         rating = current.copy(isSubmitting = true, failure = null)
         rating = try {
-            val result = if (current.previous == null) api.rate(dealId, stars, comment) else api.editRating(dealId, stars, comment)
-            applyRating(dealId, result)
-            RatingUiState()
-        } catch (_: SessionExpiredException) {
-            state = state.copy(signedOut = true)
-            RatingUiState()
+            val outcome = attempt("submit rating") {
+                if (current.previous == null) api.rate(dealId, stars, comment) else api.editRating(dealId, stars, comment)
+            }
+            when (outcome) {
+                is Outcome.Done -> RatingUiState().also { applyRating(dealId, outcome.value) }
+                Outcome.SignedOut -> RatingUiState().also { state = state.copy(signedOut = true) }
+                Outcome.Failed -> current.copy(failure = RateFailure.Unreachable)
+            }
         } catch (e: RateRejectedException) {
-            val failure = if (e.code == HttpURLConnection.HTTP_CONFLICT) RateFailure.AlreadyRated else RateFailure.Rejected(e.message.orEmpty())
-            current.copy(failure = failure)
-        } catch (e: IOException) {
-            Log.w(TAG, "Could not submit rating", e)
-            current.copy(failure = RateFailure.Unreachable)
-        } catch (e: JSONException) {
-            Log.w(TAG, "Unexpected rating response", e)
-            current.copy(failure = RateFailure.Unreachable)
+            current.copy(failure = if (e.code == HttpURLConnection.HTTP_CONFLICT) RateFailure.AlreadyRated else RateFailure.Rejected(e.message.orEmpty()))
         }
     }
 
@@ -141,21 +146,14 @@ class DealsModel(private val api: DealsApi) {
     private suspend fun load(base: DealsUiState, cursor: String?) {
         val started = generation
         state = base.copy(isLoading = true, isRefreshing = cursor == null, loadFailed = false)
-        val next = try {
-            val page = api.page(cursor)
-            DealsUiState(
-                deals = if (cursor == null) page.deals else base.deals + page.deals,
-                nextCursor = page.nextCursor,
-                endReached = page.nextCursor == null
+        val next = when (val outcome = attempt("load deals") { api.page(cursor) }) {
+            is Outcome.Done -> DealsUiState(
+                deals = if (cursor == null) outcome.value.deals else base.deals + outcome.value.deals,
+                nextCursor = outcome.value.nextCursor,
+                endReached = outcome.value.nextCursor == null
             )
-        } catch (_: SessionExpiredException) {
-            base.copy(signedOut = true)
-        } catch (e: IOException) {
-            Log.w(TAG, "Could not load deals", e)
-            base.copy(loadFailed = true)
-        } catch (e: JSONException) {
-            Log.w(TAG, "Unexpected deals response", e)
-            base.copy(loadFailed = true)
+            Outcome.SignedOut -> base.copy(signedOut = true)
+            Outcome.Failed -> base.copy(loadFailed = true)
         }
         if (started == generation) {
             state = next
