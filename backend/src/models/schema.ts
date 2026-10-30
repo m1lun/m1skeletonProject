@@ -163,6 +163,9 @@ export const dealSchema = object({
   buyerId: text(),
   agreedPrice: { bsonType: 'number', minimum: 0 },
   createdAt: date,
+}, [], {
+  // At least one of the two posts must be there.
+  anyOf: [{ properties: { listingId: text() }, required: ['listingId'] }, { properties: { requestId: text() }, required: ['requestId'] }],
 });
 
 export const ratingSchema = object({
@@ -172,7 +175,8 @@ export const ratingSchema = object({
   stars: { bsonType: 'int', minimum: MIN_STARS, maximum: MAX_STARS },
   comment: { bsonType: 'string', maxLength: MAX_COMMENT_LENGTH },
   createdAt: date,
-});
+  updatedAt: date,
+}, ['updatedAt']);
 
 export const reputationSchema = object({
   userId: text(),

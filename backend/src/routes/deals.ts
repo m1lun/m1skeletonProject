@@ -2,11 +2,13 @@ import { Router } from 'express';
 
 import { BadRequestError } from '../errors';
 import { DEFAULT_DEALS_PAGE, MAX_DEALS_PAGE } from '../models/common';
-import type { Deal } from '../models/deal';
+import { otherParty, roleOf, type Deal } from '../models/deal';
 import type { Rating } from '../models/rating';
-import { averageScore } from '../reputation/score';
+import type { Reputation } from '../models/reputation';
+import { reputationSummary } from '../reputation/score';
 import { currentUser } from '../sessions';
 import type { Store } from '../store/types';
+import { isObject } from './checks';
 import { handle } from './handle';
 
 const DEAL_ID = /^[0-9a-f]{24}$/;
@@ -34,6 +36,10 @@ function parseBefore(value: unknown, errors: string[]): string | undefined {
   return value;
 }
 
+function byId<T extends { id?: string }>(items: T[]): Map<string, T> {
+  return new Map(items.flatMap((item) => (item.id === undefined ? [] : [[item.id, item] as const])));
+}
+
 function present(ids: (string | null)[]): string[] {
   return [...new Set(ids.filter((id): id is string => id !== null))];
 }
@@ -42,23 +48,65 @@ function ratingView(rating: Rating | undefined): { stars: number; comment: strin
   return rating === undefined ? null : { stars: rating.stars, comment: rating.comment, createdAt: rating.createdAt };
 }
 
+// The few fields of a listing or request the deals list reads.
+interface PostView {
+  id?: string;
+  category?: string;
+  price?: number;
+  photoIds?: string[];
+}
+
+// What the page of deals points at, looked up by id.
+interface Lookups {
+  ratingBy: Map<string, Rating>;
+  reputationOf: Map<string, Reputation>;
+  listingOf: Map<string, PostView>;
+  requestOf: Map<string, PostView>;
+}
+
+function parseDealsQuery(query: unknown): { limit: number; before: string | undefined } {
+  const params = isObject(query) ? query : {};
+  const errors = Object.keys(params)
+    .filter((name) => !DEALS_PARAMS.includes(name))
+    .map((name) => `unsupported parameter "${name}"`);
+  const limit = parseLimit(params.limit, errors);
+  const before = parseBefore(params.before, errors);
+  if (errors.length > 0) {
+    throw new BadRequestError(errors);
+  }
+  return { limit, before };
+}
+
+function dealView(deal: Deal, me: string, lookups: Lookups) {
+  const other = otherParty(deal, me);
+  const listing = deal.listingId === null ? undefined : lookups.listingOf.get(deal.listingId);
+  const request = deal.requestId === null ? undefined : lookups.requestOf.get(deal.requestId);
+  return {
+    id: deal.id,
+    role: roleOf(deal, me),
+    agreedPrice: deal.agreedPrice,
+    createdAt: deal.createdAt,
+    title: listing?.category ?? request?.category ?? '',
+    listing:
+      listing === undefined
+        ? null
+        : { id: deal.listingId, category: listing.category, price: listing.price, photoId: listing.photoIds?.[0] ?? null },
+    request:
+      request === undefined ? null : { id: deal.requestId, category: request.category, photoId: request.photoIds?.[0] ?? null },
+    otherUser: reputationSummary(other, lookups.reputationOf.get(other)),
+    myRating: ratingView(lookups.ratingBy.get(`${deal.id}:${me}`)),
+    theirRating: ratingView(lookups.ratingBy.get(`${deal.id}:${other}`)),
+  };
+}
+
 export function createDealsRouter(store: Store): Router {
   const router = Router();
 
   // GET /api/deals?limit=20&before=<nextCursor> — the caller's deals, newest first.
   // At most 5 queries however many deals there are; nextCursor is null on the last page.
   router.get('/', handle(async (req, res) => {
-    const errors = Object.keys(req.query)
-      .filter((name) => !DEALS_PARAMS.includes(name))
-      .map((name) => `unsupported parameter "${name}"`);
-    const limit = parseLimit(req.query.limit, errors);
-    const before = parseBefore(req.query.before, errors);
-    if (errors.length > 0) {
-      throw new BadRequestError(errors);
-    }
-
+    const { limit, before } = parseDealsQuery(req.query);
     const me = currentUser(res).id;
-    const otherParty = (deal: Deal): string => (deal.sellerId === me ? deal.buyerId : deal.sellerId);
 
     // One extra deal tells whether another page follows.
     const found = await store.deals.listByUser(me, limit + 1, before);
@@ -68,45 +116,18 @@ export function createDealsRouter(store: Store): Router {
 
     const [ratings, reputations, listings, requests] = await Promise.all([
       store.ratings.listByDeals(page.map((deal) => deal.id)),
-      store.reputations.findMany(present(page.map(otherParty))),
+      store.reputations.findMany(present(page.map((deal) => otherParty(deal, me)))),
       store.listings.findByIds(present(page.map((deal) => deal.listingId)), ['category', 'price', 'photoIds'], true),
       store.requests.findByIds(present(page.map((deal) => deal.requestId)), ['category', 'photoIds'], true),
     ]);
+    const lookups: Lookups = {
+      ratingBy: new Map(ratings.map((rating) => [`${rating.dealId}:${rating.raterId}`, rating])),
+      reputationOf: new Map(reputations.map((reputation) => [reputation.userId, reputation])),
+      listingOf: byId<PostView>(listings),
+      requestOf: byId<PostView>(requests),
+    };
 
-    const ratingBy = new Map(ratings.map((rating) => [`${rating.dealId}:${rating.raterId}`, rating]));
-    const reputationOf = new Map(reputations.map((reputation) => [reputation.userId, reputation]));
-    const listingOf = new Map(listings.map((listing) => [listing.id, listing]));
-    const requestOf = new Map(requests.map((request) => [request.id, request]));
-
-    const deals = page.map((deal) => {
-      const other = otherParty(deal);
-      const listing = deal.listingId === null ? undefined : listingOf.get(deal.listingId);
-      const request = deal.requestId === null ? undefined : requestOf.get(deal.requestId);
-      const reputation = reputationOf.get(other);
-      return {
-        id: deal.id,
-        role: deal.sellerId === me ? 'seller' : 'buyer',
-        agreedPrice: deal.agreedPrice,
-        createdAt: deal.createdAt,
-        title: listing?.category ?? request?.category ?? '',
-        listing:
-          listing === undefined
-            ? null
-            : { id: deal.listingId, category: listing.category, price: listing.price, photoId: listing.photoIds?.[0] ?? null },
-        request:
-          request === undefined
-            ? null
-            : { id: deal.requestId, category: request.category, photoId: request.photoIds?.[0] ?? null },
-        otherUser: {
-          id: other,
-          score: reputation === undefined ? null : averageScore(reputation.starSum, reputation.ratingCount),
-          ratingCount: reputation?.ratingCount ?? 0,
-        },
-        myRating: ratingView(ratingBy.get(`${deal.id}:${me}`)),
-        theirRating: ratingView(ratingBy.get(`${deal.id}:${other}`)),
-      };
-    });
-    res.json({ deals, nextCursor });
+    res.json({ deals: page.map((deal) => dealView(deal, me, lookups)), nextCursor });
   }));
 
   return router;

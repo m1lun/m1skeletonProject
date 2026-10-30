@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -29,6 +30,8 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.cpen321application.auth.SessionManager
+import com.example.cpen321application.deals.DealsTab
+import com.example.cpen321application.deals.DealsViewModel
 import com.example.cpen321application.feed.FeedTab
 import com.example.cpen321application.feed.FeedViewModel
 import com.example.cpen321application.feed.ownPostOf
@@ -47,6 +50,7 @@ import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
 class MainActivity : ComponentActivity() {
     private val viewModel: PostViewModel by viewModels()
     private val feedViewModel: FeedViewModel by viewModels()
+    private val dealsViewModel: DealsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,6 +93,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (!isFinishing && viewModel.tab == AppTab.DEALS) dealsViewModel.refreshIfStale()
+    }
+
     private fun signOut() {
         lifecycleScope.launch {
             SessionManager.get(this@MainActivity).signOut()
@@ -119,6 +128,7 @@ class MainActivity : ComponentActivity() {
                 viewModel.open(it.raw, if (it.isRequest) Mode.BUYING else Mode.SELLING)
             }
             viewModel.tab == AppTab.POSTS -> PostScreen(viewModel, innerPadding)
+            viewModel.tab == AppTab.DEALS -> DealsTab(dealsViewModel, ::signOut, innerPadding, viewModel::open)
             else -> ProfileScreen(SessionManager.get(this), ::signOut, innerPadding)
         }
     }
@@ -142,5 +152,6 @@ private fun AppNavigationBar(viewModel: PostViewModel) {
 private fun AppTab.icon(): ImageVector = when (this) {
     AppTab.FEED -> Icons.Filled.Home
     AppTab.POSTS -> Icons.AutoMirrored.Filled.List
+    AppTab.DEALS -> Icons.Filled.ShoppingCart
     AppTab.PROFILE -> Icons.Filled.Person
 }

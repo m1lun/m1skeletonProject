@@ -3,7 +3,7 @@ import { MongoClient, ObjectId, type Collection, type Db, type Document } from '
 import { createGridFsPhotoStorage } from '../photos/storage';
 import { CUSTOM_FIELDS_COLLECTION, type CustomField } from '../models/customField';
 import { postIndexes, type GeoPoint } from '../models/common';
-import { DEALS_COLLECTION, type Deal } from '../models/deal';
+import { DEALS_COLLECTION, assertHasPost, type Deal } from '../models/deal';
 import { normaliseListing, normaliseRequest } from '../models/normalise';
 import { LISTINGS_COLLECTION, type Listing } from '../models/listing';
 import { OPTIONS_COLLECTION, type Option } from '../models/option';
@@ -31,6 +31,7 @@ import type {
   PostDoc,
   PostCollection,
   RatingCollection,
+  RatingUpdate,
   ReputationCollection,
   SessionRepo,
   Store,
@@ -45,6 +46,16 @@ const EARTH_RADIUS_KM = 6378.1;
 function toDoc<T extends { id: string }>(stored: Stored<T>): T {
   const { _id, ...rest } = stored;
   return { ...rest, id: _id.toHexString() } as unknown as T;
+}
+
+function toDocs<T extends { id: string }>(found: unknown[]): T[] {
+  return (found as Stored<T>[]).map((stored) => toDoc<T>(stored));
+}
+
+async function insertDoc<T extends { id: string }>(collection: Collection, doc: Omit<T, 'id'>): Promise<T> {
+  const _id = new ObjectId();
+  await collection.insertOne({ ...doc, _id });
+  return { ...doc, id: _id.toHexString() } as T;
 }
 
 // Options and custom fields have no id of their own, so Mongo leaves _id out.
@@ -244,9 +255,8 @@ class MongoDealCollection implements DealCollection {
   constructor(private readonly collection: Collection) {}
 
   async insert(doc: Omit<Deal, 'id'>): Promise<Deal> {
-    const _id = new ObjectId();
-    await this.collection.insertOne({ ...doc, _id });
-    return { ...doc, id: _id.toHexString() };
+    assertHasPost(doc);
+    return insertDoc<Deal>(this.collection, doc);
   }
 
   async findById(id: string): Promise<Deal | null> {
@@ -263,27 +273,39 @@ class MongoDealCollection implements DealCollection {
       query._id = { $lt: new ObjectId(before) };
     }
     const found = await this.collection.find(query).sort({ _id: -1 }).limit(limit).toArray();
-    const stored = found as Stored<Deal>[];
-    return stored.map((d) => toDoc<Deal>(d));
+    return toDocs<Deal>(found as unknown[]);
   }
 }
 
 class MongoRatingCollection implements RatingCollection {
   constructor(private readonly collection: Collection) {}
 
-  async insert(doc: Omit<Rating, 'id'>): Promise<Rating> {
-    const _id = new ObjectId();
-    await this.collection.insertOne({ ...doc, _id });
-    return { ...doc, id: _id.toHexString() };
+  insert(doc: Omit<Rating, 'id'>): Promise<Rating> {
+    return insertDoc<Rating>(this.collection, doc);
+  }
+
+  async update(dealId: string, raterId: string, stars: number, comment: string, now: Date): Promise<RatingUpdate | null> {
+    const before = await this.collection.findOneAndUpdate(
+      { dealId, raterId },
+      { $set: { stars, comment, updatedAt: now } },
+      { returnDocument: 'before' },
+    );
+    if (before === null) {
+      return null;
+    }
+    const previous = toDoc<Rating>(before as Stored<Rating>);
+    return { previousStars: previous.stars, rating: { ...previous, stars, comment, updatedAt: now } };
   }
 
   async listByDeals(dealIds: string[]): Promise<Rating[]> {
     if (dealIds.length === 0) {
       return [];
     }
-    const found = await this.collection.find({ dealId: { $in: dealIds } }).toArray();
-    const stored = found as Stored<Rating>[];
-    return stored.map((d) => toDoc<Rating>(d));
+    // Only what the deals list shows, not ratedUserId or updatedAt.
+    const found = await this.collection
+      .find({ dealId: { $in: dealIds } }, { projection: { dealId: 1, raterId: 1, stars: 1, comment: 1, createdAt: 1 } })
+      .toArray();
+    return toDocs<Rating>(found as unknown[]);
   }
 
   async statsFor(userId: string): Promise<{ starSum: number; ratingCount: number }> {
@@ -329,6 +351,15 @@ class MongoReputationCollection implements ReputationCollection {
       { upsert: true, returnDocument: 'after', ...WITHOUT_ID },
     );
     return updated as unknown as Reputation;
+  }
+
+  async changeStars(userId: string, delta: number, now: Date): Promise<Reputation | null> {
+    const updated = await this.collection.findOneAndUpdate(
+      { userId },
+      { $inc: { starSum: delta }, $set: { updatedAt: now } },
+      { returnDocument: 'after', ...WITHOUT_ID },
+    );
+    return updated as Reputation | null;
   }
 }
 

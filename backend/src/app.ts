@@ -8,6 +8,7 @@ import { createDealsRouter } from './routes/deals';
 import { createFeedRouter } from './routes/feed';
 import { createListingsRouter } from './routes/listings';
 import { createPhotosRouter } from './routes/photos';
+import { createRatingsRouter, createReputationRouter } from './routes/ratings';
 import { createOptionsRouter } from './routes/options';
 import { createRequestsRouter } from './routes/requests';
 import { endSession, refreshSession, requireAuth, startSession, type AuthResponse } from './sessions';
@@ -89,6 +90,8 @@ export function createApp({ sessions, store }: AppDeps): Express {
     const posts = [express.json({ limit: '1mb' }), requireAuth];
     app.use('/api/feed', requireAuth, createFeedRouter(store));
     app.use('/api/deals', requireAuth, createDealsRouter(store));
+    app.use('/api/deals', express.json({ limit: '4kb' }), requireAuth, createRatingsRouter(store));
+    app.use('/api/users', requireAuth, createReputationRouter(store));
     app.use('/api/listings', ...posts, createListingsRouter(store));
     app.use('/api/requests', ...posts, createRequestsRouter(store));
     app.use('/api/options', ...posts, createOptionsRouter(store));

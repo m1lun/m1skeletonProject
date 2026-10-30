@@ -1,0 +1,24 @@
+<resources>
+    <string name="tab_deals">Deals</string>
+    <string name="deals_title">Deals</string>
+    <string name="deals_empty">No deals yet</string>
+    <string name="deals_untitled">Deal</string>
+    <string name="deals_listing">Listing</string>
+    <string name="deals_request">Request</string>
+    <string name="deals_sold_to">You sold to the buyer</string>
+    <string name="deals_bought_from">You bought from the seller</string>
+    <string name="deals_score">★ %1$.1f (%2$d)</string>
+    <string name="deals_score_new">New</string>
+    <string name="deals_rate">Rate</string>
+    <string name="deals_edit_rating">Edit</string>
+    <string name="rate_title_edit">Edit your rating</string>
+    <string name="rate_save">Save</string>
+    <string name="rate_title">Rate this deal</string>
+    <string name="rate_star">%1$d stars</string>
+    <string name="rate_comment_label">Comment (optional)</string>
+    <string name="rate_counter">%1$d/%2$d</string>
+    <string name="rate_submit">Submit</string>
+    <string name="rate_already_rated">You already rated this deal</string>
+    <string name="deals_you">You</string>
+    <string name="deals_them">Them</string>
+</resources>
