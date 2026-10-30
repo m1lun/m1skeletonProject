@@ -11,21 +11,13 @@ import org.json.JSONObject
 class DealsApi(private val sessions: SessionManager) {
     suspend fun page(cursor: String?): DealsPage {
         val params = listOfNotNull("limit=$PAGE_SIZE", cursor?.let { "before=${URLEncoder.encode(it, "UTF-8")}" })
-        val result = sessions.authorizedRequest("GET", "/api/deals?${params.joinToString("&")}")
-        if (!result.isSuccess) {
-            throw IOException("HTTP ${result.code}: ${result.errorMessage}")
-        }
-        return parsePage(result.body)
+        return parsePage(get("/api/deals?${params.joinToString("&")}"))
     }
 
     // One post, as the backend returns it; the feed's detail screen opens it from this.
     suspend fun post(isRequest: Boolean, id: String): JSONObject {
         val kind = if (isRequest) "requests" else "listings"
-        val result = sessions.authorizedRequest("GET", "/api/feed/$kind/$id")
-        if (!result.isSuccess) {
-            throw IOException("HTTP ${result.code}: ${result.errorMessage}")
-        }
-        return JSONObject(result.body)
+        return JSONObject(get("/api/feed/$kind/$id"))
     }
 
     suspend fun rate(dealId: String, stars: Int, comment: String): RatingResult =
@@ -44,6 +36,15 @@ class DealsApi(private val sessions: SessionManager) {
         return RatingResult(parseRating(json.getJSONObject("rating")), parseOtherUser(json.getJSONObject("otherUser")))
     }
 
+    // The body of a successful GET; an error status is thrown as an IOException.
+    private suspend fun get(path: String): String {
+        val result = sessions.authorizedRequest("GET", path)
+        if (!result.isSuccess) {
+            throw IOException("HTTP ${result.code}: ${result.errorMessage}")
+        }
+        return result.body
+    }
+
     companion object {
         const val PAGE_SIZE = 20
     }
@@ -51,8 +52,7 @@ class DealsApi(private val sessions: SessionManager) {
 
 private fun parsePage(body: String): DealsPage {
     val json = JSONObject(body)
-    val nextCursor = if (json.isNull("nextCursor")) null else json.getString("nextCursor")
-    return DealsPage(json.getJSONArray("deals").objects().map(::parseDeal), nextCursor)
+    return DealsPage(json.getJSONArray("deals").objects().map(::parseDeal), json.optText("nextCursor"))
 }
 
 private fun parseDeal(deal: JSONObject): Deal = Deal(
@@ -72,7 +72,7 @@ private fun parsePost(post: JSONObject): DealPost = DealPost(
     id = post.getString("id"),
     category = post.getString("category"),
     price = post.optDouble("price").takeUnless { it.isNaN() },
-    photoId = if (post.isNull("photoId")) null else post.getString("photoId")
+    photoId = post.optText("photoId")
 )
 
 private fun parseOtherUser(user: JSONObject): OtherUser = OtherUser(
@@ -88,3 +88,5 @@ private fun parseRating(rating: JSONObject): DealRating =
 private fun localDate(iso: String): String = Instant.parse(iso).atZone(ZoneId.systemDefault()).toLocalDate().toString()
 
 private fun JSONObject.optObject(key: String): JSONObject? = if (isNull(key)) null else getJSONObject(key)
+
+private fun JSONObject.optText(key: String): String? = if (isNull(key)) null else getString(key)

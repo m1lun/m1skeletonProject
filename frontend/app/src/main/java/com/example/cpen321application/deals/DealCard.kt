@@ -44,8 +44,11 @@ private const val COMMENT_LINES = 2
 private val PHOTO_SIZE = 48.dp
 private val WHO_WIDTH = 48.dp
 
+// What a tap on a card can do: rate or edit the deal, or open one of its posts (a request when the flag is true).
+class DealActions(val onRate: (dealId: String) -> Unit, val onOpenPost: (post: DealPost, isRequest: Boolean) -> Unit)
+
 @Composable
-fun DealCard(deal: Deal, onRate: (String) -> Unit, onOpenPost: (DealPost, Boolean) -> Unit) {
+fun DealCard(deal: Deal, actions: DealActions) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -54,10 +57,10 @@ fun DealCard(deal: Deal, onRate: (String) -> Unit, onOpenPost: (DealPost, Boolea
     ) {
         Column(modifier = Modifier.padding(all = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DealHeader(deal)
-            deal.listing?.let { PostRow(stringResource(R.string.deals_listing), it, showPrice = true) { onOpenPost(it, false) } }
-            deal.request?.let { PostRow(stringResource(R.string.deals_request), it, showPrice = false) { onOpenPost(it, true) } }
+            deal.listing?.let { PostRow(stringResource(R.string.deals_listing), it, showPrice = true) { actions.onOpenPost(it, false) } }
+            deal.request?.let { PostRow(stringResource(R.string.deals_request), it, showPrice = false) { actions.onOpenPost(it, true) } }
             HorizontalDivider()
-            YourRating(deal, onRate)
+            YourRating(deal, actions.onRate)
             deal.theirRating?.let { RatingLine(stringResource(R.string.deals_them), it) }
         }
     }
