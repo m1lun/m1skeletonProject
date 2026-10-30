@@ -9,3 +9,14 @@ export interface Deal {
   agreedPrice: number;
   createdAt: Date;
 }
+
+export type DealRole = 'seller' | 'buyer';
+
+export function roleOf(deal: Deal, userId: string): DealRole {
+  return deal.sellerId === userId ? 'seller' : 'buyer';
+}
+
+// The other party of a deal the user is in.
+export function otherParty(deal: Deal, userId: string): string {
+  return deal.sellerId === userId ? deal.buyerId : deal.sellerId;
+}

@@ -3,9 +3,9 @@ import type { Request, Response } from 'express';
 
 import { BadRequestError } from '../errors';
 import { MAX_COMMENT_LENGTH, MAX_STARS, MIN_STARS } from '../models/common';
+import { otherParty } from '../models/deal';
 import type { Rating } from '../models/rating';
-import type { Reputation } from '../models/reputation';
-import { averageScore } from '../reputation/score';
+import { reputationSummary } from '../reputation/score';
 import { currentUser } from '../sessions';
 import type { Store } from '../store/types';
 import { isObject } from './checks';
@@ -13,14 +13,6 @@ import { handle } from './handle';
 
 // MongoDB's code for an insert that breaks a unique index.
 const DUPLICATE_KEY = 11000;
-
-function summary(userId: string, reputation: Reputation | null): { id: string; score: number | null; ratingCount: number } {
-  return {
-    id: userId,
-    score: reputation === null ? null : averageScore(reputation.starSum, reputation.ratingCount),
-    ratingCount: reputation?.ratingCount ?? 0,
-  };
-}
 
 function parseRating(body: unknown): { stars: number; comment: string } {
   const errors: string[] = [];
@@ -62,7 +54,7 @@ async function findMyDeal(
     res.status(403).json({ error: 'Forbidden' });
     return null;
   }
-  return { dealId: deal.id, me, ratedUserId: deal.sellerId === me ? deal.buyerId : deal.sellerId };
+  return { dealId: deal.id, me, ratedUserId: otherParty(deal, me) };
 }
 
 export function createRatingsRouter(store: Store): Router {
@@ -89,7 +81,7 @@ export function createRatingsRouter(store: Store): Router {
       throw error;
     }
     const reputation = await store.reputations.addRating(ratedUserId, stars, now);
-    res.status(201).json({ rating, otherUser: summary(ratedUserId, reputation) });
+    res.status(201).json({ rating, otherUser: reputationSummary(ratedUserId, reputation) });
   }));
 
   // PUT /api/deals/:id/ratings — the caller replaces their rating of the deal and gets back the other party's new score.
@@ -109,7 +101,7 @@ export function createRatingsRouter(store: Store): Router {
     }
     const delta = stars - updated.previousStars;
     const reputation = delta === 0 ? await store.reputations.find(ratedUserId) : await store.reputations.changeStars(ratedUserId, delta, now);
-    res.json({ rating: updated.rating, otherUser: summary(ratedUserId, reputation) });
+    res.json({ rating: updated.rating, otherUser: reputationSummary(ratedUserId, reputation) });
   }));
 
   return router;
@@ -121,7 +113,7 @@ export function createReputationRouter(store: Store): Router {
   // GET /api/users/:id/reputation — a user's score and rating count; score is null when nobody has rated them.
   router.get('/:id/reputation', handle(async (req, res) => {
     const userId = String(req.params.id);
-    const { id, score, ratingCount } = summary(userId, await store.reputations.find(userId));
+    const { id, score, ratingCount } = reputationSummary(userId, await store.reputations.find(userId));
     res.json({ userId: id, score, ratingCount });
   }));
 
