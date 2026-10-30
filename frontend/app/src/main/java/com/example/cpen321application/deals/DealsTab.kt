@@ -1,5 +1,6 @@
 package com.example.cpen321application.deals
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -30,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -42,12 +45,15 @@ import java.text.NumberFormat
 import java.util.Locale
 
 private const val LOAD_AHEAD = 5
+private const val SCRIM_ALPHA = 0.4f
 private val PHOTO_SIZE = 56.dp
+private val SPINNER_SIZE = 64.dp
 
 object DealsTags {
     const val RETRY = "deals_retry"
     const val REFRESH = "deals_refresh"
     const val RATE = "deals_rate"
+    const val EDIT = "deals_edit_rating"
 }
 
 @Composable
@@ -60,17 +66,34 @@ fun DealsTab(viewModel: DealsViewModel, onSignedOut: () -> Unit, innerPadding: P
         if (state.signedOut) onSignedOut()
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-        Text(
-            text = stringResource(R.string.deals_title),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
-        )
-        DealsContent(state, viewModel::loadMore, viewModel::refresh, viewModel::startRating, Modifier.weight(1f))
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            Text(
+                text = stringResource(R.string.deals_title),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
+            )
+            DealsContent(state, viewModel::loadMore, viewModel::refresh, viewModel::startRating, Modifier.weight(1f))
+        }
+        if (viewModel.rating.isSubmitting) SubmittingOverlay()
     }
     if (viewModel.rating.dealId != null) {
         RateDealDialog(viewModel.rating, viewModel::submitRating, viewModel::dismissRating)
+    }
+}
+
+// Dims the tab and swallows taps while a rating is on its way.
+@Composable
+private fun SubmittingOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM_ALPHA))
+            .pointerInput(Unit) {},
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(modifier = Modifier.size(SPINNER_SIZE))
     }
 }
 
@@ -206,7 +229,12 @@ private fun DealSummary(deal: Deal, onRate: (String) -> Unit) {
                 Text(text = stringResource(R.string.deals_rate))
             }
         } else {
-            Text(text = stringResource(R.string.deals_you_rated, starsText(deal.myRating.stars)), style = MaterialTheme.typography.bodyMedium)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = stringResource(R.string.deals_you_rated, starsText(deal.myRating.stars)), style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = { onRate(deal.id) }, modifier = Modifier.testTag(DealsTags.EDIT)) {
+                    Text(text = stringResource(R.string.deals_edit_rating))
+                }
+            }
         }
         deal.theirRating?.let {
             Text(text = stringResource(R.string.deals_they_rated, starsText(it.stars)), style = MaterialTheme.typography.bodyMedium)
