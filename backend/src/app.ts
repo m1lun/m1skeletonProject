@@ -45,7 +45,7 @@ export function createApp({ sessions, store }: AppDeps): Express {
 
     verifyGoogleIdToken(idToken).then(
       (user) => {
-        sendAuth(res, startSession(sessions, user));
+        sendAuth(res, startSession(sessions, user, store?.users));
       },
       (cause: unknown) => {
         console.error(`Google sign-in rejected: ${errorMessage(cause)}`);
@@ -63,7 +63,7 @@ export function createApp({ sessions, store }: AppDeps): Express {
       return;
     }
 
-    sendAuth(res, refreshSession(sessions, refreshToken));
+    sendAuth(res, refreshSession(sessions, refreshToken, store?.users));
   });
 
   // POST /api/auth/logout — revokes `{ refreshToken }` and every token from

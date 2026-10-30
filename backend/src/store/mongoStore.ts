@@ -2,7 +2,7 @@ import { MongoClient, ObjectId, type Collection, type Db, type Document } from '
 
 import { createGridFsPhotoStorage } from '../photos/storage';
 import { CUSTOM_FIELDS_COLLECTION, type CustomField } from '../models/customField';
-import { postIndexes } from '../models/common';
+import { postIndexes, type GeoPoint } from '../models/common';
 import { DEALS_COLLECTION, assertHasPost, type Deal } from '../models/deal';
 import { normaliseListing, normaliseRequest } from '../models/normalise';
 import { LISTINGS_COLLECTION, type Listing } from '../models/listing';
@@ -11,6 +11,7 @@ import { RATINGS_COLLECTION, type Rating } from '../models/rating';
 import { REQUESTS_COLLECTION, type BuyerRequest } from '../models/request';
 import { REPUTATIONS_COLLECTION, type Reputation } from '../models/reputation';
 import { SESSIONS_COLLECTION, type RefreshSession } from '../models/session';
+import { USERS_COLLECTION, type PublicUser, type SignInProfile, type User } from '../models/user';
 import {
   customFieldSchema,
   dealSchema,
@@ -20,6 +21,7 @@ import {
   reputationSchema,
   requestSchema,
   sessionSchema,
+  userSchema,
 } from '../models/schema';
 import type {
   CustomFieldCollection,
@@ -33,6 +35,7 @@ import type {
   ReputationCollection,
   SessionRepo,
   Store,
+  UserCollection,
 } from './types';
 
 type Stored<T> = Omit<T, 'id'> & { _id: ObjectId };
@@ -207,6 +210,47 @@ class MongoCustomFieldCollection implements CustomFieldCollection {
   }
 }
 
+// Users are keyed by their Google account id, so Mongo leaves _id out, as for options.
+class MongoUserCollection implements UserCollection {
+  constructor(private readonly collection: Collection) {}
+
+  async upsertFromSignIn({ id, firstName, lastName, email, pictureUrl }: SignInProfile): Promise<void> {
+    const now = new Date();
+    // A field can't be in both $set and $setOnInsert, so a missing photo only
+    // starts out as null instead of overwriting the stored one.
+    const refreshed = pictureUrl === undefined ? { email } : { email, pictureUrl };
+    const initial = pictureUrl === undefined ? { firstName, lastName, pictureUrl: null } : { firstName, lastName };
+    await this.collection.updateOne(
+      { id },
+      { $set: { ...refreshed, updatedAt: now }, $setOnInsert: { ...initial, createdAt: now } },
+      { upsert: true },
+    );
+  }
+
+  async findById(id: string): Promise<User | null> {
+    const found = await this.collection.findOne({ id }, WITHOUT_ID);
+    return found as User | null;
+  }
+
+  async findPublicByIds(ids: string[]): Promise<PublicUser[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const found = await this.collection
+      .find({ id: { $in: ids } }, { projection: { _id: 0, id: 1, firstName: 1, lastName: 1, pictureUrl: 1 } })
+      .toArray();
+    return found as unknown as PublicUser[];
+  }
+
+  async updateAddress(id: string, place: { address: string; location: GeoPoint } | null): Promise<User | null> {
+    const updatedAt = new Date();
+    const update =
+      place === null ? { $unset: { address: '', location: '' }, $set: { updatedAt } } : { $set: { ...place, updatedAt } };
+    const found = await this.collection.findOneAndUpdate({ id }, update, { returnDocument: 'after', ...WITHOUT_ID });
+    return found as User | null;
+  }
+}
+
 class MongoDealCollection implements DealCollection {
   constructor(private readonly collection: Collection) {}
 
@@ -362,6 +406,7 @@ async function setupCollections(db: Db): Promise<void> {
     applySchema(db, REQUESTS_COLLECTION, requestSchema),
     applySchema(db, OPTIONS_COLLECTION, optionSchema),
     applySchema(db, CUSTOM_FIELDS_COLLECTION, customFieldSchema),
+    applySchema(db, USERS_COLLECTION, userSchema),
     applySchema(db, SESSIONS_COLLECTION, sessionSchema),
     applySchema(db, DEALS_COLLECTION, dealSchema),
     applySchema(db, RATINGS_COLLECTION, ratingSchema),
@@ -372,6 +417,7 @@ async function setupCollections(db: Db): Promise<void> {
     db.collection(REQUESTS_COLLECTION).createIndexes([...postIndexes]),
     db.collection(OPTIONS_COLLECTION).createIndex({ field: 1, key: 1 }, { unique: true }),
     db.collection(CUSTOM_FIELDS_COLLECTION).createIndex({ ownerId: 1, key: 1 }, { unique: true }),
+    db.collection(USERS_COLLECTION).createIndex({ id: 1 }, { unique: true }),
     db.collection(SESSIONS_COLLECTION).createIndexes([
       { key: { tokenHash: 1 }, unique: true },
       { key: { familyId: 1 } },
@@ -407,6 +453,7 @@ export async function createMongoStore(uri: string, dbName: string): Promise<Sto
     })),
     options: new MongoOptionCollection(db.collection(OPTIONS_COLLECTION)),
     customFields: new MongoCustomFieldCollection(db.collection(CUSTOM_FIELDS_COLLECTION)),
+    users: new MongoUserCollection(db.collection(USERS_COLLECTION)),
     sessions: new MongoSessionRepo(db.collection(SESSIONS_COLLECTION)),
     deals: new MongoDealCollection(db.collection(DEALS_COLLECTION)),
     ratings: new MongoRatingCollection(db.collection(RATINGS_COLLECTION)),

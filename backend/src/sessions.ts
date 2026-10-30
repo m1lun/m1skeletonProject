@@ -4,8 +4,10 @@ import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
 import { env } from './config/env';
+import { errorMessage } from './errors';
 import type { GoogleUser } from './googleAuth';
-import type { SessionRepo } from './store/types';
+import type { SignInProfile } from './models/user';
+import type { SessionRepo, UserCollection } from './store/types';
 
 // Google is only asked once, at sign-in. After that the app holds two tokens
 // from this server: a short-lived session token sent on every request, and a
@@ -39,15 +41,19 @@ export interface AuthResponse {
 }
 
 // Starts a new sign-in for a user Google has just vouched for.
-export function startSession(repo: SessionRepo, user: GoogleUser): Promise<AuthResponse> {
-  return issueTokens(repo, user, randomUUID(), new Date());
+export function startSession(repo: SessionRepo, user: GoogleUser, users?: UserCollection): Promise<AuthResponse> {
+  return issueTokens(repo, user, randomUUID(), new Date(), users);
 }
 
 // Trades a refresh token for a new pair. The old token stops working at once
 // (rotation). Presenting a token that was already traded means two parties
 // hold it, so every token from that sign-in is revoked and both must sign in
 // again. Null when the token is unknown, expired, used or revoked.
-export async function refreshSession(repo: SessionRepo, refreshToken: string): Promise<AuthResponse | null> {
+export async function refreshSession(
+  repo: SessionRepo,
+  refreshToken: string,
+  users?: UserCollection
+): Promise<AuthResponse | null> {
   const tokenHash = hashToken(refreshToken);
   const now = new Date();
   const session = await repo.consume(tokenHash, now);
@@ -60,13 +66,14 @@ export async function refreshSession(repo: SessionRepo, refreshToken: string): P
     return null;
   }
 
+  // The session row has no photo, so the user's stored photo is kept.
   const user = {
     id: session.userId,
     email: session.email,
     firstName: session.firstName,
     lastName: session.lastName,
   };
-  return issueTokens(repo, user, session.familyId, now);
+  return issueTokens(repo, user, session.familyId, now, users);
 }
 
 // Signs out: revokes every token from the sign-in this refresh token belongs to.
@@ -121,10 +128,12 @@ export function currentUser(res: Response): SessionUser {
 
 async function issueTokens(
   repo: SessionRepo,
-  user: GoogleUser,
+  user: SignInProfile,
   familyId: string,
-  now: Date
+  now: Date,
+  users: UserCollection | undefined
 ): Promise<AuthResponse> {
+  await saveUser(users, user);
   const refreshToken = randomBytes(32).toString('base64url');
   await repo.insert({
     tokenHash: hashToken(refreshToken),
@@ -154,6 +163,17 @@ async function issueTokens(
     sessionExpiresIn: SESSION_TTL_SECONDS,
     refreshToken,
   };
+}
+
+// The users collection only supplies names and photos to other features, so a
+// failed save is logged rather than failing the sign-in; the next refresh
+// saves the user again.
+async function saveUser(users: UserCollection | undefined, user: SignInProfile): Promise<void> {
+  try {
+    await users?.upsertFromSignIn(user);
+  } catch (error) {
+    console.error(`Could not save user ${user.id}: ${errorMessage(error)}`);
+  }
 }
 
 // Refresh tokens are 256 random bits, so a fast unsalted hash is enough: there
