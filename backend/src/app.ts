@@ -11,6 +11,7 @@ import { createPhotosRouter } from './routes/photos';
 import { createRatingsRouter, createReputationRouter } from './routes/ratings';
 import { createOptionsRouter } from './routes/options';
 import { createRequestsRouter } from './routes/requests';
+import { createUsersRouter } from './routes/users';
 import { endSession, refreshSession, requireAuth, startSession, type AuthResponse } from './sessions';
 import type { SessionRepo, Store } from './store/types';
 
@@ -92,6 +93,7 @@ export function createApp({ sessions, store }: AppDeps): Express {
     app.use('/api/deals', requireAuth, createDealsRouter(store));
     app.use('/api/deals', express.json({ limit: '4kb' }), requireAuth, createRatingsRouter(store));
     app.use('/api/users', requireAuth, createReputationRouter(store));
+    app.use('/api/users', express.json({ limit: '4kb' }), requireAuth, createUsersRouter(store));
     app.use('/api/listings', ...posts, createListingsRouter(store));
     app.use('/api/requests', ...posts, createRequestsRouter(store));
     app.use('/api/options', ...posts, createOptionsRouter(store));
