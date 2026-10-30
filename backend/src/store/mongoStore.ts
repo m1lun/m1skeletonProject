@@ -45,6 +45,16 @@ function toDoc<T extends { id: string }>(stored: Stored<T>): T {
   return { ...rest, id: _id.toHexString() } as unknown as T;
 }
 
+function toDocs<T extends { id: string }>(found: unknown[]): T[] {
+  return (found as Stored<T>[]).map((stored) => toDoc<T>(stored));
+}
+
+async function insertDoc<T extends { id: string }>(collection: Collection, doc: Omit<T, 'id'>): Promise<T> {
+  const _id = new ObjectId();
+  await collection.insertOne({ ...doc, _id });
+  return { ...doc, id: _id.toHexString() } as T;
+}
+
 // Options and custom fields have no id of their own, so Mongo leaves _id out.
 const WITHOUT_ID = { projection: { _id: 0 } };
 
@@ -200,10 +210,8 @@ class MongoCustomFieldCollection implements CustomFieldCollection {
 class MongoDealCollection implements DealCollection {
   constructor(private readonly collection: Collection) {}
 
-  async insert(doc: Omit<Deal, 'id'>): Promise<Deal> {
-    const _id = new ObjectId();
-    await this.collection.insertOne({ ...doc, _id });
-    return { ...doc, id: _id.toHexString() };
+  insert(doc: Omit<Deal, 'id'>): Promise<Deal> {
+    return insertDoc<Deal>(this.collection, doc);
   }
 
   async findById(id: string): Promise<Deal | null> {
@@ -220,18 +228,15 @@ class MongoDealCollection implements DealCollection {
       query._id = { $lt: new ObjectId(before) };
     }
     const found = await this.collection.find(query).sort({ _id: -1 }).limit(limit).toArray();
-    const stored = found as Stored<Deal>[];
-    return stored.map((d) => toDoc<Deal>(d));
+    return toDocs<Deal>(found as unknown[]);
   }
 }
 
 class MongoRatingCollection implements RatingCollection {
   constructor(private readonly collection: Collection) {}
 
-  async insert(doc: Omit<Rating, 'id'>): Promise<Rating> {
-    const _id = new ObjectId();
-    await this.collection.insertOne({ ...doc, _id });
-    return { ...doc, id: _id.toHexString() };
+  insert(doc: Omit<Rating, 'id'>): Promise<Rating> {
+    return insertDoc<Rating>(this.collection, doc);
   }
 
   async update(dealId: string, raterId: string, stars: number, comment: string, now: Date): Promise<RatingUpdate | null> {
@@ -251,9 +256,11 @@ class MongoRatingCollection implements RatingCollection {
     if (dealIds.length === 0) {
       return [];
     }
-    const found = await this.collection.find({ dealId: { $in: dealIds } }).toArray();
-    const stored = found as Stored<Rating>[];
-    return stored.map((d) => toDoc<Rating>(d));
+    // Only what the deals list shows, not ratedUserId or updatedAt.
+    const found = await this.collection
+      .find({ dealId: { $in: dealIds } }, { projection: { dealId: 1, raterId: 1, stars: 1, comment: 1, createdAt: 1 } })
+      .toArray();
+    return toDocs<Rating>(found as unknown[]);
   }
 
   async statsFor(userId: string): Promise<{ starSum: number; ratingCount: number }> {
