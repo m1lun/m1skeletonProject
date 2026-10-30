@@ -41,6 +41,8 @@ import com.example.cpen321application.post.PostDetailScreen
 import com.example.cpen321application.post.PostEditorScreen
 import com.example.cpen321application.post.PostScreen
 import com.example.cpen321application.post.PostViewModel
+import com.example.cpen321application.profile.ProfileTab
+import com.example.cpen321application.profile.ProfileViewModel
 import com.example.cpen321application.ui.theme.CPEN321ApplicationTheme
 
 /**
@@ -51,6 +53,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: PostViewModel by viewModels()
     private val feedViewModel: FeedViewModel by viewModels()
     private val dealsViewModel: DealsViewModel by viewModels()
+    private val profileViewModel: ProfileViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -129,7 +132,7 @@ class MainActivity : ComponentActivity() {
             }
             viewModel.tab == AppTab.POSTS -> PostScreen(viewModel, innerPadding)
             viewModel.tab == AppTab.DEALS -> DealsTab(dealsViewModel, ::signOut, innerPadding, viewModel::open)
-            else -> ProfileScreen(SessionManager.get(this), ::signOut, innerPadding)
+            else -> ProfileTab(profileViewModel, ::signOut, innerPadding)
         }
     }
 }
