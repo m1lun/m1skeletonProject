@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,15 +12,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -31,18 +26,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.R
-import com.example.cpen321application.post.RemoteImage
-import com.example.cpen321application.post.titleCase
-import java.text.NumberFormat
-import java.util.Locale
+import com.example.cpen321application.post.Mode
+import org.json.JSONObject
 
 private const val LOAD_AHEAD = 5
 private const val SCRIM_ALPHA = 0.4f
@@ -54,17 +48,31 @@ object DealsTags {
     const val REFRESH = "deals_refresh"
     const val RATE = "deals_rate"
     const val EDIT = "deals_edit_rating"
+    const val POST_PREFIX = "deals_post_"
 }
 
 @Composable
-fun DealsTab(viewModel: DealsViewModel, onSignedOut: () -> Unit, innerPadding: PaddingValues) {
+fun DealsTab(
+    viewModel: DealsViewModel,
+    onSignedOut: () -> Unit,
+    innerPadding: PaddingValues,
+    onOpenPost: (JSONObject, Mode) -> Unit
+) {
     val state = viewModel.state
+    val context = LocalContext.current
     // Every visit to the tab fetches the first page; the deals already loaded stay on screen meanwhile.
     LaunchedEffect(Unit) { viewModel.refresh() }
     DisposableEffect(Unit) { onDispose { viewModel.stop() } }
     LaunchedEffect(state.signedOut) {
         if (state.signedOut) onSignedOut()
     }
+    LaunchedEffect(viewModel.opening.failed) {
+        if (viewModel.opening.failed) {
+            Toast.makeText(context, R.string.error_unreachable, Toast.LENGTH_SHORT).show()
+            viewModel.clearOpenFailure()
+        }
+    }
+    val openPost = { post: DealPost, isRequest: Boolean -> viewModel.openPost(post, isRequest, onOpenPost) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
@@ -74,18 +82,18 @@ fun DealsTab(viewModel: DealsViewModel, onSignedOut: () -> Unit, innerPadding: P
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
             )
-            DealsContent(state, viewModel::loadMore, viewModel::refresh, viewModel::startRating, Modifier.weight(1f))
+            DealsContent(state, viewModel::loadMore, viewModel::refresh, viewModel::startRating, openPost, Modifier.weight(1f))
         }
-        if (viewModel.rating.isSubmitting) SubmittingOverlay()
+        if (viewModel.rating.isSubmitting || viewModel.opening.isOpening) BusyOverlay()
     }
     if (viewModel.rating.dealId != null) {
         RateDealDialog(viewModel.rating, viewModel::submitRating, viewModel::dismissRating)
     }
 }
 
-// Dims the tab and swallows taps while a rating is on its way.
+// Dims the tab and swallows taps while a rating or a post is on its way.
 @Composable
-private fun SubmittingOverlay() {
+private fun BusyOverlay() {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -103,6 +111,7 @@ private fun DealsContent(
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
     onRate: (String) -> Unit,
+    onOpenPost: (DealPost, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val nothingShown = state.deals.isEmpty()
@@ -124,7 +133,7 @@ private fun DealsContent(
         nothingShown -> Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
-        else -> DealsList(state, onLoadMore, onRefresh, onRate, modifier)
+        else -> DealsList(state, onLoadMore, onRefresh, onRate, onOpenPost, modifier)
     }
 }
 
@@ -135,6 +144,7 @@ private fun DealsList(
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
     onRate: (String) -> Unit,
+    onOpenPost: (DealPost, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -158,7 +168,7 @@ private fun DealsList(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            items(state.deals, key = { it.id }) { deal -> DealCard(deal, onRate) }
+            items(state.deals, key = { it.id }) { deal -> DealCard(deal, onRate, onOpenPost) }
             item { DealsFooter(state, onRetry = onLoadMore) }
         }
     }
@@ -174,83 +184,6 @@ private fun DealsFooter(state: DealsUiState, onRetry: () -> Unit) {
                 Text(text = stringResource(R.string.btn_retry))
             }
         }
-    }
-}
-
-@Composable
-private fun DealCard(deal: Deal, onRate: (String) -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(all = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = deal.title.ifBlank { stringResource(R.string.deals_untitled) }.titleCase(),
-                style = MaterialTheme.typography.titleLarge
-            )
-            deal.listing?.let { PostBlock(stringResource(R.string.deals_listing), it, showPrice = true) }
-            deal.request?.let { PostBlock(stringResource(R.string.deals_request), it, showPrice = false) }
-            DealSummary(deal, onRate)
-        }
-    }
-}
-
-@Composable
-private fun PostBlock(label: String, post: DealPost, showPrice: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        post.photoId?.let {
-            RemoteImage(id = it, modifier = Modifier.size(PHOTO_SIZE).clip(RoundedCornerShape(12.dp)))
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(text = post.category.titleCase(), style = MaterialTheme.typography.titleMedium)
-            post.price?.takeIf { showPrice }?.let { Text(text = money(it), style = MaterialTheme.typography.bodyMedium) }
-        }
-    }
-}
-
-@Composable
-private fun DealSummary(deal: Deal, onRate: (String) -> Unit) {
-    val role = stringResource(if (deal.role == DealRole.SELLER) R.string.deals_sold_to else R.string.deals_bought_from)
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            text = stringResource(R.string.deals_agreed_price, money(deal.agreedPrice)),
-            style = MaterialTheme.typography.titleMedium
-        )
-        Text(text = "$role · ${scoreText(deal.otherUser)}", style = MaterialTheme.typography.bodyMedium)
-        if (deal.myRating == null) {
-            OutlinedButton(onClick = { onRate(deal.id) }, modifier = Modifier.testTag(DealsTags.RATE)) {
-                Text(text = stringResource(R.string.deals_rate))
-            }
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = stringResource(R.string.deals_you_rated, starsText(deal.myRating.stars)), style = MaterialTheme.typography.bodyMedium)
-                TextButton(onClick = { onRate(deal.id) }, modifier = Modifier.testTag(DealsTags.EDIT)) {
-                    Text(text = stringResource(R.string.deals_edit_rating))
-                }
-            }
-        }
-        deal.theirRating?.let {
-            Text(text = stringResource(R.string.deals_they_rated, starsText(it.stars)), style = MaterialTheme.typography.bodyMedium)
-            if (it.comment.isNotBlank()) {
-                Text(
-                    text = it.comment,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        Text(
-            text = deal.createdAt,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -275,12 +208,3 @@ private fun DealsMessage(
         }
     }
 }
-
-@Composable
-private fun scoreText(user: OtherUser): String =
-    user.score?.let { stringResource(R.string.deals_score, it, user.ratingCount) }
-        ?: stringResource(R.string.deals_score_new)
-
-private fun starsText(stars: Int): String = "★".repeat(stars) + "☆".repeat(MAX_STARS - stars)
-
-private fun money(amount: Double): String = NumberFormat.getCurrencyInstance(Locale.CANADA).format(amount)

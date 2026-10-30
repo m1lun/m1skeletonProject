@@ -9,6 +9,7 @@ import com.example.cpen321application.auth.SessionExpiredException
 import java.io.IOException
 import java.net.HttpURLConnection
 import org.json.JSONException
+import org.json.JSONObject
 
 private const val TAG = "DealsModel"
 private const val STALE_AFTER_MS = 60_000L
@@ -38,12 +39,17 @@ data class RatingUiState(
     val failure: RateFailure? = null
 )
 
+// Fetching a post to open: `failed` is set until the screen has shown the error.
+data class OpenPostState(val isOpening: Boolean = false, val failed: Boolean = false)
+
 // Main thread only: the isLoading check stops two page loads at once, and `generation`
 // drops a response that arrives after a refresh or stop.
 class DealsModel(private val api: DealsApi) {
     var state by mutableStateOf(DealsUiState())
         private set
     var rating by mutableStateOf(RatingUiState())
+        private set
+    var opening by mutableStateOf(OpenPostState())
         private set
     private var generation = 0
     private var loadedAt = 0L
@@ -63,6 +69,30 @@ class DealsModel(private val api: DealsApi) {
     fun stop() {
         generation++
         state = state.copy(isLoading = false, isRefreshing = false)
+    }
+
+    suspend fun openPost(post: DealPost, isRequest: Boolean): JSONObject? {
+        if (opening.isOpening) return null
+        opening = OpenPostState(isOpening = true)
+        return try {
+            api.post(isRequest, post.id).also { opening = OpenPostState() }
+        } catch (_: SessionExpiredException) {
+            state = state.copy(signedOut = true)
+            opening = OpenPostState()
+            null
+        } catch (e: IOException) {
+            Log.w(TAG, "Could not open post", e)
+            opening = OpenPostState(failed = true)
+            null
+        } catch (e: JSONException) {
+            Log.w(TAG, "Unexpected post response", e)
+            opening = OpenPostState(failed = true)
+            null
+        }
+    }
+
+    fun stopOpening() {
+        opening = OpenPostState()
     }
 
     fun startRating(dealId: String) {
