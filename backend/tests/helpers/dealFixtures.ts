@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import type { Db } from 'mongodb';
 
 import type { Deal } from '../../src/models/deal';
 import type { Listing } from '../../src/models/listing';
@@ -63,7 +64,7 @@ export function makeRequest(store: Store, ownerId: string, overrides: Partial<Bu
 export function makeDeal(
   store: Store,
   parties: { sellerId: string; buyerId: string },
-  posts: { listingId?: string; requestId?: string },
+  posts: { listingId?: string | undefined; requestId?: string | undefined },
   overrides: Partial<Deal> = {}
 ): Promise<Deal> {
   return store.deals.insert({
@@ -88,5 +89,15 @@ export function makeReputation(store: Store, userId: string, stars: number[]): P
   return stars.reduce(
     (done, count) => done.then(() => store.reputations.addRating(userId, count, new Date()).then(() => undefined)),
     Promise.resolve()
+  );
+}
+
+const DEAL_COLLECTIONS = ['deals', 'ratings', 'reputations', 'listings', 'requests'];
+
+export async function clearDealData(db: Db): Promise<void> {
+  await Promise.all(
+    DEAL_COLLECTIONS.map(async (name) => {
+      await db.collection(name).deleteMany({});
+    })
   );
 }
