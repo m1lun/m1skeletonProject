@@ -132,7 +132,10 @@ class MainActivity : ComponentActivity() {
             }
             viewModel.tab == AppTab.POSTS -> PostScreen(viewModel, innerPadding)
             viewModel.tab == AppTab.DEALS -> DealsTab(dealsViewModel, ::signOut, innerPadding, viewModel::open)
-            else -> ProfileTab(profileViewModel, ::signOut, innerPadding)
+            else -> ProfileTab(profileViewModel, ::signOut, innerPadding) {
+                viewModel.selectMode(it)
+                viewModel.tab = AppTab.POSTS
+            }
         }
     }
 }

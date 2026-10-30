@@ -1,10 +1,12 @@
 package com.example.cpen321application.profile
 
 import com.example.cpen321application.auth.SessionManager
+import com.example.cpen321application.post.Mode
 import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import org.json.JSONArray
 import org.json.JSONObject
 
 // The signed-in user's own profile, as GET /api/users/me returns it.
@@ -24,12 +26,18 @@ data class Profile(
 }
 
 class ProfileApi(private val sessions: SessionManager) {
-    suspend fun me(): Profile {
-        val result = sessions.authorizedRequest("GET", "/api/users/me")
+    suspend fun me(): Profile = parseProfile(JSONObject(get("/api/users/me")))
+
+    // How many listings (selling) or requests (buying) the user has, open or closed.
+    suspend fun countPosts(mode: Mode): Int = JSONArray(get("/api/${mode.path}")).length()
+
+    // The body of a successful GET; an error status is thrown as an IOException.
+    private suspend fun get(path: String): String {
+        val result = sessions.authorizedRequest("GET", path)
         if (!result.isSuccess) {
             throw IOException("HTTP ${result.code}: ${result.errorMessage}")
         }
-        return parseProfile(JSONObject(result.body))
+        return result.body
     }
 }
 

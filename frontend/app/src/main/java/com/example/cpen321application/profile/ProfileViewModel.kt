@@ -9,8 +9,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cpen321application.auth.SessionExpiredException
 import com.example.cpen321application.auth.SessionManager
+import com.example.cpen321application.post.Mode
 import java.io.IOException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.json.JSONException
 
@@ -18,6 +21,8 @@ private const val TAG = "ProfileViewModel"
 
 data class ProfileUiState(
     val profile: Profile? = null,
+    val listingCount: Int = 0,
+    val requestCount: Int = 0,
     val isLoading: Boolean = false,
     val loadFailed: Boolean = false,
     val signedOut: Boolean = false
@@ -37,7 +42,13 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
         state = state.copy(isLoading = true, loadFailed = false)
         job = viewModelScope.launch {
             state = try {
-                ProfileUiState(profile = api.me())
+                // The three requests run in parallel; if any fails, the others are cancelled and it lands below.
+                coroutineScope {
+                    val profile = async { api.me() }
+                    val listings = async { api.countPosts(Mode.SELLING) }
+                    val requests = async { api.countPosts(Mode.BUYING) }
+                    ProfileUiState(profile.await(), listings.await(), requests.await())
+                }
             } catch (_: SessionExpiredException) {
                 state.copy(isLoading = false, signedOut = true)
             } catch (e: IOException) {
