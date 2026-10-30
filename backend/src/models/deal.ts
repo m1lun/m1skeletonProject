@@ -1,3 +1,5 @@
+import { BadRequestError } from '../errors';
+
 export const DEALS_COLLECTION = 'deals';
 
 export interface Deal {
@@ -19,4 +21,11 @@ export function roleOf(deal: Deal, userId: string): DealRole {
 // The other party of a deal the user is in.
 export function otherParty(deal: Deal, userId: string): string {
   return deal.sellerId === userId ? deal.buyerId : deal.sellerId;
+}
+
+// A deal comes from a listing, a request or both; with neither it says nothing about what was sold.
+export function assertHasPost(deal: Pick<Deal, 'listingId' | 'requestId'>): void {
+  if (!deal.listingId && !deal.requestId) {
+    throw new BadRequestError(['a deal needs a listing or a request']);
+  }
 }

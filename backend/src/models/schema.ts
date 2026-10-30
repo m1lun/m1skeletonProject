@@ -146,6 +146,9 @@ export const dealSchema = object({
   buyerId: text(),
   agreedPrice: { bsonType: 'number', minimum: 0 },
   createdAt: date,
+}, [], {
+  // At least one of the two posts must be there.
+  anyOf: [{ properties: { listingId: text() }, required: ['listingId'] }, { properties: { requestId: text() }, required: ['requestId'] }],
 });
 
 export const ratingSchema = object({
