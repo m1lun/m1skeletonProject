@@ -3,7 +3,7 @@ import { MongoClient, ObjectId, type Collection, type Db, type Document } from '
 import { createGridFsPhotoStorage } from '../photos/storage';
 import { CUSTOM_FIELDS_COLLECTION, type CustomField } from '../models/customField';
 import { postIndexes } from '../models/common';
-import { DEALS_COLLECTION, type Deal } from '../models/deal';
+import { DEALS_COLLECTION, assertHasPost, type Deal } from '../models/deal';
 import { normaliseListing, normaliseRequest } from '../models/normalise';
 import { LISTINGS_COLLECTION, type Listing } from '../models/listing';
 import { OPTIONS_COLLECTION, type Option } from '../models/option';
@@ -210,7 +210,8 @@ class MongoCustomFieldCollection implements CustomFieldCollection {
 class MongoDealCollection implements DealCollection {
   constructor(private readonly collection: Collection) {}
 
-  insert(doc: Omit<Deal, 'id'>): Promise<Deal> {
+  async insert(doc: Omit<Deal, 'id'>): Promise<Deal> {
+    assertHasPost(doc);
     return insertDoc<Deal>(this.collection, doc);
   }
 
