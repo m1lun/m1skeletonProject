@@ -4,7 +4,7 @@ import { currentUser } from '../sessions';
 import { BadRequestError } from '../errors';
 import { MAX_PHOTOS, PHOTO_ID, RESERVED_KEYS, isOneOf, normaliseKey, type PostField, type GeoPoint } from '../models/common';
 import type { PostDoc, PostCollection, Store } from '../store/types';
-import { isNumber, isObject, isText, type Body } from './checks';
+import { isObject, isText, parseLocation, type Body } from './checks';
 import { handle } from './handle';
 import { rememberNewValues } from './remember';
 
@@ -45,18 +45,6 @@ export interface PostType<T extends PostDoc> {
 
 // Set by the server; never taken from a PATCH body.
 const SERVER_FIELDS = ['id', 'ownerId', 'status', 'createdAt', 'updatedAt'];
-
-function parseLocation(value: unknown, errors: string[]): GeoPoint {
-  const point: GeoPoint = { type: 'Point', coordinates: [0, 0] };
-  if (!isObject(value) || !isNumber(value.longitude) || !isNumber(value.latitude)) {
-    errors.push('location must be { longitude, latitude }');
-  } else if (Math.abs(value.longitude) > 180 || Math.abs(value.latitude) > 90) {
-    errors.push('location is out of range');
-  } else {
-    point.coordinates = [value.longitude, value.latitude];
-  }
-  return point;
-}
 
 function parsePhotos(value: unknown, minPhotos: number, errors: string[]): string[] {
   if (!Array.isArray(value) || value.some((id) => typeof id !== 'string' || !PHOTO_ID.test(id))) {
