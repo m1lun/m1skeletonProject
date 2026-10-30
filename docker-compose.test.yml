@@ -1,6 +1,4 @@
-# A throwaway MongoDB for the backend interface tests. scripts/run-backend-interface-tests.*
-# starts it when TEST_MONGODB_URI is not set, and stops it afterwards. It listens on
-# 127.0.0.1:27018 only and keeps its data in memory, so it never touches the app's database.
+# Throwaway MongoDB for the backend interface tests (in memory, localhost only).
 name: cpen321-test
 
 services:

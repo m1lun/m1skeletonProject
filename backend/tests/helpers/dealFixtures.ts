@@ -10,7 +10,6 @@ export const ME = 'user-me';
 export const OTHER = 'user-other';
 export const STRANGER = 'user-stranger';
 
-// A session token for `userId`, signed the way src/sessions.ts expects.
 export function bearer(userId: string): string {
   const token = jwt.sign({ email: `${userId}@example.com` }, process.env.JWT_SECRET ?? '', {
     subject: userId,
@@ -21,7 +20,6 @@ export function bearer(userId: string): string {
   return `Bearer ${token}`;
 }
 
-// A listing must have at least one photo; the id only has to look like one.
 export const PHOTO_ID = '6ad40b88e74dd3678bfef8f3';
 
 const LOCATION: Listing['location'] = { type: 'Point', coordinates: [-123.25, 49.26] };
@@ -62,7 +60,6 @@ export function makeRequest(store: Store, ownerId: string, overrides: Partial<Bu
   });
 }
 
-// A deal between a seller and a buyer from at least one of their posts.
 export function makeDeal(
   store: Store,
   parties: { sellerId: string; buyerId: string },
@@ -80,7 +77,6 @@ export function makeDeal(
   });
 }
 
-// Stores a rating only; use makeReputation to give the rated user the matching score.
 export function makeRating(
   store: Store,
   rating: Pick<Rating, 'dealId' | 'raterId' | 'ratedUserId' | 'stars'> & Partial<Rating>
@@ -88,8 +84,6 @@ export function makeRating(
   return store.ratings.insert({ comment: '', createdAt: new Date(), ...rating });
 }
 
-// Gives a user the score the given star ratings add up to. One at a time, since each rating
-// updates the same reputation document.
 export function makeReputation(store: Store, userId: string, stars: number[]): Promise<void> {
   return stars.reduce(
     (done, count) => done.then(() => store.reputations.addRating(userId, count, new Date()).then(() => undefined)),

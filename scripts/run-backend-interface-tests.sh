@@ -91,8 +91,7 @@ fi
 # ---------------------------------------------------------------------------
 # MongoDB for the tests
 # ---------------------------------------------------------------------------
-# The tests use a real MongoDB. CI provides one and sets TEST_MONGODB_URI; otherwise
-# start the throwaway one from docker-compose.test.yml and stop it when the script ends.
+# Uses TEST_MONGODB_URI if set; otherwise starts docker-compose.test.yml and stops it on exit.
 if [[ -n "${TEST_MONGODB_URI:-}" ]]; then
   info "Using MongoDB at $TEST_MONGODB_URI"
 else

@@ -6,26 +6,19 @@ import { MongoClient, type Db, type MongoClientOptions } from 'mongodb';
 import { createMongoStore } from '../../src/store/mongoStore';
 import type { Store } from '../../src/store/types';
 
-// CI sets TEST_MONGODB_URI. Locally, scripts/run-backend-interface-tests.* starts a throwaway
-// MongoDB from docker-compose.test.yml on this port.
 const TEST_MONGODB_URI: string = process.env.TEST_MONGODB_URI ?? 'mongodb://127.0.0.1:27018';
 const REACH_TIMEOUT_MS = 3000;
 
-// The driver loads `os` with a dynamic import(), which Jest cannot run. It then sends MongoDB an
-// empty client description and the server refuses the handshake ("Missing required sub-document
-// 'driver'"). Handing the driver the module itself avoids the import.
+// Jest cannot run the driver's dynamic import('os'), so the handshake fails without this.
 const CLIENT_OPTIONS: MongoClientOptions = { runtimeAdapters: { os } };
 
 export interface TestStore {
   store: Store;
-  // The same database the store writes to, for checking what really was stored.
   db: Db;
-  // Drops the test database and closes both connections.
   dropAndClose: () => Promise<void>;
 }
 
-// A real store on a database of its own, with the app's schemas and indexes applied, so
-// every test file starts from nothing and never touches the developer's data.
+// A real store on a fresh database of its own.
 export async function createTestStore(): Promise<TestStore> {
   const client = new MongoClient(TEST_MONGODB_URI, { ...CLIENT_OPTIONS, serverSelectionTimeoutMS: REACH_TIMEOUT_MS });
   try {
