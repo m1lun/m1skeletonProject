@@ -38,11 +38,12 @@ fun RateDealDialog(
     onSubmit: (stars: Int, comment: String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var stars by rememberSaveable { mutableIntStateOf(0) }
-    var comment by rememberSaveable { mutableStateOf("") }
+    var stars by rememberSaveable { mutableIntStateOf(rating.previous?.stars ?: 0) }
+    var comment by rememberSaveable { mutableStateOf(rating.previous?.comment.orEmpty()) }
+    val isEditing = rating.previous != null
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = stringResource(R.string.rate_title)) },
+        title = { Text(text = stringResource(if (isEditing) R.string.rate_title_edit else R.string.rate_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 StarPicker(selected = stars, enabled = !rating.isSubmitting, onSelect = { stars = it })
@@ -66,7 +67,7 @@ fun RateDealDialog(
                 onClick = { onSubmit(stars, comment) },
                 enabled = stars > 0 && !rating.isSubmitting,
                 modifier = Modifier.testTag(RateTags.SUBMIT)
-            ) { Text(text = stringResource(R.string.rate_submit)) }
+            ) { Text(text = stringResource(if (isEditing) R.string.rate_save else R.string.rate_submit)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !rating.isSubmitting, modifier = Modifier.testTag(RateTags.CANCEL)) {

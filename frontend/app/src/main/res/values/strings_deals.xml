@@ -13,6 +13,9 @@
     <string name="deals_you_rated">You rated: %1$s</string>
     <string name="deals_they_rated">They rated you: %1$s</string>
     <string name="deals_rate">Rate</string>
+    <string name="deals_edit_rating">Edit</string>
+    <string name="rate_title_edit">Edit your rating</string>
+    <string name="rate_save">Save</string>
     <string name="rate_title">Rate this deal</string>
     <string name="rate_star">%1$d stars</string>
     <string name="rate_comment_label">Comment (optional)</string>

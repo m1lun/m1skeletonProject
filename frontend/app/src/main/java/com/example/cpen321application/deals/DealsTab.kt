@@ -20,6 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -48,6 +49,7 @@ object DealsTags {
     const val RETRY = "deals_retry"
     const val REFRESH = "deals_refresh"
     const val RATE = "deals_rate"
+    const val EDIT = "deals_edit_rating"
 }
 
 @Composable
@@ -206,7 +208,12 @@ private fun DealSummary(deal: Deal, onRate: (String) -> Unit) {
                 Text(text = stringResource(R.string.deals_rate))
             }
         } else {
-            Text(text = stringResource(R.string.deals_you_rated, starsText(deal.myRating.stars)), style = MaterialTheme.typography.bodyMedium)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = stringResource(R.string.deals_you_rated, starsText(deal.myRating.stars)), style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = { onRate(deal.id) }, modifier = Modifier.testTag(DealsTags.EDIT)) {
+                    Text(text = stringResource(R.string.deals_edit_rating))
+                }
+            }
         }
         deal.theirRating?.let {
             Text(text = stringResource(R.string.deals_they_rated, starsText(it.stars)), style = MaterialTheme.typography.bodyMedium)
