@@ -14,11 +14,18 @@ import { handle } from './handle';
 // MongoDB's code for an insert that breaks a unique index.
 const DUPLICATE_KEY = 11000;
 
+const RATING_FIELDS = ['stars', 'comment'];
+
 function parseRating(body: unknown): { stars: number; comment: string } {
   const errors: string[] = [];
   const fields = isObject(body) ? body : {};
   if (!isObject(body)) {
     errors.push('Request body must be a JSON object');
+  }
+  for (const name of Object.keys(fields)) {
+    if (!RATING_FIELDS.includes(name)) {
+      errors.push(`unsupported field "${name}"`);
+    }
   }
   const { stars } = fields;
   if (typeof stars !== 'number' || !Number.isInteger(stars) || stars < MIN_STARS || stars > MAX_STARS) {
