@@ -1,0 +1,16 @@
+# Throwaway MongoDB for the backend interface tests (in memory, localhost only).
+name: cpen321-test
+
+services:
+  mongo-test:
+    image: mongo:7
+    ports:
+      - "127.0.0.1:27018:27017"
+    tmpfs:
+      - /data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s

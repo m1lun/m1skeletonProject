@@ -89,6 +89,20 @@ if [[ ! -d "$BACKEND_DIR/node_modules" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# MongoDB for the tests
+# ---------------------------------------------------------------------------
+# Uses TEST_MONGODB_URI if set; otherwise starts docker-compose.test.yml and stops it on exit.
+if [[ -n "${TEST_MONGODB_URI:-}" ]]; then
+  info "Using MongoDB at $TEST_MONGODB_URI"
+else
+  command -v docker >/dev/null 2>&1 || die "Docker not found. Install it, or start a MongoDB and set TEST_MONGODB_URI."
+  info "Starting a throwaway MongoDB (docker-compose.test.yml)..."
+  docker compose -f "$ROOT/docker-compose.test.yml" up -d --wait || die "Could not start the test MongoDB."
+  trap 'docker compose -f "$ROOT/docker-compose.test.yml" down >/dev/null 2>&1' EXIT
+  export TEST_MONGODB_URI="mongodb://127.0.0.1:27018"
+fi
+
+# ---------------------------------------------------------------------------
 # Run interface test phases
 # ---------------------------------------------------------------------------
 (
