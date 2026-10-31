@@ -531,25 +531,61 @@ sequenceDiagram
     deactivate DB
     D--)FE: 200 deals
     deactivate D
-    U->>FE: Tap "Rate", pick stars, write an optional comment, tap "Submit"
-    FE->>D: POST /api/deals/:id/ratings (stars, comment)
-    activate D
-    D->>DB: find the deal
-    activate DB
-    DB--)D: deal
-    deactivate DB
-    alt the user is part of the deal and has not rated it
-        D->>DB: insert rating, add to the other user's reputation
+    alt the user rates the deal for the first time
+        U->>FE: Tap "Rate", pick stars, write an optional comment, tap "Submit"
+        FE->>D: POST /api/deals/:id/ratings (stars, comment)
+        activate D
+        D->>DB: find the deal
         activate DB
-        DB--)D: rating, reputation
+        DB--)D: deal
         deactivate DB
-        D--)FE: 201 rating and the other user's score
-        FE--)U: Show the rating and the new score
-    else the user already rated the deal
-        D--)FE: 409
-        FE--)U: Show "You already rated this deal"
+        D->>DB: insert rating
+        activate DB
+        alt the user has not rated this deal
+            DB--)D: rating
+            deactivate DB
+            D->>DB: add the stars to the other user's reputation
+            activate DB
+            DB--)D: reputation
+            deactivate DB
+            D--)FE: 201 rating and the other user's score
+            FE--)U: Show the rating and the new score
+        else the user already rated this deal
+            activate DB
+            DB--)D: duplicate key error
+            deactivate DB
+            D--)FE: 409
+            FE--)U: Show "You already rated this deal"
+        end
+        deactivate D
+    else the user edits their rating
+        U->>FE: Tap "Edit", change the stars or comment, tap "Save"
+        FE->>D: PUT /api/deals/:id/ratings (stars, comment)
+        activate D
+        D->>DB: find the deal
+        activate DB
+        DB--)D: deal
+        deactivate DB
+        D->>DB: update the user's rating
+        activate DB
+        alt the user has rated this deal
+            DB--)D: previous rating
+            deactivate DB
+            D->>DB: add the star difference to the other user's reputation, or read it if the stars are the same
+            activate DB
+            DB--)D: reputation
+            deactivate DB
+            D--)FE: 200 rating and the other user's score
+            FE--)U: Show the rating and the new score
+        else the user has not rated this deal
+            activate DB
+            DB--)D: no rating
+            deactivate DB
+            D--)FE: 404
+            FE--)U: Show the error message
+        end
+        deactivate D
     end
-    deactivate D
 ```
 
 3. [**View Recommendations for a Post**](#uc3)
