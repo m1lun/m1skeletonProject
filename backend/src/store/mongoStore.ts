@@ -3,6 +3,13 @@ import { MongoClient, ObjectId, type Collection, type Db, type Document, type Mo
 import { createGridFsPhotoStorage } from '../photos/storage';
 import { CUSTOM_FIELDS_COLLECTION, type CustomField } from '../models/customField';
 import { postIndexes, type GeoPoint } from '../models/common';
+import {
+  CONVERSATIONS_COLLECTION,
+  MESSAGES_COLLECTION,
+  type Conversation,
+  type LastMessage,
+  type Message,
+} from '../models/conversation';
 import { DEALS_COLLECTION, assertHasPost, type Deal } from '../models/deal';
 import { normaliseListing, normaliseRequest } from '../models/normalise';
 import { LISTINGS_COLLECTION, type Listing } from '../models/listing';
@@ -13,9 +20,11 @@ import { REPUTATIONS_COLLECTION, type Reputation } from '../models/reputation';
 import { SESSIONS_COLLECTION, type RefreshSession } from '../models/session';
 import { USERS_COLLECTION, type PublicUser, type SignInProfile, type User } from '../models/user';
 import {
+  conversationSchema,
   customFieldSchema,
   dealSchema,
   listingSchema,
+  messageSchema,
   optionSchema,
   ratingSchema,
   reputationSchema,
@@ -24,8 +33,10 @@ import {
   userSchema,
 } from '../models/schema';
 import type {
+  ConversationCollection,
   CustomFieldCollection,
   DealCollection,
+  MessageCollection,
   OpenPostFilter,
   OptionCollection,
   PostDoc,
@@ -359,6 +370,64 @@ class MongoReputationCollection implements ReputationCollection {
   }
 }
 
+class MongoConversationCollection implements ConversationCollection {
+  constructor(private readonly collection: Collection) {}
+
+  // One upsert, so two taps on "Message" can't start two conversations.
+  async open(doc: Omit<Conversation, 'id'>): Promise<{ conversation: Conversation; created: boolean }> {
+    const result = await this.collection.findOneAndUpdate(
+      { postId: doc.postId, starterId: doc.starterId },
+      { $setOnInsert: doc },
+      { upsert: true, returnDocument: 'after', includeResultMetadata: true },
+    );
+    // An upsert that returns the document after it always finds one.
+    return {
+      conversation: toDoc<Conversation>(result.value as Stored<Conversation>),
+      created: result.lastErrorObject?.updatedExisting !== true,
+    };
+  }
+
+  async findById(id: string): Promise<Conversation | null> {
+    if (!ObjectId.isValid(id)) {
+      return null;
+    }
+    const found = await this.collection.findOne({ _id: new ObjectId(id) });
+    return found === null ? null : toDoc<Conversation>(found as Stored<Conversation>);
+  }
+
+  async listByUser(userId: string): Promise<Conversation[]> {
+    const found = await this.collection
+      .find({ $or: [{ postOwnerId: userId }, { starterId: userId }] })
+      .sort({ updatedAt: -1, _id: -1 })
+      .toArray();
+    return toDocs<Conversation>(found as unknown[]);
+  }
+
+  async recordMessage(id: string, message: LastMessage): Promise<void> {
+    await this.collection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { lastMessage: message, updatedAt: message.createdAt } },
+    );
+  }
+}
+
+class MongoMessageCollection implements MessageCollection {
+  constructor(private readonly collection: Collection) {}
+
+  insert(doc: Omit<Message, 'id'>): Promise<Message> {
+    return insertDoc<Message>(this.collection, doc);
+  }
+
+  async listByConversation(conversationId: string, limit: number, before?: string): Promise<Message[]> {
+    const query: Document = { conversationId };
+    if (before !== undefined) {
+      query._id = { $lt: new ObjectId(before) };
+    }
+    const found = await this.collection.find(query).sort({ _id: -1 }).limit(limit).toArray();
+    return toDocs<Message>(found as unknown[]);
+  }
+}
+
 class MongoSessionRepo implements SessionRepo {
   constructor(private readonly collection: Collection) {}
 
@@ -407,6 +476,8 @@ async function setupCollections(db: Db): Promise<void> {
     applySchema(db, DEALS_COLLECTION, dealSchema),
     applySchema(db, RATINGS_COLLECTION, ratingSchema),
     applySchema(db, REPUTATIONS_COLLECTION, reputationSchema),
+    applySchema(db, CONVERSATIONS_COLLECTION, conversationSchema),
+    applySchema(db, MESSAGES_COLLECTION, messageSchema),
   ]);
   await Promise.all([
     db.collection(LISTINGS_COLLECTION).createIndexes([...postIndexes]),
@@ -432,6 +503,12 @@ async function setupCollections(db: Db): Promise<void> {
       { key: { ratedUserId: 1 } },
     ]),
     db.collection(REPUTATIONS_COLLECTION).createIndex({ userId: 1 }, { unique: true }),
+    db.collection(CONVERSATIONS_COLLECTION).createIndexes([
+      { key: { postId: 1, starterId: 1 }, unique: true },
+      { key: { postOwnerId: 1, updatedAt: -1 } },
+      { key: { starterId: 1, updatedAt: -1 } },
+    ]),
+    db.collection(MESSAGES_COLLECTION).createIndex({ conversationId: 1, _id: -1 }),
   ]);
 }
 
@@ -454,6 +531,8 @@ export async function createMongoStore(uri: string, dbName: string, options?: Mo
     deals: new MongoDealCollection(db.collection(DEALS_COLLECTION)),
     ratings: new MongoRatingCollection(db.collection(RATINGS_COLLECTION)),
     reputations: new MongoReputationCollection(db.collection(REPUTATIONS_COLLECTION)),
+    conversations: new MongoConversationCollection(db.collection(CONVERSATIONS_COLLECTION)),
+    messages: new MongoMessageCollection(db.collection(MESSAGES_COLLECTION)),
     photos: createGridFsPhotoStorage(db),
     close: async () => {
       await client.close();

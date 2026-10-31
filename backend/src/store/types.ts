@@ -1,4 +1,5 @@
 import type { GeoPoint } from '../models/common';
+import type { Conversation, LastMessage, Message } from '../models/conversation';
 import type { CustomField } from '../models/customField';
 import type { Deal } from '../models/deal';
 import type { Listing } from '../models/listing';
@@ -106,6 +107,21 @@ export interface ReputationCollection {
   changeStars(userId: string, delta: number, now: Date): Promise<Reputation | null>;
 }
 
+export interface ConversationCollection {
+  // The starter's conversation about the post, created if there is none; created says which.
+  open(doc: Omit<Conversation, 'id'>): Promise<{ conversation: Conversation; created: boolean }>;
+  findById(id: string): Promise<Conversation | null>;
+  // Newest activity first.
+  listByUser(userId: string): Promise<Conversation[]>;
+  recordMessage(id: string, message: LastMessage): Promise<void>;
+}
+
+export interface MessageCollection {
+  insert(doc: Omit<Message, 'id'>): Promise<Message>;
+  // Newest first; passing the last message's id as `before` starts the next page.
+  listByConversation(conversationId: string, limit: number, before?: string): Promise<Message[]>;
+}
+
 export interface Store {
   listings: PostCollection<Listing>;
   requests: PostCollection<BuyerRequest>;
@@ -116,6 +132,8 @@ export interface Store {
   deals: DealCollection;
   ratings: RatingCollection;
   reputations: ReputationCollection;
+  conversations: ConversationCollection;
+  messages: MessageCollection;
   photos: PhotoStorage;
   close(): Promise<void>;
 }

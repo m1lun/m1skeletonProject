@@ -3,6 +3,7 @@ import express, { type Express, type Response } from 'express';
 import { errorHandler, errorMessage } from './errors';
 import { verifyGoogleIdToken } from './googleAuth';
 import { isText } from './routes/checks';
+import { createConversationsRouter } from './routes/conversations';
 import { createCustomFieldsRouter } from './routes/customFields';
 import { createDealsRouter } from './routes/deals';
 import { createFeedRouter } from './routes/feed';
@@ -99,6 +100,7 @@ export function createApp({ sessions, store }: AppDeps): Express {
     app.use('/api/options', ...posts, createOptionsRouter(store));
     app.use('/api/custom-fields', ...posts, createCustomFieldsRouter(store));
     app.use('/api/photos', createPhotosRouter(store.photos));
+    app.use('/api/conversations', express.json({ limit: '16kb' }), requireAuth, createConversationsRouter(store), ratingBodyTooLarge);
   }
 
   app.use((_req, res) => {
