@@ -21,6 +21,7 @@ private const val TAG = "ProfileViewModel"
 
 data class ProfileUiState(
     val profile: Profile? = null,
+    val reputation: Reputation? = null,
     val listingCount: Int = 0,
     val requestCount: Int = 0,
     val isLoading: Boolean = false,
@@ -42,12 +43,18 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
         state = state.copy(isLoading = true, loadFailed = false)
         job = viewModelScope.launch {
             state = try {
-                // The three requests run in parallel; if any fails, the others are cancelled and it lands below.
+                // The counts load alongside the profile; the reputation needs the user's id, so it waits for
+                // the profile. If any request fails, the others are cancelled and it lands below.
                 coroutineScope {
-                    val profile = async { api.me() }
                     val listings = async { api.countPosts(Mode.SELLING) }
                     val requests = async { api.countPosts(Mode.BUYING) }
-                    ProfileUiState(profile.await(), listings.await(), requests.await())
+                    val profile = api.me()
+                    ProfileUiState(
+                        profile = profile,
+                        reputation = api.reputation(profile.id),
+                        listingCount = listings.await(),
+                        requestCount = requests.await(),
+                    )
                 }
             } catch (_: SessionExpiredException) {
                 state.copy(isLoading = false, signedOut = true)

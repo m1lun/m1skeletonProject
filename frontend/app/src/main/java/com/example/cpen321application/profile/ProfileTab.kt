@@ -95,6 +95,7 @@ private fun ProfileDetails(state: ProfileUiState, profile: Profile, onOpenPosts:
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            state.reputation?.let { RatingText(it) }
         }
         ProfileCard(modifier = Modifier.fillMaxWidth()) {
             DetailRow(
@@ -153,6 +154,14 @@ private fun cardColors() = CardDefaults.cardColors(containerColor = MaterialThem
 
 @Composable
 private fun cardElevation() = CardDefaults.cardElevation(defaultElevation = 2.dp)
+
+// Written the same way as a user's score on the deal cards: "★ 4.5 (3)", or "New" before any rating.
+@Composable
+private fun RatingText(reputation: Reputation) {
+    val text = reputation.score?.let { stringResource(R.string.deals_score, it, reputation.ratingCount) }
+        ?: stringResource(R.string.deals_score_new)
+    Text(text, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
+}
 
 // The Google photo, or a person icon when the account has none or it fails to load.
 @Composable
