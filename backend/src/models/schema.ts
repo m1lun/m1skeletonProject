@@ -20,6 +20,7 @@ import {
   POST_STATUSES,
   RESERVED_KEYS,
 } from './common';
+import { MAX_MESSAGE_LENGTH, POST_KINDS } from './conversation';
 
 // Every listed property is required unless it is named in `optional`.
 function object(properties: Record<string, Document>, optional: string[] = [], rules: Document = {}): Document {
@@ -185,4 +186,24 @@ export const reputationSchema = object({
   starSum: { bsonType: 'number', minimum: 0 },
   ratingCount: { bsonType: 'number', minimum: 1 },
   updatedAt: date,
+});
+
+const messageText = { bsonType: 'string', minLength: 1, maxLength: MAX_MESSAGE_LENGTH };
+
+export const conversationSchema = object({
+  listingId: { bsonType: ['string', 'null'] },
+  requestId: { bsonType: ['string', 'null'] },
+  sellerId: text(),
+  buyerId: text(),
+  postKind: { enum: [...POST_KINDS] },
+  lastMessage: { anyOf: [{ bsonType: 'null' }, object({ senderId: text(), text: messageText, createdAt: date })] },
+  createdAt: date,
+  updatedAt: date,
+});
+
+export const messageSchema = object({
+  conversationId: text(),
+  senderId: text(),
+  text: messageText,
+  createdAt: date,
 });

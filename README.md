@@ -122,6 +122,13 @@ All three take `limit` from 1 to 50 (default 20). For the two browse routes, pas
 
 A bad value, a misspelt parameter or `minPrice` above `maxPrice` is a `400` with `{ "error", "details": [...] }`.
 
+Conversations are between a post's owner and one user who messaged them about it. They have the same `listingId`, `requestId`, `sellerId` and `buyerId` as a deal, so a deal can be made from one. They need the session token, and only the two participants can read or write one (`403` for anyone else, `404` if it does not exist).
+
+- `POST /api/conversations`: body `{ "postId", "postKind": "listing" | "request", "myPostId"? }`. Opens your conversation with the owner of the post you tapped. `myPostId` is your own post of the other kind that it was recommended for; leave it out when coming from the plain feed. `201` with the new conversation, or `200` with the one you already have with that person about that post, unchanged. `404` if a post doesn't exist, `400` if the tapped post is your own, `403` if `myPostId` isn't yours, `409` if either post is closed.
+- `GET /api/conversations`: your conversations, newest activity first: `{ "conversations": [{ "id", "postKind", "listing", "request", "otherUser", "lastMessage", "createdAt", "updatedAt" }] }`. `postKind` says which post was tapped. `listing` and `request` are `{ "id", "name", "status", "photoId" }`, or `null` if the conversation has none or it was deleted; `lastMessage` is `null` until someone writes.
+- `GET /api/conversations/:id/messages?limit=30&before=<nextCursor>`: messages, newest first: `{ "messages": [{ "id", "conversationId", "senderId", "text", "createdAt" }], "nextCursor" }`. `limit` is 1 to 50 (default 30); `nextCursor` is `null` on the last page.
+- `POST /api/conversations/:id/messages`: body `{ "text" }`, 1 to 1000 characters after trimming. `201` with the saved message.
+
 
 ### Option 1: Run locally
 
