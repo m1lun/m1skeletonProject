@@ -49,6 +49,10 @@ if (jwtSecret.length < 32) {
   );
 }
 
+// The OpenRouteService API key for travel times. Optional: without it the feed is
+// returned without travel times, as when the service is down.
+const orsApiKey = process.env.ORS_API_KEY?.trim();
+
 export const env = {
   port,
   mongoUri: required('MONGODB_URI', process.env.MONGODB_URI),
@@ -56,4 +60,5 @@ export const env = {
   httpsEnabled,
   googleClientId,
   jwtSecret,
+  orsApiKey: orsApiKey === undefined || orsApiKey === '' ? undefined : orsApiKey,
 } as const;
