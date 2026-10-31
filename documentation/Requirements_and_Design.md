@@ -379,7 +379,6 @@ Both screens are built and will be extended with the planned features: feed item
             - **Purpose**: Return one listing, open or closed, to any signed-in user, so a deal card can open its listing. 404 for a malformed or unknown id. The route sits under `/api/feed`, but the Deals tab is its only caller.
         6. `GET /api/feed/requests/:id`
             - **Purpose**: Return one request, open or closed, to any signed-in user, so a deal card can open its request. 404 for a malformed or unknown id. The route sits under `/api/feed`, but the Deals tab is its only caller.
-    - **Known limitation**: A rating and its reputation are written one after the other. If the reputation write fails, the rating stays stored and the user gets a 500, so that rating does not count towards the score, and nothing repairs it.
 
 ### **4.2. Databases**
 
