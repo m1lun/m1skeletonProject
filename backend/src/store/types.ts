@@ -108,7 +108,7 @@ export interface ReputationCollection {
 }
 
 export interface ConversationCollection {
-  // The starter's conversation about the post, created if there is none; created says which.
+  // The starter's conversation about the tapped post, created if there is none; created says which.
   open(doc: Omit<Conversation, 'id'>): Promise<{ conversation: Conversation; created: boolean }>;
   findById(id: string): Promise<Conversation | null>;
   // Newest activity first.

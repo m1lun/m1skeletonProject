@@ -191,10 +191,11 @@ export const reputationSchema = object({
 const messageText = { bsonType: 'string', minLength: 1, maxLength: MAX_MESSAGE_LENGTH };
 
 export const conversationSchema = object({
-  postId: text(),
+  listingId: { bsonType: ['string', 'null'] },
+  requestId: { bsonType: ['string', 'null'] },
+  sellerId: text(),
+  buyerId: text(),
   postKind: { enum: [...POST_KINDS] },
-  postOwnerId: text(),
-  starterId: text(),
   lastMessage: { anyOf: [{ bsonType: 'null' }, object({ senderId: text(), text: messageText, createdAt: date })] },
   createdAt: date,
   updatedAt: date,

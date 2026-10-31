@@ -373,10 +373,14 @@ class MongoReputationCollection implements ReputationCollection {
 class MongoConversationCollection implements ConversationCollection {
   constructor(private readonly collection: Collection) {}
 
-  // One upsert, so two taps on "Message" can't start two conversations.
+  // One upsert, so two taps on "Message" can't start two conversations. The filter has no postKind,
+  // so the same two people reuse a conversation they already have about these posts.
   async open(doc: Omit<Conversation, 'id'>): Promise<{ conversation: Conversation; created: boolean }> {
+    const sameItem = doc.postKind === 'listing'
+      ? { listingId: doc.listingId, buyerId: doc.buyerId }
+      : { requestId: doc.requestId, sellerId: doc.sellerId };
     const result = await this.collection.findOneAndUpdate(
-      { postId: doc.postId, starterId: doc.starterId },
+      sameItem,
       { $setOnInsert: doc },
       { upsert: true, returnDocument: 'after', includeResultMetadata: true },
     );
@@ -397,7 +401,7 @@ class MongoConversationCollection implements ConversationCollection {
 
   async listByUser(userId: string): Promise<Conversation[]> {
     const found = await this.collection
-      .find({ $or: [{ postOwnerId: userId }, { starterId: userId }] })
+      .find({ $or: [{ sellerId: userId }, { buyerId: userId }] })
       .sort({ updatedAt: -1, _id: -1 })
       .toArray();
     return toDocs<Conversation>(found as unknown[]);
@@ -504,9 +508,10 @@ async function setupCollections(db: Db): Promise<void> {
     ]),
     db.collection(REPUTATIONS_COLLECTION).createIndex({ userId: 1 }, { unique: true }),
     db.collection(CONVERSATIONS_COLLECTION).createIndexes([
-      { key: { postId: 1, starterId: 1 }, unique: true },
-      { key: { postOwnerId: 1, updatedAt: -1 } },
-      { key: { starterId: 1, updatedAt: -1 } },
+      { key: { listingId: 1, buyerId: 1 }, unique: true, partialFilterExpression: { postKind: 'listing' } },
+      { key: { requestId: 1, sellerId: 1 }, unique: true, partialFilterExpression: { postKind: 'request' } },
+      { key: { sellerId: 1, updatedAt: -1 } },
+      { key: { buyerId: 1, updatedAt: -1 } },
     ]),
     db.collection(MESSAGES_COLLECTION).createIndex({ conversationId: 1, _id: -1 }),
   ]);

@@ -15,13 +15,13 @@ import {
 } from '../models/conversation';
 import type { PublicUser } from '../models/user';
 import { currentUser } from '../sessions';
-import type { Store } from '../store/types';
+import type { PostDoc, Store } from '../store/types';
 import { isObject, type Body } from './checks';
 import { handle } from './handle';
 import { parsePageQuery, toPage } from './paging';
 
 const POST_ID = /^[0-9a-f]{24}$/;
-const OPEN_FIELDS = ['postId', 'postKind'];
+const OPEN_FIELDS = ['postId', 'postKind', 'myPostId'];
 const MESSAGE_FIELDS = ['text'];
 const MESSAGES_PAGE = { fallback: DEFAULT_MESSAGES_PAGE, max: MAX_MESSAGES_PAGE };
 
@@ -51,20 +51,30 @@ function bodyFields(body: unknown, allowed: string[]): { fields: Body; errors: s
   return { fields: body, errors };
 }
 
-function parseOpen(body: unknown): { postId: string; postKind: PostKind } {
+interface OpenBody {
+  postId: string;
+  postKind: PostKind;
+  myPostId: string | undefined;
+}
+
+function parseOpen(body: unknown): OpenBody {
   const { fields, errors } = bodyFields(body, OPEN_FIELDS);
   const postId = typeof fields.postId === 'string' && POST_ID.test(fields.postId) ? fields.postId : undefined;
   const postKind = typeof fields.postKind === 'string' && isOneOf(POST_KINDS, fields.postKind) ? fields.postKind : undefined;
+  const myPostId = typeof fields.myPostId === 'string' && POST_ID.test(fields.myPostId) ? fields.myPostId : undefined;
   if (postId === undefined) {
     errors.push('postId must be the id of a listing or request');
   }
   if (postKind === undefined) {
     errors.push(`postKind must be one of: ${POST_KINDS.join(', ')}`);
   }
+  if (fields.myPostId !== undefined && myPostId === undefined) {
+    errors.push('myPostId must be the id of one of your posts');
+  }
   if (errors.length > 0 || postId === undefined || postKind === undefined) {
     throw new BadRequestError(errors);
   }
-  return { postId, postKind };
+  return { postId, postKind, myPostId };
 }
 
 function parseMessage(body: unknown): string {
@@ -83,25 +93,64 @@ function byId(items: PostView[]): Map<string, PostView> {
   return new Map(items.flatMap((item) => (item.id === undefined ? [] : [[item.id, item] as const])));
 }
 
-function idsOfKind(conversations: Conversation[], kind: PostKind): string[] {
-  return [...new Set(conversations.filter((c) => c.postKind === kind).map((c) => c.postId))];
+function present(ids: (string | null)[]): string[] {
+  return [...new Set(ids.filter((id): id is string => id !== null))];
+}
+
+function postView(id: string | null, posts: Map<string, PostView>) {
+  const post = id === null ? undefined : posts.get(id);
+  return post === undefined
+    ? null
+    : { id, name: post.name ?? post.category, status: post.status, photoId: post.photoIds?.[0] ?? null };
 }
 
 function conversationView(conversation: Conversation, me: string, lookups: Lookups) {
   const other = otherParticipant(conversation, me);
-  const posts = conversation.postKind === 'listing' ? lookups.listingOf : lookups.requestOf;
-  const post = posts.get(conversation.postId);
   return {
     id: conversation.id,
-    post:
-      post === undefined
-        ? null
-        : { id: conversation.postId, kind: conversation.postKind, name: post.name ?? post.category, status: post.status, photoId: post.photoIds?.[0] ?? null },
+    postKind: conversation.postKind,
+    listing: postView(conversation.listingId, lookups.listingOf),
+    request: postView(conversation.requestId, lookups.requestOf),
     otherUser: lookups.userOf.get(other) ?? { id: other, firstName: '', lastName: '', pictureUrl: null },
     lastMessage: conversation.lastMessage,
     createdAt: conversation.createdAt,
     updatedAt: conversation.updatedAt,
   };
+}
+
+function findPost(store: Store, kind: PostKind, id: string): Promise<PostDoc | null> {
+  return kind === 'listing' ? store.listings.findById(id) : store.requests.findById(id);
+}
+
+// Whether a post can start a conversation: someone else's open post, or with mine true, the caller's own
+// open post. Sends the error itself when it can't.
+function canUse(res: Response, post: PostDoc | null, mine: boolean): post is PostDoc {
+  if (post === null) {
+    res.status(404).json({ error: 'Not Found' });
+    return false;
+  }
+  const isMine = post.ownerId === currentUser(res).id;
+  if (mine && !isMine) {
+    res.status(403).json({ error: 'Forbidden' });
+    return false;
+  }
+  if (!mine && isMine) {
+    res.status(400).json({ error: 'Invalid request', details: ['you cannot start a conversation about your own post'] });
+    return false;
+  }
+  if (post.status === 'closed') {
+    res.status(409).json({ error: 'This post is closed' });
+    return false;
+  }
+  return true;
+}
+
+// The tapped post is someone else's; myPostId, if any, is the caller's post of the other kind.
+function dealParties(postKind: PostKind, post: PostDoc, me: string, myPostId: string | undefined) {
+  const myPost = myPostId ?? null;
+  return postKind === 'listing'
+    ? { listingId: post.id, requestId: myPost, sellerId: post.ownerId, buyerId: me }
+    : { listingId: myPost, requestId: post.id, sellerId: me, buyerId: post.ownerId };
 }
 
 // The caller's conversation. Sends the 404 or 403 itself and returns null when there is none.
@@ -121,30 +170,23 @@ async function findMyConversation(store: Store, req: Request, res: Response): Pr
 export function createConversationsRouter(store: Store): Router {
   const router = Router();
 
-  // POST /api/conversations — `{ postId, postKind }` opens the caller's conversation with the post's owner,
-  // or returns the one already open: 201 if it was created, 200 if it existed.
+  // POST /api/conversations — `{ postId, postKind, myPostId? }` opens the caller's conversation with the owner of
+  // the tapped post; myPostId is the caller's post it was recommended for. Returns the existing conversation
+  // unchanged if there is one: 201 if it was created, 200 if it existed.
   router.post('/', handle(async (req, res) => {
-    const { postId, postKind } = parseOpen(req.body);
-    const me = currentUser(res).id;
-    const posts = postKind === 'listing' ? store.listings : store.requests;
-    const post = await posts.findById(postId);
-    if (post === null) {
-      res.status(404).json({ error: 'Not Found' });
-      return;
-    }
-    if (post.ownerId === me) {
-      throw new BadRequestError(['you cannot start a conversation about your own post']);
-    }
-    if (post.status === 'closed') {
-      res.status(409).json({ error: 'This post is closed' });
+    const { postId, postKind, myPostId } = parseOpen(req.body);
+    const myKind = postKind === 'listing' ? 'request' : 'listing';
+    const [post, myPost] = await Promise.all([
+      findPost(store, postKind, postId),
+      myPostId === undefined ? undefined : findPost(store, myKind, myPostId),
+    ]);
+    if (!canUse(res, post, false) || (myPost !== undefined && !canUse(res, myPost, true))) {
       return;
     }
     const now = new Date();
     const { conversation, created } = await store.conversations.open({
-      postId,
+      ...dealParties(postKind, post, currentUser(res).id, myPostId),
       postKind,
-      postOwnerId: post.ownerId,
-      starterId: me,
       lastMessage: null,
       createdAt: now,
       updatedAt: now,
@@ -159,8 +201,8 @@ export function createConversationsRouter(store: Store): Router {
     const others = [...new Set(conversations.map((c) => otherParticipant(c, me)))];
     const [users, listings, requests] = await Promise.all([
       store.users.findPublicByIds(others),
-      store.listings.findByIds(idsOfKind(conversations, 'listing'), ['name', 'category', 'status', 'photoIds'], true),
-      store.requests.findByIds(idsOfKind(conversations, 'request'), ['name', 'category', 'status', 'photoIds'], true),
+      store.listings.findByIds(present(conversations.map((c) => c.listingId)), ['name', 'category', 'status', 'photoIds'], true),
+      store.requests.findByIds(present(conversations.map((c) => c.requestId)), ['name', 'category', 'status', 'photoIds'], true),
     ]);
     const lookups: Lookups = {
       userOf: new Map(users.map((user) => [user.id, user])),

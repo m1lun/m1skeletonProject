@@ -14,13 +14,16 @@ export interface LastMessage {
   createdAt: Date;
 }
 
-// One conversation per post and user who started it, between that user and the post's owner.
+// Shaped like a Deal, so accepting a proposal copies the posts and parties across.
+// postKind says which post was tapped to start it; the other post, if any, is the
+// starter's own post it was recommended for. One conversation per tapped post and starter.
 export interface Conversation {
   id: string;
-  postId: string;
+  listingId: string | null;
+  requestId: string | null;
+  sellerId: string;
+  buyerId: string;
   postKind: PostKind;
-  postOwnerId: string;
-  starterId: string;
   // Copied from the newest message so the conversations list needs no query per conversation.
   lastMessage: LastMessage | null;
   createdAt: Date;
@@ -36,9 +39,9 @@ export interface Message {
 }
 
 export function isParticipant(conversation: Conversation, userId: string): boolean {
-  return conversation.postOwnerId === userId || conversation.starterId === userId;
+  return conversation.sellerId === userId || conversation.buyerId === userId;
 }
 
 export function otherParticipant(conversation: Conversation, userId: string): string {
-  return conversation.postOwnerId === userId ? conversation.starterId : conversation.postOwnerId;
+  return conversation.sellerId === userId ? conversation.buyerId : conversation.sellerId;
 }
