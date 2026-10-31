@@ -1,0 +1,14 @@
+<resources>
+    <string name="profile_title">Profile</string>
+    <string name="profile_address">Address</string>
+    <string name="profile_address_not_set">Not set</string>
+    <string name="profile_member_since">Member since</string>
+    <plurals name="profile_listings">
+        <item quantity="one">%d listing</item>
+        <item quantity="other">%d listings</item>
+    </plurals>
+    <plurals name="profile_requests">
+        <item quantity="one">%d request</item>
+        <item quantity="other">%d requests</item>
+    </plurals>
+</resources>
