@@ -5,7 +5,7 @@ import { createApp } from '../../src/app';
 import { MAX_NAME_LENGTH } from '../../src/models/common';
 import { LISTINGS_COLLECTION } from '../../src/models/listing';
 import { REQUESTS_COLLECTION } from '../../src/models/request';
-import { ME, OTHER, PHOTO_ID, bearer } from '../helpers/dealFixtures';
+import { ME, OTHER, PHOTO_ID, bearer, makeListing } from '../helpers/dealFixtures';
 import { MemorySessionRepo } from '../helpers/memorySessionRepo';
 import { createTestStore, type TestStore } from '../helpers/testStore';
 
@@ -68,30 +68,14 @@ function get(path: string, userId = ME): request.Test {
   return request(app).get(path).set('Authorization', bearer(userId));
 }
 
-// A listing as it was stored before posts had names. The validator would reject it,
-// so it is inserted with validation bypassed.
+// A listing as it was stored before posts had names: saved normally, then its name removed.
+// The validator would reject a listing without a name, so the update bypasses it.
 async function insertUnnamedListing(ownerId = ME): Promise<string> {
-  const now = new Date();
-  const _id = new ObjectId();
-  await mongo.db.collection(LISTINGS_COLLECTION).insertOne(
-    {
-      _id,
-      ownerId,
-      category: 'desk',
-      price: 60,
-      condition: 'good',
-      description: '',
-      address: '6335 Thunderbird Crescent, Vancouver',
-      location: { type: 'Point', coordinates: [LOCATION.longitude, LOCATION.latitude] },
-      photoIds: [PHOTO_ID],
-      listingFields: [],
-      status: 'open',
-      createdAt: now,
-      updatedAt: now,
-    },
-    { bypassDocumentValidation: true }
-  );
-  return _id.toHexString();
+  const listing = await makeListing(mongo.store, ownerId, { category: 'desk' });
+  await mongo.db
+    .collection(LISTINGS_COLLECTION)
+    .updateOne({ _id: new ObjectId(listing.id) }, { $unset: { name: '' } }, { bypassDocumentValidation: true });
+  return listing.id;
 }
 
 // Interface POST /api/listings
