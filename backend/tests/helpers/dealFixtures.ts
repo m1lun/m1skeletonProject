@@ -29,6 +29,7 @@ export function makeListing(store: Store, ownerId: string, overrides: Partial<Li
   const now = new Date();
   return store.listings.insert({
     ownerId,
+    name: 'Chair',
     category: 'chair',
     price: 40,
     condition: 'good',
@@ -48,6 +49,7 @@ export function makeRequest(store: Store, ownerId: string, overrides: Partial<Bu
   const now = new Date();
   return store.requests.insert({
     ownerId,
+    name: 'Chair',
     category: 'chair',
     description: 'Looking for a chair',
     address: '6335 Thunderbird Crescent, Vancouver',

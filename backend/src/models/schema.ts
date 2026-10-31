@@ -9,6 +9,7 @@ import {
   MAX_COMMENT_LENGTH,
   MAX_DESCRIPTION_LENGTH,
   MAX_LABEL_LENGTH,
+  MAX_NAME_LENGTH,
   MAX_PHOTOS,
   MAX_STARS,
   MAX_FIELDS,
@@ -81,6 +82,7 @@ const fieldList = (item: Document): Document => ({ bsonType: 'array', maxItems: 
 
 const postProperties = {
   ownerId: text(),
+  name: text(MAX_NAME_LENGTH),
   category: key,
   description: { bsonType: 'string', maxLength: MAX_DESCRIPTION_LENGTH },
   address: text(MAX_ADDRESS_LENGTH),

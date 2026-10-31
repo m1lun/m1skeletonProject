@@ -2,6 +2,7 @@ export const MAX_PHOTOS = 10;
 export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 // A post refers to a stored photo by its id.
 export const PHOTO_ID = /^[0-9a-f]{24}$/;
+export const MAX_NAME_LENGTH = 80;
 export const MAX_DESCRIPTION_LENGTH = 2000;
 export const MAX_ADDRESS_LENGTH = 200;
 export const MAX_LABEL_LENGTH = 60;
