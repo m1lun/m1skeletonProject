@@ -25,6 +25,7 @@
 | 2026-10-21 | 2, 3.1, 3.6, 4.1, 4.2, 5 | Restored offers, transactions, live updates and messaging as planned features, reversing the 2026-10-12 removal; requests mark each field hard or soft; added browsing and filtering to Feature 2 and screen mock-ups; marked the user profile store and travel times as planned; added the planned proposals, transactions and messages collections. |
 | 2026-10-21 | 3.7, 4.7 | Filled in the NFR values: 1 second at the 95th percentile with 1,000 candidate posts for feed ranking, the NFR test that measures it, and a 2-second routing timeout so the feed stays within 3 seconds. Justified the 3-second limit of the routing-service NFR. |
 | 2026-10-30 | 3.5, 5 | Posts have a required name of up to 80 characters, entered in the post form and shown as the post's heading with its category underneath. Added the name to Use Case 1 and to the requests and listings data model. |
+| 2026-10-30 | 2, 3.1, 3.3, 3.4, 3.5, 3.6, 4.1, 4.3, 4.5, 4.6, 4.7 | Connected travel times to OpenRouteService: the first page of recommendations shows each match's travel time (walking until a travel mode can be chosen), with "No route available" and "Travel time unavailable" for failures 5b and 5a, and NFR 2 is now tested. |
 
 ---
 
@@ -32,7 +33,7 @@
 
 **Match Market** is an Android app, "the marketplace where buyers post too". Traditional marketplaces are one-way: sellers post and buyers hunt, re-running the same searches across several sites for days, while sellers never see who is already looking for what they own. Match Market makes the marketplace two-sided. A buyer posts a persistent *request* once, with a category and fields such as maximum price, minimum condition, size, search radius, brand and colour, marking each field as a must-have (hard requirement) or a preference (soft requirement). Sellers post *listings* with photos, and can browse buyer requests that fit what they have.
 
-The app matches both sides automatically, like a dating app for second-hand goods. Buyers and sellers fill in the same structured fields, listings that break a buyer's hard requirements are filtered out, and the remaining matches are ranked by how well they fit the buyer's soft preferences. Users see how far away each match is and can also browse and filter all open posts; checking the travel time to an item is planned.
+The app matches both sides automatically, like a dating app for second-hand goods. Buyers and sellers fill in the same structured fields, listings that break a buyer's hard requirements are filtered out, and the remaining matches are ranked by how well they fit the buyer's soft preferences. Users see how far away each match is, and the travel time to the first page of matches, and can also browse and filter all open posts.
 
 When a buyer finds a listing they want, they express interest; a seller can likewise send an offer on a buyer's request. The other party accepts or declines. An accepted proposal becomes a transaction that reserves the item, and both users see the change on their screen as it happens, without refreshing. Once connected by a proposal, the two users can message each other in the app to discuss the item and arrange collection.
 
@@ -45,7 +46,7 @@ The primary audience is buyers who know what they want and would rather be match
 ### **3.1. List of Features**
 
 1. **Buyer Requests and Seller Listings**: Signed-in users create persistent buyer requests and seller listings, view their own posts, edit them, close and reopen them, and delete them. Listings include 1–10 item photos and requests may include up to 10 reference photos. Closed posts stay in the owner's list and are excluded from the feeds.
-2. **Two-Sided Matching and Recommended Feeds**: Users browse other users' open listings or requests, newest first, and narrow them by category, price and distance. For each of their own open posts they also get recommendations: hard-constraint filtering and soft-preference ranking produce a buyer feed of listings for each request and a seller feed of requests for each listing, with the distance to each. Addresses are picked through the Android Geocoder, and travel times will be computed with the OpenRouteService API *(planned)*.
+2. **Two-Sided Matching and Recommended Feeds**: Users browse other users' open listings or requests, newest first, and narrow them by category, price and distance. For each of their own open posts they also get recommendations: hard-constraint filtering and soft-preference ranking produce a buyer feed of listings for each request and a seller feed of requests for each listing, with the distance to each. Addresses are picked through the Android Geocoder, and travel times are computed with the OpenRouteService API.
 3. **Offers, Acceptance, Transactions, and Live Updates**: From a feed, a buyer expresses interest in a listing or a seller sends an offer on a request. The recipient accepts or declines. Accepting creates a transaction, reserves the listing and declines the other pending proposals on it. Every proposal and transaction change appears on the other user's open screen within seconds over a WebSocket connection; Firebase Cloud Messaging adds a background push only when the app is closed.
 4. **Messaging**: Buyers and sellers message each other in the app about a listing or a request, to ask about the item and arrange collection. New messages appear on the other user's open screen without refreshing.
 
@@ -62,7 +63,7 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 1. **Buyer**: A signed-in user who posts item requests, reviews recommended listings, expresses interest in listings, responds to offers, and messages sellers.
 2. **Seller**: A signed-in user who posts listings with photos, reviews recommended buyer requests, sends offers on requests, responds to interest, and messages buyers. The same account can act as buyer and seller.
 3. **Google Authentication Service** (external): Verifies the user's identity at sign-in.
-4. **OpenRouteService** (external): Computes travel times between the user and recommended posts *(planned)*.
+4. **OpenRouteService** (external): Computes travel times between the user and recommended posts.
 5. **Firebase Cloud Messaging** (external): Delivers push notifications for new proposals, answers and messages when the app is closed *(planned)*.
 
 ### **3.4. Use Case Description**
@@ -77,7 +78,7 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 
 **Feature 2: Two-Sided Matching and Recommended Feeds**
 
-3. **View recommendations for a post** ([Use Case 3](#uc3)): A user sees the posts that match one of their open posts, ranked by how well they fit, with the distance to each. Once built, each match will also show its travel time, and the user will be able to set the radius, travel mode and importance weights used for the ranking.
+3. **View recommendations for a post** ([Use Case 3](#uc3)): A user sees the posts that match one of their open posts, ranked by how well they fit, with the distance to each and the travel time to the first page. Once built, the user will be able to set the radius, travel mode and importance weights used for the ranking.
 4. **Browse and filter feed** ([Use Case 5](#uc5)): A user browses other users' open posts, newest first, and narrows them by category, price or distance.
 
 **Feature 3: Offers, Acceptance, Transactions and Live Updates** *(planned)*
@@ -170,8 +171,8 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 2. The app shows "Recommended for: <post>".
 3. The system takes other users' open posts in the same category and keeps those that meet the request's hard requirements: within the request's radius (10 km if none was set) and every field the buyer marked Hard. Any feed filters (Use Case 5) also apply.
 4. The system scores each remaining post on price, condition, distance and preference match, weights the scores by the user's importance settings (3 each until the user saves preferences), and orders the best first.
-5. *(Planned)* The system requests travel times for the first 20 results from OpenRouteService.
-6. The app shows the ranked list, 20 at a time; each item shows its price or budget, its condition (listings), and its distance, plus its travel time *(planned)*.
+5. The system requests travel times for the first 20 results from OpenRouteService, by walking until the user can choose a travel mode.
+6. The app shows the ranked list, 20 at a time; each item shows its price or budget, its condition (listings), and its distance, plus its travel time on the first page, such as "12 min walk".
 7. *(Planned)* The user opens preferences, sets a default search radius (1–50 km), a travel mode (walk, bike or drive) and the importance (0–5) of price, condition, distance and preference match, and taps "Save"; the recommendations re-rank with them.
 
 **Failure scenario(s)**:
@@ -181,9 +182,9 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
     - 1b1. "See recommendations" is not shown, and the server returns no feed for it (409).
 - 3a. No posts meet the hard requirements.
     - 3a1. The app shows "Nothing here yet. Try changing the filters or check back soon." and a "Refresh" button.
-- 5a. *(Planned)* The routing service is unavailable or rate-limited.
-    - 5a1. The app shows the ranked list without travel times.
-- 5b. *(Planned)* No route exists for the user's travel mode.
+- 5a. The routing service is unavailable, rate-limited or takes more than 2 seconds.
+    - 5a1. The app shows the ranked list without travel times, and each item on the first page shows "Travel time unavailable".
+- 5b. No route exists for the user's travel mode.
     - 5b1. The app shows "No route available" for that item.
 - 6a. The network or server is unavailable.
     - 6a1. The app shows "Couldn't load the feed. Check your connection and try again." and a "Retry" button.
@@ -255,7 +256,7 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 
     ![New request](images/mockup_new_request.png)
 
-Both screens are built and will be extended with the planned features: feed items will gain an "Interested" or "Make an offer" button and travel times, and posts will link to their proposals and messages. The design keeps the same bottom-tab layout (Feed, My Posts, Profile).
+Both screens are built and will be extended with the planned features: feed items will gain an "Interested" or "Make an offer" button, and posts will link to their proposals and messages. The design keeps the same bottom-tab layout (Feed, My Posts, Profile).
 
 ### **3.7. Non-Functional Requirements**
 
@@ -304,7 +305,7 @@ Both screens are built and will be extended with the planned features: feed item
     - **Rationale**: Isolated from storage and HTTP so the team-written logic can be tested through the feed's interface tests; alternative of database-only filtering was rejected because ranking needs weighted scoring.
     - **Interfaces**:
         1. `GET /api/feed?postId=<id>&limit=&cursor=&category=&minPrice=&maxPrice=&lat=&lng=&radiusKm=`
-            - **Purpose**: Return the feed for the user's own request or listing, with travel times for the first page *(planned)*. The post type decides the direction: a request returns listings, a listing returns requests. Every parameter except postId, limit and cursor is an optional temporary filter. A value looser than the saved requirement is ignored, and an unsupported parameter returns 400. Returns 403 for another user's post and 409 for a closed post. The planned minCondition filter (request feeds only) and sort=best|nearest|cheapest are not implemented yet.
+            - **Purpose**: Return the feed for the user's own request or listing, with travel times for the first page: each match has travelMinutes, and the response has travelMode and travelTimesAvailable, which is false when the routing service did not answer. The post type decides the direction: a request returns listings, a listing returns requests. Every parameter except postId, limit and cursor is an optional temporary filter. A value looser than the saved requirement is ignored, and an unsupported parameter returns 400. Returns 403 for another user's post and 409 for a closed post. The planned minCondition filter (request feeds only) and sort=best|nearest|cheapest are not implemented yet.
         2. `GET /api/feed/listings` and `GET /api/feed/requests`
             - **Purpose**: Return other users' open posts, newest first, with the same filters; `before` pages through them.
         3. `boolean satisfies(Request request, Listing listing)`
@@ -367,7 +368,7 @@ Both screens are built and will be extended with the planned features: feed item
 2. **Android Geocoder**
     - **Purpose**: Provides address suggestions and coordinates in the current frontend. The implemented lookup uses the Android 13+ callback API; the older-version path returns no suggestions.
 3. **OpenRouteService**
-    - **Purpose**: Travel times between the user and recommended posts *(planned)*. It is not connected in main, and Matching still uses a travel-time stub.
+    - **Purpose**: Travel times between the user's post and the first page of recommended posts, from its matrix API, for walking, cycling or driving. The backend needs an `ORS_API_KEY`; without it the feed is returned without travel times.
 4. **Firebase Cloud Messaging** *(planned)*
     - **Purpose**: Push notifications for new proposals, answers and messages when the app is closed. Transactions and Messaging send them; live updates in the open app use WebSocket events instead.
 
@@ -405,7 +406,7 @@ Both screens are built and will be extended with the planned features: feed item
 
 ### **4.5. Dependencies Diagram**
 
-Every back-end route except `/health` calls `requireAuth` in Users and Auth. Dashed links are planned: Transactions and Messaging are not built yet, and Matching's travel-time function is not connected to OpenRouteService. The two-way links are the planned WebSocket events, which the back-end sends to the app.
+Every back-end route except `/health` calls `requireAuth` in Users and Auth. Dashed links are planned: Transactions and Messaging are not built yet. The two-way links are the planned WebSocket events, which the back-end sends to the app.
 
 ```mermaid
 flowchart LR
@@ -435,7 +436,7 @@ flowchart LR
     P --> DB
     M --> UA
     M --> DB
-    M -.-> ORS
+    M --> ORS
     T -.-> UA
     T -.-> DB
     T -.-> FCM
@@ -579,7 +580,7 @@ sequenceDiagram
             M->>M: satisfies(request, listing)
         end
         M->>M: rank(source, candidates, weights)
-        M->>ORS: travelTimes(origin, destinations, mode) for the first page (planned)
+        M->>ORS: travelTimes(origin, destinations, mode) for the first page
         activate ORS
         ORS--)M: durations
         deactivate ORS
@@ -675,8 +676,8 @@ sequenceDiagram
         - Target ranking latency: 1 second at the 95th percentile, not counting the travel-time lookup.
         - Measurement environment: a backend Jest NFR test in `backend/tests/nfr/`, run with `scripts/run-backend-nfr-tests.sh`, that sends 100 `GET /api/feed?postId=<id>` requests through Supertest. It measures the backend's response time only, without the phone's network.
 2. **Graceful degradation without the routing service**
-    - **Implementation**: The planned design requests travel times only for the first page of matches. The routing request will have a timeout of 2 seconds. If the service fails, times out or is rate-limited, the feed will return the ranked matches without travel times and indicate that travel time is unavailable. The timeout must allow the feed to meet the 3-second response target in Section 3.7.
-    - **Implementation status**: Matching on main filters candidates and ranks them before pagination. Its travel-time function is a placeholder and is not connected to an external routing service. Routing timeout behaviour and compliance with both performance requirements remain unverified.
+    - **Implementation**: The feed requests travel times only for the first page of matches, in one OpenRouteService matrix request with a timeout of 2 seconds (`ROUTING_TIMEOUT_MS` in `matching/travelTime.ts`). If the service fails, times out or is rate-limited, the feed returns the ranked matches with `travelTimesAvailable: false`, and the app shows "Travel time unavailable". The timeout lets the feed meet the 3-second response target in Section 3.7.
+    - **Implementation status**: Matching on main filters candidates and ranks them before pagination. `backend/tests/nfr/routingFallback.test.ts` checks NFR 2: with a routing service that never answers, the feed returns its ranked matches in about 2 seconds, under the 3-second limit. NFR 1 is not measured yet.
 
 ---
 
