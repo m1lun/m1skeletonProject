@@ -39,6 +39,7 @@ const BODY_ERROR = 'Request body must be a JSON object';
 const SEEDED_STARS = 3;
 const SEEDED_COMMENT = 'old comment';
 const UNKNOWN_ID = '6ad40b88e74dd3678bfef8f3';
+const BODY_LIMIT = 4096;
 
 interface TokenCase { label: string; auth: string | null; error: string }
 interface RawCase { label: string; raw: string; type: string; status: number; body: unknown }
@@ -68,6 +69,11 @@ async function dataOf(): Promise<unknown> {
     other: await mongo.store.reputations.find(OTHER),
     me: await mongo.store.reputations.find(ME),
   };
+}
+
+function paddedBody(bytes: number): string {
+  const body = '{"stars":4}';
+  return body + ' '.repeat(bytes - body.length);
 }
 
 function sharedCases(method: Method): void {
@@ -151,6 +157,34 @@ function sharedCases(method: Method): void {
     expect(response.status).toBe(expected);
     expect(response.body).toStrictEqual(body);
     expect(await dataOf()).toStrictEqual(before);
+  });
+
+  // Input: { stars: 4 } padded with spaces to 4097 bytes, one byte over the limit
+  // Expected status code: 413
+  // Expected behavior: database is unchanged
+  // Expected output: { error: 'Request body too large' }
+  test('Body Over 4 KB: 413', async () => {
+    const deal = await dealWithRating(method);
+    const before = await dataOf();
+
+    const response = await call(app, method, deal.id, paddedBody(BODY_LIMIT + 1));
+
+    expect(response.status).toBe(413);
+    expect(response.body).toStrictEqual({ error: 'Request body too large' });
+    expect(await dataOf()).toStrictEqual(before);
+  });
+
+  // Input: { stars: 4 } padded with spaces to exactly 4096 bytes
+  // Expected status code: 201 for POST, 200 for PUT
+  // Expected behavior: a body at the limit is accepted and the rating is stored
+  // Expected output: { rating, otherUser }
+  test('Body Of Exactly 4 KB Is Allowed', async () => {
+    const deal = await dealWithRating(method);
+
+    const response = await call(app, method, deal.id, paddedBody(BODY_LIMIT));
+
+    expect(response.status).toBe(status);
+    expect(await storedRatings(mongo.db)).toMatchObject([{ stars: 4 }]);
   });
 
   // Input: { stars: 4 } from STRANGER, who is neither the buyer nor the seller
