@@ -14,6 +14,7 @@ import org.json.JSONObject
 data class FeedItem(
     val id: String,
     val isRequest: Boolean,
+    val name: String,
     val category: String,
     val price: Double?,
     val condition: String?,
@@ -122,6 +123,7 @@ private fun parseItem(post: JSONObject, distanceKm: Double?): FeedItem {
     return FeedItem(
         id = post.getString("id"),
         isRequest = isRequest,
+        name = post.getString("name"),
         category = post.getString("category"),
         price = if (isRequest) budgetOf(post) else post.getDouble("price"),
         condition = post.optString("condition").takeIf { it.isNotEmpty() },

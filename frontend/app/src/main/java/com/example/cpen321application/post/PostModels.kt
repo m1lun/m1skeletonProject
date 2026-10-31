@@ -22,6 +22,7 @@ val CONDITIONS = listOf("new", "like new", "good", "fair", "poor")
 const val MAX_PHOTOS = 10
 const val MAX_PHOTO_BYTES = 5 * 1024 * 1024
 const val MAX_CUSTOM_FIELDS = 10
+const val MAX_NAME_LENGTH = 80
 
 // The values the backend uses for a post's status and a field's kind and type.
 const val STATUS_OPEN = "open"
@@ -47,6 +48,7 @@ data class DetailRow(
 )
 
 data class PostDetail(
+    val name: String,
     val category: String,
     val address: String,
     val description: String,

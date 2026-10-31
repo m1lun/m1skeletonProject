@@ -5,6 +5,7 @@ export const LISTINGS_COLLECTION = 'listings';
 export interface Listing {
   id: string;
   ownerId: string;
+  name: string;
   category: string;
   price: number;
   condition: Condition;

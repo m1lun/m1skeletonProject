@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from 'express';
 
 import { currentUser } from '../sessions';
 import { BadRequestError } from '../errors';
-import { MAX_PHOTOS, PHOTO_ID, RESERVED_KEYS, isOneOf, normaliseKey, type PostField, type GeoPoint } from '../models/common';
+import { MAX_NAME_LENGTH, MAX_PHOTOS, PHOTO_ID, RESERVED_KEYS, isOneOf, normaliseKey, type PostField, type GeoPoint } from '../models/common';
 import type { PostDoc, PostCollection, Store } from '../store/types';
 import { isObject, isText, parseLocation, type Body } from './checks';
 import { handle } from './handle';
@@ -11,14 +11,15 @@ import { rememberNewValues } from './remember';
 // What parsePost returns. The fields are saved as `listingFields` (listing) or `requestFields`
 // (request). `extra` is the price and condition of a listing
 //
-// A listing:  { category: 'Furniture', address: '6335 Thunderbird Cres', description: '', location: {...},
-//               photoIds: ['6ad40b88e74dd3678bfef8f3'], fields: [{ kind: 'builtin', key: 'brand', value: 'ikea', ... }],
-//               extra: { price: 10, condition: 'new' } }
+// A listing:  { name: 'IKEA oak desk', category: 'Furniture', address: '6335 Thunderbird Cres', description: '',
+//               location: {...}, photoIds: ['6ad40b88e74dd3678bfef8f3'],
+//               fields: [{ kind: 'builtin', key: 'brand', value: 'ikea', ... }], extra: { price: 10, condition: 'new' } }
 //
-// A request:  { category: 'Furniture', address: '6335 Thunderbird Cres', description: '', location: {...},
-//               photoIds: [], fields: [{ kind: 'builtin', key: 'price', value: 120, hard: true, ... }],
+// A request:  { name: 'Standing desk', category: 'Furniture', address: '6335 Thunderbird Cres', description: '',
+//               location: {...}, photoIds: [], fields: [{ kind: 'builtin', key: 'price', value: 120, hard: true, ... }],
 //               extra: {} }
 interface ParsedPost {
+  name: string;
   category: string;
   address: string;
   description: string;
@@ -124,6 +125,12 @@ function parsePost<T extends PostDoc>(postType: PostType<T>, body: unknown): Par
     throw new BadRequestError(['request body must be a JSON object']);
   }
   const errors: string[] = [];
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  if (name === '') {
+    errors.push('name is required');
+  } else if (name.length > MAX_NAME_LENGTH) {
+    errors.push(`name must be at most ${MAX_NAME_LENGTH} characters`);
+  }
   const category = isText(body.category) ? body.category : '';
   if (category === '') {
     errors.push('category is required');
@@ -143,7 +150,7 @@ function parsePost<T extends PostDoc>(postType: PostType<T>, body: unknown): Par
   if (errors.length > 0) {
     throw new BadRequestError(errors);
   }
-  return { category, address, description, location, photoIds, fields, extra };
+  return { name, category, address, description, location, photoIds, fields, extra };
 }
 
 // The post to save.

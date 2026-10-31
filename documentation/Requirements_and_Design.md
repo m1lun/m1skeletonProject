@@ -24,6 +24,7 @@
 | 2026-10-21 | 4.1, 4.3, 4.5, 4.6 | Added the planned Transactions and Messaging components and Firebase Cloud Messaging; limited the dependency and sequence diagrams to the components and interfaces in 4.1; added error paths, loops, return messages and activation bars to the sequence diagrams. |
 | 2026-10-21 | 2, 3.1, 3.6, 4.1, 4.2, 5 | Restored offers, transactions, live updates and messaging as planned features, reversing the 2026-10-12 removal; requests mark each field hard or soft; added browsing and filtering to Feature 2 and screen mock-ups; marked the user profile store and travel times as planned; added the planned proposals, transactions and messages collections. |
 | 2026-10-21 | 3.7, 4.7 | Filled in the NFR values: 1 second at the 95th percentile with 1,000 candidate posts for feed ranking, the NFR test that measures it, and a 2-second routing timeout so the feed stays within 3 seconds. Justified the 3-second limit of the routing-service NFR. |
+| 2026-10-30 | 3.5, 5 | Posts have a required name of up to 80 characters, entered in the post form and shown as the post's heading with its category underneath. Added the name to Use Case 1 and to the requests and listings data model. |
 
 ---
 
@@ -104,7 +105,7 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 2. The app shows the user's open and closed posts of that kind.
 3. The user taps "New request" or "New listing".
 4. The app shows the post form.
-5. The user enters a category and picks an address from the suggestions.
+5. The user enters a name and a category and picks an address from the suggestions.
     - For a request: a maximum price (required), and optionally a minimum condition, maximum size, search radius, brand and colour. Each of these fields, including the maximum price, is marked Hard or Soft, and a Soft field gets an importance from 1 to 5. The user may also add a description, custom fields, and up to 10 reference photos.
     - For a listing: a price, a condition and 1–10 photos, and optionally a brand, colour, size, description and custom fields.
 6. The user taps "Create request" or "Create listing".
@@ -116,7 +117,7 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 - 2a. The network or server is unavailable when the posts are loaded.
     - 2a1. The app shows "Could not reach the server. Check your connection."
 - 5a. A required field is missing or invalid.
-    - 5a1. The app shows an error message, such as "Choose a category", "Max price is required", "Enter a price", "Add at least one photo", or for a price below 0 "max price must be at least 0" (request) or "price must be a number of at least 0" (listing). Nothing is saved.
+    - 5a1. The app shows an error message, such as "Choose a category", "Enter a name", "Max price is required", "Enter a price", "Add at least one photo", or for a price below 0 "max price must be at least 0" (request) or "price must be a number of at least 0" (listing). Nothing is saved.
 - 5b. The address was typed but not picked from the suggestions.
     - 5b1. The app highlights the address field and shows "Choose your address from the suggestions list".
 - 5c. A photo is larger than 5 MB.
@@ -684,8 +685,8 @@ sequenceDiagram
 | **Collection** | **Key fields** |
 | -------------- | -------------- |
 | users *(planned)* | googleSub, name, email, address, location (GeoJSON), defaultRadiusKm, travelMode (walk, bike, drive), weights {price, condition, distance, match} (each an integer 0 to 5, default 3) |
-| requests | ownerId, category, description, requestFields[] (built-in price (max), condition (min), dimensions {width, height, depth} (max), radiuskm, brand, colour, plus custom fields; each hard, or soft with an importance 1 to 5), address, location, photoIds[] (optional GridFS file ids), status (open, closed) |
-| listings | ownerId, category, description, price, condition, listingFields[] (built-in brand, dimensions {width, height, depth}, colour, plus custom fields), address, location, photoIds[] (GridFS file ids), status (open, closed) |
+| requests | ownerId, name, category, description, requestFields[] (built-in price (max), condition (min), dimensions {width, height, depth} (max), radiuskm, brand, colour, plus custom fields; each hard, or soft with an importance 1 to 5), address, location, photoIds[] (optional GridFS file ids), status (open, closed) |
+| listings | ownerId, name, category, description, price, condition, listingFields[] (built-in brand, dimensions {width, height, depth}, colour, plus custom fields), address, location, photoIds[] (GridFS file ids), status (open, closed) |
 | options | field, key, label, builtin, createdBy |
 | customFields | ownerId, key, label, type (text, number, bool) |
 | sessions | tokenHash, familyId, userId, expiresAt, usedAt |
@@ -697,9 +698,9 @@ Condition is one of five ordered levels: new, like new, good, fair, poor.
 
 **Feature 1 data rules:**
 - The backend obtains ownerId from the authenticated session. New posts start open. Closing retains a record; the current API also supports reopening and permanent deletion.
-- Both post types require category, address and coordinates. Requests require a built-in price field. Listings require non-negative top-level price, a valid condition and at least one photo ID. Request price, radius and size cannot be negative. The 1–50 km radius rule is not enforced by the inspected request-field validation; it must not be claimed as completed validation.
+- Both post types require name, category, address and coordinates. Requests require a built-in price field. Listings require non-negative top-level price, a valid condition and at least one photo ID. Request price, radius and size cannot be negative. The 1–50 km radius rule is not enforced by the inspected request-field validation; it must not be claimed as completed validation.
 - Requests allow 0–10 photo IDs and listings 1–10. Actual upload size is at most 5 MiB per file. Post validation checks ID format/count; photo existence and ownership checks are not established by that validation.
-- Categories are normalized, extendable option values rather than a fixed list. Description is supported, up to 2,000 characters. No separate custom title field is defined. Dimensions use cm and radius uses km; CAD remains the intended currency.
+- Categories are normalized, extendable option values rather than a fixed list. Description is supported, up to 2,000 characters. The name, up to 80 characters, is the post's title; posts saved before names were added use their category as the name. Dimensions use cm and radius uses km; CAD remains the intended currency.
 - Unfilled optional editor rows are omitted. Existing post addresses and coordinates are saved with each post. Profile-based defaults are planned. Closed listings are excluded from the current open-listings feed.
 
 Condition values remain, best to worst: new, like new, good, fair, poor.

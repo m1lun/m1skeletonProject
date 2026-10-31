@@ -99,6 +99,7 @@ class PostApi(
             )
         }
         return PostDetail(
+            name = post.getString("name"),
             category = post.getString("category").titleCase(),
             address = post.getString("address"),
             description = post.optString("description"),
@@ -111,18 +112,18 @@ class PostApi(
     }
 
     fun summarise(mode: Mode, post: JSONObject): PostSummary {
-        val category = post.getString("category").titleCase()
         val detail = detailOf(mode, post)
         return if (mode == Mode.BUYING) {
             val rows = post.getJSONArray("requestFields").objects()
             val hard = rows.count { it.getBoolean("hard") }
             val title = rows.lastOrNull { it.getString("key") == "price" }
-                ?.let { resources.getString(R.string.summary_request_title, category, it.get("value")) }
-                ?: category
+                ?.let { resources.getString(R.string.summary_request_title, detail.name, it.get("value")) }
+                ?: detail.name
+            val hardSoft = resources.getString(R.string.summary_hard_soft, hard.toString(), (rows.size - hard).toString())
             PostSummary(
                 post.getString("id"),
                 title,
-                resources.getString(R.string.summary_hard_soft, hard.toString(), (rows.size - hard).toString()),
+                resources.getString(R.string.summary_category, detail.category, hardSoft),
                 post.getString("status"),
                 detail,
                 post,
@@ -130,8 +131,8 @@ class PostApi(
         } else {
             PostSummary(
                 post.getString("id"),
-                resources.getString(R.string.summary_listing_title, category, post.get("price")),
-                post.getString("condition").titleCase(),
+                resources.getString(R.string.summary_listing_title, detail.name, post.get("price")),
+                resources.getString(R.string.summary_category, detail.category, post.getString("condition").titleCase()),
                 post.getString("status"),
                 detail,
                 post,

@@ -57,6 +57,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
     val addressConfirmed: Boolean
         get() = pickedLocation != null && address.trim() == pickedAddress
     private var suggestJob: Job? = null
+    var name by mutableStateOf("")
     var category by mutableStateOf("")
     var address by mutableStateOf("")
     var description by mutableStateOf("")
@@ -137,6 +138,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun startEditing(post: PostSummary? = null) {
+        name = ""
         category = ""
         address = ""
         description = ""
@@ -161,6 +163,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun prefill(raw: JSONObject) {
         val seller = mode == Mode.SELLING
+        name = raw.getString("name")
         category = raw.getString("category")
         address = raw.getString("address")
         description = raw.optString("description")
@@ -279,6 +282,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         val seller = mode == Mode.SELLING
         val resources = getApplication<Application>().resources
         if (category.isBlank()) throw ApiException(text(R.string.error_choose_category))
+        if (name.isBlank()) throw ApiException(text(R.string.error_name_required))
         val location = pickedLocation
         if (location == null || !addressConfirmed) {
             showAddressError = true
@@ -289,6 +293,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         val body = JSONObject()
+            .put("name", name.trim())
             .put("category", category.trim())
             .put("description", description.trim())
             .put("address", address.trim())

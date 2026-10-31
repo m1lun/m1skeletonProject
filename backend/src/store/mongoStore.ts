@@ -61,7 +61,13 @@ async function insertDoc<T extends { id: string }>(collection: Collection, doc: 
 // Options and custom fields have no id of their own, so Mongo leaves _id out.
 const WITHOUT_ID = { projection: { _id: 0 } };
 
-class MongoPostCollection<T extends PostDoc & { category: string }> implements PostCollection<T> {
+// Posts saved before posts had names take their category as the name.
+function toPostDoc<T extends PostDoc & { name: string; category: string }>(stored: Stored<T>): T {
+  const doc = toDoc<T>(stored);
+  return { ...doc, name: (doc.name as string | undefined) ?? doc.category };
+}
+
+class MongoPostCollection<T extends PostDoc & { name: string; category: string }> implements PostCollection<T> {
   constructor(
     private readonly collection: Collection,
     // Tidies a post (lower-case keys, trimmed text, no duplicate fields) before it is saved.
@@ -82,13 +88,13 @@ class MongoPostCollection<T extends PostDoc & { category: string }> implements P
       return null;
     }
     const found = await this.collection.findOne({ _id: new ObjectId(id) });
-    return found === null ? null : toDoc<T>(found as Stored<T>);
+    return found === null ? null : toPostDoc<T>(found as Stored<T>);
   }
 
   async listByOwner(ownerId: string): Promise<T[]> {
     const found = await this.collection.find({ ownerId }).sort({ createdAt: -1 }).toArray();
     const stored = found as Stored<T>[];
-    return stored.map((d) => toDoc<T>(d));
+    return stored.map((d) => toPostDoc<T>(d));
   }
 
   // Sorted by _id, which grows with insertion time and is unique, so pages never overlap.
@@ -113,14 +119,14 @@ class MongoPostCollection<T extends PostDoc & { category: string }> implements P
     }
     const found = await this.collection.find(query).sort({ _id: -1 }).limit(limit).toArray();
     const stored = found as Stored<T>[];
-    return stored.map((d) => toDoc<T>(d));
+    return stored.map((d) => toPostDoc<T>(d));
   }
 
   // Uses the { status, category } index.
   async listOpenInCategory(category: string, excludeOwnerId: string): Promise<T[]> {
     const found = await this.collection.find({ status: 'open', category, ownerId: { $ne: excludeOwnerId } }).toArray();
     const stored = found as Stored<T>[];
-    return stored.map((d) => toDoc<T>(d));
+    return stored.map((d) => toPostDoc<T>(d));
   }
 
   async findByIds(ids: string[], fields: (keyof T)[], firstPhotoOnly = false): Promise<Partial<T>[]> {

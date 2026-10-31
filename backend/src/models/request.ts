@@ -5,6 +5,7 @@ export const REQUESTS_COLLECTION = 'requests';
 export interface BuyerRequest {
   id: string;
   ownerId: string;
+  name: string;
   category: string;
   description: string;
   address: string;

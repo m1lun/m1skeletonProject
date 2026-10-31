@@ -69,6 +69,13 @@ fun PostEditorScreen(viewModel: PostViewModel, padding: PaddingValues) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         EditorHeader(viewModel, seller)
+        OutlinedTextField(
+            value = viewModel.name,
+            onValueChange = { viewModel.name = it.take(MAX_NAME_LENGTH) },
+            label = { Text(stringResource(R.string.editor_name)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
         SuggestField(
             label = stringResource(R.string.editor_category),
             value = viewModel.category,

@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.example.cpen321application.support.PostForm
+import com.example.cpen321application.support.TEST_NAME
 import com.example.cpen321application.support.TestPhotos
 import com.example.cpen321application.support.click
 import com.example.cpen321application.support.createPost
@@ -60,6 +61,7 @@ class CreatePostTest(private val form: PostForm) {
         rule.createPost(form)
 
         assertTrue(rule.postCards().size == 1)
+        rule.waitForText(TEST_NAME, substring = true)
     }
 
     @Test
@@ -117,6 +119,16 @@ class CreatePostTest(private val form: PostForm) {
 
         rule.waitForText("Choose a category")
         rule.onNodeWithText(form.createButton).assertExists()
+    }
+
+    @Test
+    fun rejectsMissingName() {
+        rule.openForm(form)
+        rule.fillForm(form, name = null)
+        rule.click(form.createButton)
+
+        rule.waitForText("Enter a name")
+        assertTrue(testPosts().isEmpty())
     }
 
     @Test
