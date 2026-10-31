@@ -26,6 +26,7 @@
 | 2026-10-21 | 3.7, 4.7 | Filled in the NFR values: 1 second at the 95th percentile with 1,000 candidate posts for feed ranking, the NFR test that measures it, and a 2-second routing timeout so the feed stays within 3 seconds. Justified the 3-second limit of the routing-service NFR. |
 | 2026-10-30 | 3.5, 5 | Posts have a required name of up to 80 characters, entered in the post form and shown as the post's heading with its category underneath. Added the name to Use Case 1 and to the requests and listings data model. |
 | 2026-10-31 | 3.1, 3.3, 3.4, 4.1, 4.2, 4.5, 5 | Added the Deals, Ratings and Reputation feature as built: the Deals tab, rating a deal, editing a rating, and the reputation score. Added the Deals component, its six interfaces, and the deals, ratings and reputations collections. |
+| 2026-10-31 | 2, 3.1-3.6, 4.1, 4.3, 4.5, 4.6, 5 | Removed offers, acceptance, transactions and live updates. Deals, Ratings and Reputation is now Feature 3, Use Case 2 is now Rate a Deal, and the Deals component replaces Transactions. Redrew the use case diagram. |
 
 ---
 
@@ -35,7 +36,7 @@
 
 The app matches both sides automatically, like a dating app for second-hand goods. Buyers and sellers fill in the same structured fields, listings that break a buyer's hard requirements are filtered out, and the remaining matches are ranked by how well they fit the buyer's soft preferences. Users see how far away each match is and can also browse and filter all open posts; checking the travel time to an item is planned.
 
-When a buyer finds a listing they want, they express interest; a seller can likewise send an offer on a buyer's request. The other party accepts or declines. An accepted proposal becomes a transaction that reserves the item, and both users see the change on their screen as it happens, without refreshing. Once connected by a proposal, the two users can message each other in the app to discuss the item and arrange collection.
+When a buyer and a seller agree on a sale, it is recorded as a deal. Both users see their deals in the Deals tab, rate each other from 1 to 5 stars, and build a reputation score that the other side can see. Buyers and sellers will also be able to message each other about a post to discuss the item and arrange collection.
 
 The primary audience is buyers who know what they want and would rather be matched to it than scroll listings until one appears. The secondary audience is sellers with a specific item to move, who want it in front of the right buyer quickly. One account can act as both buyer and seller.
 
@@ -47,25 +48,24 @@ The primary audience is buyers who know what they want and would rather be match
 
 1. **Buyer Requests and Seller Listings**: Signed-in users create persistent buyer requests and seller listings, view their own posts, edit them, close and reopen them, and delete them. Listings include 1–10 item photos and requests may include up to 10 reference photos. Closed posts stay in the owner's list and are excluded from the feeds.
 2. **Two-Sided Matching and Recommended Feeds**: Users browse other users' open listings or requests, newest first, and narrow them by category, price and distance. For each of their own open posts they also get recommendations: hard-constraint filtering and soft-preference ranking produce a buyer feed of listings for each request and a seller feed of requests for each listing, with the distance to each. Addresses are picked through the Android Geocoder, and travel times will be computed with the OpenRouteService API *(planned)*.
-3. **Offers, Acceptance, Transactions, and Live Updates**: From a feed, a buyer expresses interest in a listing or a seller sends an offer on a request. The recipient accepts or declines. Accepting creates a transaction, reserves the listing and declines the other pending proposals on it. Every proposal and transaction change appears on the other user's open screen within seconds over a WebSocket connection; Firebase Cloud Messaging adds a background push only when the app is closed.
+3. **Deals, Ratings and Reputation**: Users see their deals in a Deals tab, with the agreed price, the listing and request behind each deal, and the other user's score. Either side of a deal can rate the other from 1 to 5 stars with an optional comment, and can edit that rating later. A user's reputation is the average of the ratings they have received. Recording a new deal from the app is planned.
 4. **Messaging**: Buyers and sellers message each other in the app about a listing or a request, to ask about the item and arrange collection. New messages appear on the other user's open screen without refreshing.
-5. **Deals, Ratings and Reputation**: Users see their deals in a Deals tab, with the agreed price, the listing and request behind each deal, and the other user's score. Either side of a deal can rate the other from 1 to 5 stars with an optional comment, and can edit that rating later. A user's reputation is the average of the ratings they have received. Creating a deal is part of Feature 3 *(planned)*.
 
 Authentication is a baseline requirement of the app rather than a feature: users sign in with Google, and the backend verifies the Google ID token and issues its own session token.
 
 ### **3.2. Use Case Diagram**
 
-![Use case diagram](images/UseCaseCP1.drawio.png)
+![Use case diagram](images/UseCaseDiagram.png)
 
 ### **3.3. Actors Description**
 
-The use case diagram shows a single **User (Buyer or Seller)** actor because every signed-in account can act as both a buyer and a seller and has access to the same use cases; the two roles are described separately below because they post and receive different kinds of posts and proposals.
+The use case diagram shows a single **User (Buyer or Seller)** actor because every signed-in account can act as both a buyer and a seller and has access to the same use cases; the two roles are described separately below because they post and receive different kinds of posts.
 
-1. **Buyer**: A signed-in user who posts item requests, reviews recommended listings, expresses interest in listings, responds to offers, messages sellers, and rates sellers after a deal.
-2. **Seller**: A signed-in user who posts listings with photos, reviews recommended buyer requests, sends offers on requests, responds to interest, messages buyers, and rates buyers after a deal. The same account can act as buyer and seller.
+1. **Buyer**: A signed-in user who posts item requests, reviews recommended listings, messages sellers, and rates sellers after a deal.
+2. **Seller**: A signed-in user who posts listings with photos, reviews recommended buyer requests, messages buyers, and rates buyers after a deal. The same account can act as buyer and seller.
 3. **Google Authentication Service** (external): Verifies the user's identity at sign-in.
 4. **OpenRouteService** (external): Computes travel times between the user and recommended posts *(planned)*.
-5. **Firebase Cloud Messaging** (external): Delivers push notifications for new proposals, answers and messages when the app is closed *(planned)*.
+5. **Firebase Cloud Messaging** (external): Delivers push notifications for new messages when the app is closed *(planned)*.
 
 ### **3.4. Use Case Description**
 
@@ -82,20 +82,14 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 3. **View recommendations for a post** ([Use Case 3](#uc3)): A user sees the posts that match one of their open posts, ranked by how well they fit, with the distance to each. Once built, each match will also show its travel time, and the user will be able to set the radius, travel mode and importance weights used for the ranking.
 4. **Browse and filter feed** ([Use Case 5](#uc5)): A user browses other users' open posts, newest first, and narrows them by category, price or distance.
 
-**Feature 3: Offers, Acceptance, Transactions and Live Updates** *(planned)*
+**Feature 3: Deals, Ratings and Reputation**
 
-5. **Send proposal**: A buyer expresses interest in a listing, or a seller offers one of their listings for a request. The sender can withdraw it while it is still pending.
-6. **Respond to proposal** ([Use Case 2](#uc2)): The other user sees the proposal appear live and accepts or declines it. Accepting reserves the listing and creates a transaction, and the sender sees the answer without refreshing.
-7. **Manage transactions**: Either user marks the transaction completed, which closes the listing and the request, or cancels it, which reopens the listing.
+5. **View deals**: A user opens the Deals tab and sees their deals, newest first, as buyer or seller. Each deal shows its title, agreed price, date, the listing and request it came from, the other user's score, and both ratings. Tapping the listing or request opens it, even if it has since closed. A user with no deals sees "No deals yet".
+6. **Rate a deal** ([Use Case 2](#uc2)): A user rates the other side of a deal from 1 to 5 stars with an optional comment, and can edit that rating later. The other user's score updates on the card.
 
 **Feature 4: Messaging** *(planned)*
 
-8. **Send and receive messages** ([Use Case 4](#uc4)): Buyers and sellers message each other about a listing or a request, and new messages appear live.
-
-**Feature 5: Deals, Ratings and Reputation**
-
-9. **View deals**: A user opens the Deals tab and sees their deals, newest first, as buyer or seller. Each deal shows its title, agreed price, date, the listing and request it came from, the other user's score, and both ratings. Tapping the listing or request opens it, even if it has since closed. A user with no deals sees "No deals yet". If the deals cannot load, the app shows an error with a way to retry.
-10. **Rate a deal**: A user taps "Rate" on a deal, picks 1 to 5 stars, optionally writes a comment of up to 300 characters, and taps "Submit". The other user's score updates on the card. Each user rates a deal once, with no time limit, and taps "Edit" to change their rating later. If the app says "You already rated this deal" or the server cannot be reached, the rating is not changed by that attempt.
+7. **Send and receive messages** ([Use Case 4](#uc4)): Buyers and sellers message each other about a listing or a request, and new messages appear live.
 
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
 
@@ -140,29 +134,30 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 
 <a name="uc2"></a>
 
-#### Use Case 2: Respond to Proposal *(planned)*
+#### Use Case 2: Rate a Deal
 
-**Description**: A user receives a buyer's interest in their listing, or a seller's offer on their request, sees it appear live, and accepts or declines it. The other user sees the answer without refreshing.
+**Description**: A user rates the other side of one of their deals from 1 to 5 stars with an optional comment, or edits a rating they gave earlier. The other user's score updates.
 
 **Primary actor(s)**: Buyer, Seller
 
 **Main success scenario**:
-1. Another user expresses interest in the user's listing, or sends an offer on the user's request.
-2. The proposal appears on the user's open screen within 2 seconds; if the app is closed, a push notification is shown.
-3. The user opens the proposal and sees the post and the other user.
-4. The user taps "Accept" or "Decline".
-5. On accept, the system creates a transaction, reserves the listing, and declines the other pending proposals on it.
-6. The other user's screen shows "Accepted" or "Declined" within 2 seconds, without refreshing.
+1. The user opens the Deals tab.
+2. The app shows the user's deals, newest first, with "Rate" on each deal they have not rated and "Edit" on each deal they have.
+3. The user taps "Rate" or "Edit".
+4. The app shows the stars and an optional comment field.
+5. The user picks 1 to 5 stars, optionally writes a comment, and taps "Submit" or "Save".
+6. The system saves the rating and updates the other user's score.
+7. The app shows the rating and the other user's new score on the deal.
 
 **Failure scenario(s)**:
-- 3a. The other user withdrew the proposal.
-    - 3a1. The app shows that the proposal was withdrawn, and it cannot be answered.
-- 5a. The listing is already reserved, closed or deleted.
-    - 5a1. The app shows that the item is no longer available, and the proposal is declined.
-- 5b. The network or server is unavailable.
-    - 5b1. The app shows an error message and the proposal stays pending.
-- 6a. The other user's connection is lost.
-    - 6a1. They see the new status when they reconnect.
+- 2a. The deals cannot be loaded.
+    - 2a1. The app shows an error message and a way to retry.
+- 5a. The user has not picked any stars.
+    - 5a1. "Submit" is disabled.
+- 6a. The user already rated this deal on another device.
+    - 6a1. The app shows "You already rated this deal" and the first rating is unchanged.
+- 6b. The network or server is unavailable.
+    - 6b1. The app shows an error message and the rating is not saved.
 
 <a name="uc3"></a>
 
@@ -262,7 +257,7 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 
     ![New request](images/mockup_new_request.png)
 
-Both screens are built and will be extended with the planned features: feed items will gain an "Interested" or "Make an offer" button and travel times, and posts will link to their proposals and messages. The design keeps the same bottom-tab layout (Feed, My Posts, Profile).
+Both screens are built and will be extended with the planned features: feed items will gain travel times, and posts will link to their messages. The design keeps the same bottom-tab layout (Feed, My Posts, Profile).
 
 ### **3.7. Non-Functional Requirements**
 
@@ -336,36 +331,10 @@ Both screens are built and will be extended with the planned features: feed item
         5. `userId requireAuth(token)`
             - **Purpose**: Internal interface protecting every other route.
 
-4. **Transactions** *(planned)*
-    - **Purpose**: Owns proposals (a buyer's interest in a listing or a seller's offer on a request) and the transactions created when one is accepted, and pushes their changes to both users live.
-    - **Rationale**: Kept separate from Posts because a proposal links two users' posts and has its own lifecycle (pending, accepted, declined, withdrawn); alternative of storing proposals on each post was rejected because accepting one must update the listing, the transaction and every other pending proposal together.
-    - **Interfaces**:
-        1. `POST /api/proposals`
-            - **Purpose**: Send an interest (listing id) or an offer (request id and the sender's listing id). Returns the pending proposal with status 201.
-        2. `GET /api/proposals`
-            - **Purpose**: Retrieve the proposals the user sent and received, with their status.
-        3. `PATCH /api/proposals/:id`
-            - **Purpose**: The recipient accepts or declines, or the sender withdraws, a pending proposal. Accepting creates a transaction, reserves the listing and declines the other pending proposals on it. Returns the proposal (and the transaction on accept); 409 if the proposal is no longer pending or the listing is reserved, closed or deleted.
-        4. `PATCH /api/transactions/:id`
-            - **Purpose**: Either user marks the transaction completed, which closes the listing and the request, or cancels it, which reopens the listing. Returns the transaction.
-        5. WebSocket events `proposal.created` and `proposal.updated`
-            - **Purpose**: Deliver a new proposal, or its new status, to the other user's open app.
-
-5. **Messaging** *(planned)*
-    - **Purpose**: Stores and delivers the messages between the two users of a proposal.
-    - **Rationale**: Separate from Transactions so conversations can grow without changing proposal logic; alternative of a general chat between any two users was rejected because messages are only needed once users are connected by a proposal.
-    - **Interfaces**:
-        1. `GET /api/proposals/:id/messages`
-            - **Purpose**: Retrieve the conversation for a proposal the user is part of, oldest first; 403 otherwise.
-        2. `POST /api/proposals/:id/messages`
-            - **Purpose**: Send a non-empty message. Returns the message with status 201; 409 if the proposal was declined or withdrawn, which makes the conversation read-only.
-        3. WebSocket event `message.created`
-            - **Purpose**: Deliver a new message to the other user's open app.
-
-6. **Deals**
+4. **Deals**
     - **Purpose**: Shows each user their deals, lets the two sides of a deal rate each other, and keeps each user's reputation score.
     - **Rationale**: Kept separate from Posts because a deal links two users and outlives the posts behind it, which may be closed or deleted. Reputation is stored as a running total per user rather than computed from ratings on every read, because the deals list shows a score for every deal on a page; the alternative of averaging ratings per read was rejected because it would add a query for each deal.
-    - **Lifecycle and rules**: Deals have no route that creates them yet; the planned Transactions component will create them, and each deal needs a listing, a request or both. A listing or request can belong to only one deal. Only the buyer and seller of a deal can rate it, each once, with no time limit, and either can edit their own rating. Ratings are never deleted.
+    - **Lifecycle and rules**: No route creates a deal yet, so recording a deal from the app is planned. Each deal needs a listing, a request or both. A listing or request can belong to only one deal. Only the buyer and seller of a deal can rate it, each once, with no time limit, and either can edit their own rating. Ratings are never deleted.
     - **Interfaces**: All routes use the `/api` prefix and require an authenticated session. Failures return `{ error }`, and invalid input returns 400 with `{ error, details }`.
         1. `GET /api/deals?limit=&before=`
             - **Purpose**: Return the caller's deals, newest first, each with the caller's role, title, agreed price, listing and request summaries, the other user's score, and both ratings. `limit` is 1 to 50, default 20; `before` is the `nextCursor` of the previous page. A deleted post comes back as null. 400 for a bad or unknown parameter.
@@ -379,6 +348,17 @@ Both screens are built and will be extended with the planned features: feed item
             - **Purpose**: Return one listing, open or closed, to any signed-in user, so a deal card can open its listing. 404 for a malformed or unknown id. The route sits under `/api/feed`, but the Deals tab is its only caller.
         6. `GET /api/feed/requests/:id`
             - **Purpose**: Return one request, open or closed, to any signed-in user, so a deal card can open its request. 404 for a malformed or unknown id. The route sits under `/api/feed`, but the Deals tab is its only caller.
+
+5. **Messaging** *(planned)*
+    - **Purpose**: Stores and delivers the messages between the two users of a proposal.
+    - **Rationale**: Separate from Transactions so conversations can grow without changing proposal logic; alternative of a general chat between any two users was rejected because messages are only needed once users are connected by a proposal.
+    - **Interfaces**:
+        1. `GET /api/proposals/:id/messages`
+            - **Purpose**: Retrieve the conversation for a proposal the user is part of, oldest first; 403 otherwise.
+        2. `POST /api/proposals/:id/messages`
+            - **Purpose**: Send a non-empty message. Returns the message with status 201; 409 if the proposal was declined or withdrawn, which makes the conversation read-only.
+        3. WebSocket event `message.created`
+            - **Purpose**: Deliver a new message to the other user's open app.
 
 ### **4.2. Databases**
 
@@ -394,7 +374,7 @@ Both screens are built and will be extended with the planned features: feed item
 3. **OpenRouteService**
     - **Purpose**: Travel times between the user and recommended posts *(planned)*. It is not connected in main, and Matching still uses a travel-time stub.
 4. **Firebase Cloud Messaging** *(planned)*
-    - **Purpose**: Push notifications for new proposals, answers and messages when the app is closed. Transactions and Messaging send them; live updates in the open app use WebSocket events instead.
+    - **Purpose**: Push notifications for new messages when the app is closed. Messaging sends them; live updates in the open app use WebSocket events instead.
 
 ### **4.4. Frameworks and Libraries**
 
@@ -430,7 +410,7 @@ Both screens are built and will be extended with the planned features: feed item
 
 ### **4.5. Dependencies Diagram**
 
-Every back-end route except `/health` calls `requireAuth` in Users and Auth. Dashed links are planned: Transactions and Messaging are not built yet, and Matching's travel-time function is not connected to OpenRouteService. The two-way links are the planned WebSocket events, which the back-end sends to the app.
+Every back-end route except `/health` calls `requireAuth` in Users and Auth. Dashed links are planned: Messaging is not built yet, and Matching's travel-time function is not connected to OpenRouteService. The two-way links are the planned WebSocket events, which the back-end sends to the app.
 
 ```mermaid
 flowchart LR
@@ -439,7 +419,6 @@ flowchart LR
         UA[Users and Auth]
         P[Posts]
         M[Matching]
-        T[Transactions]
         MS[Messaging]
         D[Deals]
     end
@@ -454,7 +433,6 @@ flowchart LR
     FE --> M
     FE --> GEO
     FE --> D
-    FE <-.-> T
     FE <-.-> MS
     UA --> G
     UA --> DB
@@ -465,9 +443,6 @@ flowchart LR
     D --> UA
     D --> DB
     M -.-> ORS
-    T -.-> UA
-    T -.-> DB
-    T -.-> FCM
     MS -.-> UA
     MS -.-> DB
     MS -.-> FCM
@@ -538,45 +513,43 @@ sequenceDiagram
     deactivate P
 ```
 
-2. [**Respond to Proposal**](#uc2) *(planned)*
+2. [**Rate a Deal**](#uc2)
 
 ```mermaid
 sequenceDiagram
     actor U as User
     participant FE as Front-end
-    participant T as Transactions
+    participant D as Deals
     participant DB as MongoDB
-    participant FCM as Firebase Cloud Messaging
-    participant O as Other user's front-end
-    Note over U,FE: Precondition: the user is signed in and another user sent a proposal
-    T-)FE: proposal.created (proposal) over WebSocket
-    T-)FCM: push notification of the new proposal, if the app is closed
-    U->>FE: Open the proposal, tap "Accept" or "Decline"
-    FE->>T: PATCH /api/proposals/:id (status)
-    activate T
-    T->>DB: find the proposal and its listing
+    Note over U,FE: Precondition: the user is signed in and has a deal
+    U->>FE: Open the Deals tab
+    FE->>D: GET /api/deals
+    activate D
+    D->>DB: find the user's deals, ratings, reputations and posts
     activate DB
-    DB--)T: proposal, listing
+    DB--)D: deals
     deactivate DB
-    alt declined
-        T->>DB: set the proposal to declined
+    D--)FE: 200 deals
+    deactivate D
+    U->>FE: Tap "Rate", pick stars, write an optional comment, tap "Submit"
+    FE->>D: POST /api/deals/:id/ratings (stars, comment)
+    activate D
+    D->>DB: find the deal
+    activate DB
+    DB--)D: deal
+    deactivate DB
+    alt the user is part of the deal and has not rated it
+        D->>DB: insert rating, add to the other user's reputation
         activate DB
+        DB--)D: rating, reputation
         deactivate DB
-        T--)FE: 200 proposal
-    else accepted and the listing is still open
-        T->>DB: insert transaction, reserve the listing, decline other pending proposals
-        activate DB
-        deactivate DB
-        T--)FE: 200 proposal and transaction
-    else accepted but the listing is reserved, closed or deleted
-        T->>DB: set the proposal to declined
-        activate DB
-        deactivate DB
-        T--)FE: 409 item no longer available
+        D--)FE: 201 rating and the other user's score
+        FE--)U: Show the rating and the new score
+    else the user already rated the deal
+        D--)FE: 409
+        FE--)U: Show "You already rated this deal"
     end
-    T-)O: proposal.updated (proposal) over WebSocket
-    T-)FCM: push notification of the answer to the other user, if their app is closed
-    deactivate T
+    deactivate D
 ```
 
 3. [**View Recommendations for a Post**](#uc3)
@@ -719,8 +692,6 @@ sequenceDiagram
 | options | field, key, label, builtin, createdBy |
 | customFields | ownerId, key, label, type (text, number, bool) |
 | sessions | tokenHash, familyId, userId, expiresAt, usedAt |
-| proposals *(planned)* | type (interest, offer), senderId, recipientId, listingId, requestId (offers only), status (pending, accepted, declined, withdrawn), createdAt |
-| transactions *(planned)* | proposalId, buyerId, sellerId, listingId, requestId (if any), status (reserved, completed, cancelled), createdAt |
 | messages *(planned)* | proposalId, senderId, text, createdAt |
 | deals | listingId, requestId (either may be null, not both), sellerId, buyerId, agreedPrice, createdAt |
 | ratings | dealId, raterId, ratedUserId, stars (whole number 1 to 5), comment (up to 300 characters), createdAt, updatedAt (only after an edit) |
@@ -735,7 +706,7 @@ Condition is one of five ordered levels: new, like new, good, fair, poor.
 - Categories are normalized, extendable option values rather than a fixed list. Description is supported, up to 2,000 characters. The name, up to 80 characters, is the post's title; posts saved before names were added use their category as the name. Dimensions use cm and radius uses km; CAD remains the intended currency.
 - Unfilled optional editor rows are omitted. Existing post addresses and coordinates are saved with each post. Profile-based defaults are planned. Closed listings are excluded from the current open-listings feed.
 
-**Feature 5 data rules:**
+**Feature 3 data rules:**
 - A deal must have a listing, a request or both. Unique indexes allow one deal per listing and one per request; deals with a null post do not collide.
 - A unique index on dealId and raterId allows each user one rating per deal. The rated user is always the other side of the deal, taken from the deal rather than the request.
 - Each user has at most one reputation, created by their first rating. Adding a rating updates starSum and ratingCount in one atomic write, so simultaneous ratings all count, and editing a rating adds the star difference to starSum.
