@@ -1,19 +1,21 @@
+import type { Server } from 'node:http';
+
 import request from 'supertest';
 
-import { createApp } from '../../src/app';
 import { ME, OTHER, bearer, clearDealData, makeReputation } from '../helpers/dealFixtures';
-import { MemorySessionRepo } from '../helpers/memorySessionRepo';
+import { startTestApp, stopTestApp } from '../helpers/testApp';
 import { createTestStore, type TestStore } from '../helpers/testStore';
 
 let mongo: TestStore;
-let app: ReturnType<typeof createApp>;
+let app: Server;
 
 beforeAll(async () => {
   mongo = await createTestStore();
-  app = createApp({ sessions: new MemorySessionRepo(), store: mongo.store });
+  app = await startTestApp(mongo.store);
 });
 
 afterAll(async () => {
+  await stopTestApp(app);
   await mongo.dropAndClose();
 });
 
