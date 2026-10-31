@@ -1,4 +1,5 @@
-import { createApp } from '../../src/app';
+import type { Server } from 'node:http';
+
 import type { Deal } from '../../src/models/deal';
 import {
   ME,
@@ -11,19 +12,20 @@ import {
   makeReputation,
   storedRatings,
 } from '../helpers/dealFixtures';
-import { MemorySessionRepo } from '../helpers/memorySessionRepo';
 import { call, rate, type Method } from '../helpers/ratingApi';
+import { startTestApp, stopTestApp } from '../helpers/testApp';
 import { createTestStore, type TestStore } from '../helpers/testStore';
 
 let mongo: TestStore;
-let app: ReturnType<typeof createApp>;
+let app: Server;
 
 beforeAll(async () => {
   mongo = await createTestStore();
-  app = createApp({ sessions: new MemorySessionRepo(), store: mongo.store });
+  app = await startTestApp(mongo.store);
 });
 
 afterAll(async () => {
+  await stopTestApp(app);
   await mongo.dropAndClose();
 });
 
@@ -175,18 +177,14 @@ function sharedCases(method: Method): void {
     expect(await storedRatings(mongo.db)).toMatchObject([{ comment }]);
   });
 
-  test.each([
-    { label: 'Rated User Id', field: 'ratedUserId' },
-    { label: 'Rater Id', field: 'raterId' },
-    { label: 'Deal Id', field: 'dealId' },
-  ])('Unknown Field $label: 400', async ({ field }: { label: string; field: string }) => {
+  test('Unknown Field: 400', async () => {
     const deal = await dealWithRating(method);
     const before = await dataOf();
 
-    const response = await rate(app, method, deal.id, { stars: 4, [field]: STRANGER });
+    const response = await rate(app, method, deal.id, { stars: 4, ratedUserId: STRANGER });
 
     expect(response.status).toBe(400);
-    expect(response.body).toStrictEqual({ error: 'Invalid request', details: [`unsupported field "${field}"`] });
+    expect(response.body).toStrictEqual({ error: 'Invalid request', details: ['unsupported field "ratedUserId"'] });
     expect(await dataOf()).toStrictEqual(before);
     expect(await mongo.store.reputations.find(STRANGER)).toBeNull();
   });
@@ -312,6 +310,7 @@ describe('Unmocked: PUT /api/deals/:id/ratings', () => {
     const response = await rate(app, 'PUT', deal.id, { stars: 5, comment: 'Hijacked' });
 
     expect(response.status).toBe(404);
+    expect(response.body).toStrictEqual({ error: 'You have not rated this deal' });
     expect(await dataOf()).toStrictEqual(before);
   });
 

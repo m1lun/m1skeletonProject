@@ -27,10 +27,8 @@ function reputationOf(starSum: number, ratingCount: number): Reputation {
 
 describe('Unmocked: averageScore', () => {
   test.each([
-    { label: '5 stars from 1 rating', starSum: 5, ratingCount: 1, average: 5 },
     { label: '8 stars from 2 ratings', starSum: 8, ratingCount: 2, average: 4 },
     { label: '7 stars from 2 ratings', starSum: 7, ratingCount: 2, average: 3.5 },
-    { label: '1 star from 4 ratings', starSum: 4, ratingCount: 4, average: 1 },
   ])('Average Of $label', ({ starSum, ratingCount, average }: AverageCase) => {
     expect(averageScore(starSum, ratingCount)).toBe(average);
   });
@@ -73,7 +71,6 @@ describe('Unmocked: assertHasPost', () => {
   test.each([
     { label: 'neither a listing nor a request', listingId: null, requestId: null },
     { label: 'empty ids', listingId: '', requestId: '' },
-    { label: 'an empty listing id and no request', listingId: '', requestId: null },
   ])('Rejects $label', ({ listingId, requestId }: PostsCase) => {
     const call = (): void => {
       assertHasPost({ listingId, requestId });

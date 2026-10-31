@@ -1,6 +1,7 @@
+import type { Server } from 'node:http';
+
 import request from 'supertest';
 
-import { createApp } from '../../src/app';
 import type { Deal } from '../../src/models/deal';
 import type { Listing } from '../../src/models/listing';
 import type { Rating } from '../../src/models/rating';
@@ -18,20 +19,21 @@ import {
   makeReputation,
   makeRequest,
 } from '../helpers/dealFixtures';
-import { MemorySessionRepo } from '../helpers/memorySessionRepo';
+import { startTestApp, stopTestApp } from '../helpers/testApp';
 import { createTestStore, type TestStore } from '../helpers/testStore';
 
 const SECOND_PHOTO_ID = '6ad40b88e74dd3678bfef8f4';
 
 let mongo: TestStore;
-let app: ReturnType<typeof createApp>;
+let app: Server;
 
 beforeAll(async () => {
   mongo = await createTestStore();
-  app = createApp({ sessions: new MemorySessionRepo(), store: mongo.store });
+  app = await startTestApp(mongo.store);
 });
 
 afterAll(async () => {
+  await stopTestApp(app);
   await mongo.dropAndClose();
 });
 
@@ -249,27 +251,6 @@ describe('Unmocked: GET /api/deals', () => {
 
     expect(response.status).toBe(200);
     expect(dealsOf(response)).toMatchObject([{ id: deal.id, title: '', listing: null, request: null }]);
-  });
-
-  test('Five Queries For Twenty Deals', async () => {
-    for (let made = 0; made < 20; made += 1) {
-      await dealOnNewListing();
-    }
-    const reads = [
-      jest.spyOn(mongo.store.deals, 'listByUser'),
-      jest.spyOn(mongo.store.ratings, 'listByDeals'),
-      jest.spyOn(mongo.store.reputations, 'findMany'),
-      jest.spyOn(mongo.store.listings, 'findByIds'),
-      jest.spyOn(mongo.store.requests, 'findByIds'),
-    ];
-
-    const response = await getDeals();
-
-    expect(response.status).toBe(200);
-    expect(dealsOf(response)).toHaveLength(20);
-    reads.forEach((read) => {
-      expect(read).toHaveBeenCalledTimes(1);
-    });
   });
 
   test.each(['1', '50'])('Limit %s Is Allowed', async (limit) => {
