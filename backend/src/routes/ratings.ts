@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import type { Request, Response } from 'express';
+import type { ErrorRequestHandler, Request, Response } from 'express';
 
 import { BadRequestError } from '../errors';
 import { MAX_COMMENT_LENGTH, MAX_STARS, MIN_STARS } from '../models/common';
@@ -44,6 +44,15 @@ function parseRating(body: unknown): { stars: number; comment: string } {
   }
   return { stars, comment };
 }
+
+// A rating body over the size limit is the client's mistake, so it gets a 413 rather than the generic 500.
+export const ratingBodyTooLarge: ErrorRequestHandler = (error: unknown, _req, res, next) => {
+  if ((error as { status?: number }).status === 413) {
+    res.status(413).json({ error: 'Request body too large' });
+    return;
+  }
+  next(error);
+};
 
 // The caller's deal and the other party in it. Sends the 404 or 403 itself and returns null when there is none.
 async function findMyDeal(
