@@ -11,6 +11,7 @@
     <!-- Shared actions -->
     <string name="cd_back">Back</string>
     <string name="cd_more_options">More options</string>
+    <string name="cd_searching_address">Searching for addresses</string>
     <string name="action_edit">Edit</string>
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
@@ -52,7 +53,7 @@
     <string name="editor_create_request">Create request</string>
     <string name="editor_create_listing">Create listing</string>
     <string name="editor_save">Save changes</string>
-    <string name="editor_condition_selected">● %1$s</string>
+    <string name="editor_condition_any">Any</string>
     <string name="editor_address_suggestion">📍 %1$s</string>
     <string name="editor_address_error">Choose your address from the suggestions list</string>
     <string name="editor_address_confirmed">✓ Address confirmed</string>

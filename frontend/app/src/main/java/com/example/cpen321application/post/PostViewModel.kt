@@ -49,6 +49,8 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
     val existingPhotoIds = mutableStateListOf<String>()
     var addressSuggestions by mutableStateOf<List<AddressSuggestion>>(emptyList())
         private set
+    var searchingAddress by mutableStateOf(false)
+        private set
     var showAddressError by mutableStateOf(false)
         private set
     private var pickedAddress by mutableStateOf<String?>(null)
@@ -147,6 +149,7 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         photos.clear()
         existingPhotoIds.clear()
         addressSuggestions = emptyList()
+        searchingAddress = false
         showAddressError = false
         pickedAddress = null
         pickedLocation = null
@@ -206,7 +209,9 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
 
     fun stopEditing() {
         editing = false
+        suggestJob?.cancel()
         addressSuggestions = emptyList()
+        searchingAddress = false
     }
 
     fun onAddressChange(text: String) {
@@ -215,15 +220,20 @@ class PostViewModel(app: Application) : AndroidViewModel(app) {
         suggestJob?.cancel()
         if (text.trim().length < MIN_ADDRESS_QUERY_LENGTH || text.trim() == pickedAddress) {
             addressSuggestions = emptyList()
+            searchingAddress = false
             return
         }
         suggestJob = viewModelScope.launch {
             delay(SUGGEST_DELAY_MS)
+            searchingAddress = true
             addressSuggestions = addressSearch.suggest(text.trim())
+            searchingAddress = false
         }
     }
 
     fun pickAddress(suggestion: AddressSuggestion) {
+        suggestJob?.cancel()
+        searchingAddress = false
         address = suggestion.label
         pickedAddress = suggestion.label
         showAddressError = false

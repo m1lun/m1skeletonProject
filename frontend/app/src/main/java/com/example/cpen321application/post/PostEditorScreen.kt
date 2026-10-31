@@ -6,12 +6,15 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -23,6 +26,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.ui.text.style.TextAlign
@@ -32,7 +37,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -46,6 +50,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -138,19 +144,39 @@ private fun SellerFields(viewModel: PostViewModel) {
         modifier = Modifier.fillMaxWidth(),
     )
     Text(stringResource(R.string.editor_condition), style = MaterialTheme.typography.labelLarge)
-    ConditionChoices(selected = viewModel.condition, onSelect = { viewModel.condition = it })
+    ConditionDropdown(selected = viewModel.condition, onSelect = { viewModel.condition = it })
 }
 
+// anyLabel adds a first choice that clears the condition, for fields that are optional.
 @Composable
-private fun ConditionChoices(selected: String, onSelect: (String) -> Unit) {
-    Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        CONDITIONS.forEach { c ->
-            OutlinedButton(onClick = { onSelect(c) }) {
-                val name = c.titleCase()
-                Text(if (selected == c) stringResource(R.string.editor_condition_selected, name) else name)
+private fun ConditionDropdown(selected: String, onSelect: (String) -> Unit, anyLabel: String? = null) {
+    val options = listOfNotNull(anyLabel?.let { "" to it }) + CONDITIONS.map { it to it.titleCase() }
+    ChoiceDropdown(selected = selected, options = options, onSelect = onSelect)
+}
+
+// A button showing the selected option's label, or buttonText if given; tapping it opens the list of options.
+@Composable
+private fun ChoiceDropdown(
+    selected: String,
+    options: List<Pair<String, String>>,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    buttonText: String? = null,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(buttonText ?: options.firstOrNull { it.first == selected }?.second.orEmpty())
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            options.forEach { (value, label) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        onSelect(value)
+                        open = false
+                    },
+                )
             }
         }
     }
@@ -164,6 +190,11 @@ private fun AddressField(viewModel: PostViewModel) {
         label = { Text(stringResource(R.string.editor_address)) },
         singleLine = true,
         isError = viewModel.showAddressError,
+        trailingIcon = if (viewModel.searchingAddress) {
+            { AddressSpinner() }
+        } else {
+            null
+        },
         supportingText = { Text(stringResource(addressHint(viewModel))) },
         modifier = Modifier.fillMaxWidth(),
     )
@@ -185,6 +216,17 @@ private fun AddressField(viewModel: PostViewModel) {
             }
         }
     }
+}
+
+@Composable
+private fun AddressSpinner() {
+    val description = stringResource(R.string.cd_searching_address)
+    CircularProgressIndicator(
+        modifier = Modifier
+            .size(20.dp)
+            .semantics { contentDescription = description },
+        strokeWidth = 2.dp,
+    )
 }
 
 @StringRes
@@ -315,9 +357,10 @@ private fun RowValueInput(row: RowState, viewModel: PostViewModel, onChange: (Ro
         )
         row.type == TYPE_DIMENSIONS -> DimensionInputs(row, onChange)
         row.key == "condition" && row.kind == KIND_BUILTIN ->
-            ConditionChoices(
+            ConditionDropdown(
                 selected = row.value,
-                onSelect = { onChange(row.copy(value = if (row.value == it) "" else it)) },
+                onSelect = { onChange(row.copy(value = it)) },
+                anyLabel = stringResource(R.string.editor_condition_any),
             )
         row.optionField != null -> OptionValueInput(row, viewModel, onChange)
         else -> OutlinedTextField(
@@ -376,31 +419,32 @@ private fun OptionValueInput(row: RowState, viewModel: PostViewModel, onChange: 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RequestControls(row: RowState, onChange: (RowState) -> Unit) {
-    SingleChoiceSegmentedButtonRow {
-        listOf(true to R.string.editor_hard, false to R.string.editor_soft).forEachIndexed { i, (hard, name) ->
-            SegmentedButton(
-                selected = row.hard == hard,
-                onClick = { onChange(row.copy(hard = hard)) },
-                shape = SegmentedButtonDefaults.itemShape(i, 2),
-            ) { Text(stringResource(name)) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
+            listOf(true to R.string.editor_hard, false to R.string.editor_soft).forEachIndexed { i, (hard, name) ->
+                SegmentedButton(
+                    selected = row.hard == hard,
+                    onClick = { onChange(row.copy(hard = hard)) },
+                    shape = SegmentedButtonDefaults.itemShape(i, 2),
+                ) { Text(stringResource(name)) }
+            }
+        }
+        // Only a soft field has an importance; the empty space keeps the toggle the same width.
+        if (row.hard) {
+            Spacer(Modifier.weight(1f))
+        } else {
+            ChoiceDropdown(
+                selected = row.importance.toString(),
+                options = (MIN_IMPORTANCE..MAX_IMPORTANCE).map { it.toString() to it.toString() },
+                onSelect = { onChange(row.copy(importance = it.toInt())) },
+                modifier = Modifier.weight(1f),
+                buttonText = stringResource(R.string.editor_importance, row.importance, MAX_IMPORTANCE),
+            )
         }
     }
-    Text(
-        if (row.hard) {
-            stringResource(R.string.field_must_have)
-        } else {
-            stringResource(R.string.editor_importance, row.importance, MAX_IMPORTANCE)
-        },
-        style = MaterialTheme.typography.bodySmall,
-    )
-    Slider(
-        value = row.importance.toFloat(),
-        onValueChange = { onChange(row.copy(importance = it.toInt().coerceIn(MIN_IMPORTANCE, MAX_IMPORTANCE))) },
-        valueRange = MIN_IMPORTANCE.toFloat()..MAX_IMPORTANCE.toFloat(),
-        // The stops between the two ends, so the slider snaps to whole numbers.
-        steps = MAX_IMPORTANCE - MIN_IMPORTANCE - 1,
-        enabled = !row.hard,
-    )
 }
 
 @Composable
