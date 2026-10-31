@@ -122,7 +122,7 @@ describe('Unmocked: unique indexes', () => {
   // Input: two listing-only deals and two request-only deals
   // Expected behavior: a null post is not unique, so none of the deals collide
   // Expected output: 4 deals stored
-  test('Deals Can Share A Missing Post', async () => {
+  test('Listing-Only And Request-Only Deals Do Not Collide', async () => {
     await makeDeal(mongo.store, { sellerId: ME, buyerId: OTHER }, { listingId: 'l1' });
     await makeDeal(mongo.store, { sellerId: ME, buyerId: OTHER }, { listingId: 'l2' });
     await makeDeal(mongo.store, { sellerId: ME, buyerId: OTHER }, { requestId: 'r1' });
