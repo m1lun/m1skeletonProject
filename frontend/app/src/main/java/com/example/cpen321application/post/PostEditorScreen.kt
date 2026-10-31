@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -46,6 +47,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -164,6 +167,11 @@ private fun AddressField(viewModel: PostViewModel) {
         label = { Text(stringResource(R.string.editor_address)) },
         singleLine = true,
         isError = viewModel.showAddressError,
+        trailingIcon = if (viewModel.searchingAddress) {
+            { AddressSpinner() }
+        } else {
+            null
+        },
         supportingText = { Text(stringResource(addressHint(viewModel))) },
         modifier = Modifier.fillMaxWidth(),
     )
@@ -185,6 +193,17 @@ private fun AddressField(viewModel: PostViewModel) {
             }
         }
     }
+}
+
+@Composable
+private fun AddressSpinner() {
+    val description = stringResource(R.string.cd_searching_address)
+    CircularProgressIndicator(
+        modifier = Modifier
+            .size(20.dp)
+            .semantics { contentDescription = description },
+        strokeWidth = 2.dp,
+    )
 }
 
 @StringRes

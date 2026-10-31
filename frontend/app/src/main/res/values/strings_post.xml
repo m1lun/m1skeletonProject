@@ -11,6 +11,7 @@
     <!-- Shared actions -->
     <string name="cd_back">Back</string>
     <string name="cd_more_options">More options</string>
+    <string name="cd_searching_address">Searching for addresses</string>
     <string name="action_edit">Edit</string>
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
