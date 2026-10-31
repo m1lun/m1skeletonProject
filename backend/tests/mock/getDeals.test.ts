@@ -41,7 +41,13 @@ function rejecting(target: unknown, method: string): jest.SpyInstance {
   return spy.mockRejectedValue(FAILURE);
 }
 
+// Interface GET /api/deals
 describe('Mocked: GET /api/deals', () => {
+  // Mocked behavior: the store method named in each row rejects with Error('MongoDB is unreachable')
+  // Input: GET /api/deals as ME with one deal on a listing and a request
+  // Expected status code: 500
+  // Expected behavior: the error is handled, the store method is called once, and the deal is unchanged
+  // Expected output: { error: 'Internal Server Error' }
   test.each<ReadCase>([
     { label: 'deals.listByUser', install: (store, spies) => { spies.push(rejecting(store.deals, 'listByUser')); } },
     { label: 'ratings.listByDeals', install: (store, spies) => { spies.push(rejecting(store.ratings, 'listByDeals')); } },

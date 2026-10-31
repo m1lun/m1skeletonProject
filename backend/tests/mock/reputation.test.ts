@@ -28,7 +28,13 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
+// Interface GET /api/users/:id/reputation
 describe('Mocked: GET /api/users/:id/reputation', () => {
+  // Mocked behavior: reputations.find rejects with Error('MongoDB is unreachable')
+  // Input: GET for OTHER, who has one rating of 4 stars
+  // Expected status code: 500
+  // Expected behavior: the error is handled, the method is called once, and the reputation stays stored
+  // Expected output: { error: 'Internal Server Error' }
   test('reputations.find Throws: 500', async () => {
     await makeReputation(mongo.store, OTHER, [4]);
     const find = jest.spyOn(mongo.store.reputations, 'find').mockRejectedValue(new Error('MongoDB is unreachable'));

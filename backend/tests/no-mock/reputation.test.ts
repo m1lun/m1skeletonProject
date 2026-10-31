@@ -30,7 +30,12 @@ function getReputation(userId: string, caller = ME): request.Test {
 interface TokenCase { label: string; header: string | undefined; error: string }
 interface ScoreCase { label: string; stars: number[]; score: number | null; ratingCount: number }
 
+// Interface GET /api/users/:id/reputation
 describe('Unmocked: GET /api/users/:id/reputation', () => {
+  // Input: GET request with no Authorization header, or with a token that is not a valid JWT (see table)
+  // Expected status code: 401
+  // Expected behavior: request is rejected before the database is read
+  // Expected output: { error } naming the auth problem
   test.each([
     { label: 'No Token', header: undefined, error: 'Missing Authorization: Bearer <session token> header' },
     { label: 'Garbage Token', header: 'Bearer not-a-token', error: 'Invalid or expired session token' },
@@ -42,6 +47,10 @@ describe('Unmocked: GET /api/users/:id/reputation', () => {
     expect(response.body).toStrictEqual({ error });
   });
 
+  // Input: GET for OTHER with no ratings, ratings [5, 3], or ratings [5, 4]
+  // Expected status code: 200
+  // Expected behavior: score is the average of the ratings, or null when there are none
+  // Expected output: { userId, score, ratingCount }
   test.each([
     { label: 'Never Rated', stars: [], score: null, ratingCount: 0 },
     { label: 'Whole Average', stars: [5, 3], score: 4, ratingCount: 2 },

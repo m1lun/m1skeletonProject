@@ -90,7 +90,12 @@ interface QueryCase { label: string; query: string; details: string[] }
 const LIMIT_ERROR = 'limit must be a whole number from 1 to 50';
 const BEFORE_ERROR = 'before must be the nextCursor from a previous page';
 
+// Interface GET /api/deals
 describe('Unmocked: GET /api/deals', () => {
+  // Input: GET request with no Authorization header, or with a token that is not a valid JWT (see table)
+  // Expected status code: 401
+  // Expected behavior: request is rejected before the database is read
+  // Expected output: { error } naming the auth problem
   test.each([
     { label: 'No Token', header: undefined, error: 'Missing Authorization: Bearer <session token> header' },
     { label: 'Garbage Token', header: 'Bearer not-a-token', error: 'Invalid or expired session token' },
@@ -102,6 +107,10 @@ describe('Unmocked: GET /api/deals', () => {
     expect(response.body).toStrictEqual({ error });
   });
 
+  // Input: GET /api/deals as a user who has no deals
+  // Expected status code: 200
+  // Expected behavior: nothing is returned and no next page is offered
+  // Expected output: { deals: [], nextCursor: null }
   test('No Deals', async () => {
     const response = await getDeals();
 
@@ -109,6 +118,10 @@ describe('Unmocked: GET /api/deals', () => {
     expect(response.body).toStrictEqual({ deals: [], nextCursor: null });
   });
 
+  // Input: GET /api/deals as the seller, or as the buyer when the seller has ratings [5, 4]
+  // Expected status code: 200
+  // Expected behavior: caller's role is reported and otherUser is the other party with their score
+  // Expected output: one deal with role, listing, request: null, otherUser and null ratings
   test.each([
     { label: 'Seller', sellerId: ME, buyerId: OTHER, role: 'seller', otherStars: [], score: null, ratingCount: 0 },
     { label: 'Buyer', sellerId: OTHER, buyerId: ME, role: 'buyer', otherStars: [5, 4], score: 4.5, ratingCount: 2 },
@@ -140,6 +153,10 @@ describe('Unmocked: GET /api/deals', () => {
     });
   });
 
+  // Input: GET /api/deals as ME when the only deal is between OTHER and STRANGER
+  // Expected status code: 200
+  // Expected behavior: deals the caller is not part of are not returned
+  // Expected output: { deals: [], nextCursor: null }
   test('Other Users Deals Are Hidden', async () => {
     await dealOnNewListing(OTHER, STRANGER);
 
@@ -149,6 +166,10 @@ describe('Unmocked: GET /api/deals', () => {
     expect(response.body).toStrictEqual({ deals: [], nextCursor: null });
   });
 
+  // Input: 5 deals, fetched with limit=2 and then before=<nextCursor> twice
+  // Expected status code: 200
+  // Expected behavior: deals come newest first with none repeated or skipped
+  // Expected output: pages of 2, 2 and 1 deals; the last nextCursor is null
   test('Pages Newest First', async () => {
     const made: Deal[] = [];
     for (let count = 0; count < 5; count += 1) {
@@ -169,6 +190,10 @@ describe('Unmocked: GET /api/deals', () => {
     expect(page3.body).toMatchObject({ nextCursor: null });
   });
 
+  // Input: 2 deals, fetched with limit=2
+  // Expected status code: 200
+  // Expected behavior: no next page is offered when the last deal is on this page
+  // Expected output: 2 deals and nextCursor: null
   test('Page That Fits Exactly', async () => {
     await dealOnNewListing();
     await dealOnNewListing();
@@ -180,6 +205,10 @@ describe('Unmocked: GET /api/deals', () => {
     expect(response.body).toMatchObject({ nextCursor: null });
   });
 
+  // Input: a deal with a listing and a request, a listing only, or a request only
+  // Expected status code: 200
+  // Expected behavior: title comes from the listing when there is one, otherwise the request
+  // Expected output: deal with title, and listing and request summaries or null
   test.each([
     { label: 'A Listing And A Request', listing: true, request: true, title: 'chair' },
     { label: 'A Listing Only', listing: true, request: false, title: 'chair' },
@@ -203,6 +232,10 @@ describe('Unmocked: GET /api/deals', () => {
     ]);
   });
 
+  // Input: a deal whose request has no photos
+  // Expected status code: 200
+  // Expected behavior: a missing photo is not an error
+  // Expected output: request summary with photoId: null
   test('Request Without A Photo', async () => {
     const buyerRequest = await makeRequest(mongo.store, OTHER, { photoIds: [] });
     await makeDeal(mongo.store, { sellerId: ME, buyerId: OTHER }, { requestId: buyerRequest.id });
@@ -213,6 +246,10 @@ describe('Unmocked: GET /api/deals', () => {
     expect(dealsOf(response)).toMatchObject([{ request: { id: buyerRequest.id, category: 'chair', photoId: null } }]);
   });
 
+  // Input: a deal rated by nobody, by ME, by OTHER, or by both
+  // Expected status code: 200
+  // Expected behavior: each rating is reported on the correct side
+  // Expected output: myRating and theirRating, each { stars, comment, createdAt } or null
   test.each([
     { label: 'Nobody Has Rated', byMe: false, byThem: false },
     { label: 'Only I Rated', byMe: true, byThem: false },
@@ -238,6 +275,10 @@ describe('Unmocked: GET /api/deals', () => {
     ]);
   });
 
+  // Input: a deal whose listing or request was deleted from the database
+  // Expected status code: 200
+  // Expected behavior: the deal is still returned rather than failing
+  // Expected output: deal with title: '', listing: null, request: null
   test.each<GoneCase>([
     { label: 'Listing', post: 'listings' },
     { label: 'Request', post: 'requests' },
@@ -253,6 +294,10 @@ describe('Unmocked: GET /api/deals', () => {
     expect(dealsOf(response)).toMatchObject([{ id: deal.id, title: '', listing: null, request: null }]);
   });
 
+  // Input: limit=1 and limit=50, the smallest and largest allowed values
+  // Expected status code: 200
+  // Expected behavior: limit is accepted
+  // Expected output: the 1 stored deal
   test.each(['1', '50'])('Limit %s Is Allowed', async (limit) => {
     await dealOnNewListing();
 
@@ -262,6 +307,10 @@ describe('Unmocked: GET /api/deals', () => {
     expect(dealsOf(response)).toHaveLength(1);
   });
 
+  // Input: an invalid limit or before, an operator in a parameter name, or an unknown parameter (see table)
+  // Expected status code: 400
+  // Expected behavior: request is rejected and no deals are returned
+  // Expected output: { error: 'Invalid request', details } naming the bad parameter
   test.each([
     { label: 'Limit 0', query: '?limit=0', details: [LIMIT_ERROR] },
     { label: 'Limit 51', query: '?limit=51', details: [LIMIT_ERROR] },
