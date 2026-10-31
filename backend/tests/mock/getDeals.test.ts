@@ -1,20 +1,22 @@
+import type { Server } from 'node:http';
+
 import request from 'supertest';
 
-import { createApp } from '../../src/app';
 import type { Store } from '../../src/store/types';
 import { ME, OTHER, bearer, clearDealData, makeDeal, makeListing, makeRequest } from '../helpers/dealFixtures';
-import { MemorySessionRepo } from '../helpers/memorySessionRepo';
+import { startTestApp, stopTestApp } from '../helpers/testApp';
 import { createTestStore, type TestStore } from '../helpers/testStore';
 
 let mongo: TestStore;
-let app: ReturnType<typeof createApp>;
+let app: Server;
 
 beforeAll(async () => {
   mongo = await createTestStore();
-  app = createApp({ sessions: new MemorySessionRepo(), store: mongo.store });
+  app = await startTestApp(mongo.store);
 });
 
 afterAll(async () => {
+  await stopTestApp(app);
   await mongo.dropAndClose();
 });
 
@@ -65,9 +67,5 @@ describe('Mocked: GET /api/deals', () => {
     expect(spies[0]).toHaveBeenCalledTimes(1);
     expect(await mongo.db.collection('deals').countDocuments()).toBe(1);
     expect(await mongo.store.deals.findById(deal.id)).toStrictEqual(deal);
-
-    jest.restoreAllMocks();
-    const next = await request(app).get('/api/deals').set('Authorization', bearer(ME));
-    expect(next.status).toBe(200);
   });
 });

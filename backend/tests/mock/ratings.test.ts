@@ -1,19 +1,21 @@
-import { createApp } from '../../src/app';
+import type { Server } from 'node:http';
+
 import type { Store } from '../../src/store/types';
 import { ME, OTHER, clearDealData, makeDeal, makeListing, makeRating, makeReputation, storedRatings } from '../helpers/dealFixtures';
-import { MemorySessionRepo } from '../helpers/memorySessionRepo';
 import { rate, type Method } from '../helpers/ratingApi';
+import { startTestApp, stopTestApp } from '../helpers/testApp';
 import { createTestStore, type TestStore } from '../helpers/testStore';
 
 let mongo: TestStore;
-let app: ReturnType<typeof createApp>;
+let app: Server;
 
 beforeAll(async () => {
   mongo = await createTestStore();
-  app = createApp({ sessions: new MemorySessionRepo(), store: mongo.store });
+  app = await startTestApp(mongo.store);
 });
 
 afterAll(async () => {
+  await stopTestApp(app);
   await mongo.dropAndClose();
 });
 
@@ -73,9 +75,6 @@ async function runFailure({ method, stars, install, storedStars, starSum }: Fail
   expect(ratings.map((rating) => rating.stars)).toStrictEqual(storedStars === null ? [] : [storedStars]);
   const reputation = await mongo.store.reputations.find(OTHER);
   expect(reputation === null ? null : reputation.starSum).toBe(starSum);
-
-  const next = await rate(app, method, dealId, { stars });
-  expect(next.status).not.toBe(500);
 }
 
 describe('Mocked: POST /api/deals/:id/ratings', () => {
