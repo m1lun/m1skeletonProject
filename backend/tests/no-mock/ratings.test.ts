@@ -73,6 +73,10 @@ async function dataOf(): Promise<unknown> {
 function sharedCases(method: Method): void {
   const status = method === 'POST' ? 201 : 200;
 
+  // Input: { stars: 4 } with no Authorization header, or with a token that is not a valid JWT
+  // Expected status code: 401
+  // Expected behavior: database is unchanged
+  // Expected output: { error } naming the auth problem
   test.each([
     { label: 'No Token', auth: null, error: 'Missing Authorization: Bearer <session token> header' },
     { label: 'Garbage Token', auth: 'Bearer not-a-token', error: 'Invalid or expired session token' },
@@ -87,6 +91,10 @@ function sharedCases(method: Method): void {
     expect(await dataOf()).toStrictEqual(before);
   });
 
+  // Input: stars out of range, fractional, text, null, missing, infinite, or an object (see table)
+  // Expected status code: 400
+  // Expected behavior: database is unchanged
+  // Expected output: { error: 'Invalid request', details: [stars error] }
   test.each([
     { label: 'Stars 0', stars: '0' },
     { label: 'Stars 6', stars: '6' },
@@ -107,6 +115,10 @@ function sharedCases(method: Method): void {
     expect(await dataOf()).toStrictEqual(before);
   });
 
+  // Input: { stars: 4 } with a comment that is over 300 characters, a number, or an object
+  // Expected status code: 400
+  // Expected behavior: database is unchanged
+  // Expected output: { error: 'Invalid request', details: [comment error] }
   test.each([
     { label: 'Comment Over 300 Characters', comment: JSON.stringify('x'.repeat(301)) },
     { label: 'Comment As Number', comment: '5' },
@@ -122,6 +134,10 @@ function sharedCases(method: Method): void {
     expect(await dataOf()).toStrictEqual(before);
   });
 
+  // Input: a JSON array, a text/plain body, or malformed JSON
+  // Expected status code: 400
+  // Expected behavior: database is unchanged
+  // Expected output: { error: 'Invalid request', details } or { error: 'Malformed request body' }
   test.each([
     { label: 'Body Is An Array', raw: '[{"stars":4}]', type: 'application/json', status: 400, body: { error: 'Invalid request', details: [BODY_ERROR, STARS_ERROR] } },
     { label: 'Body Is Plain Text', raw: 'stars=4', type: 'text/plain', status: 400, body: { error: 'Invalid request', details: [BODY_ERROR, STARS_ERROR] } },
@@ -137,6 +153,10 @@ function sharedCases(method: Method): void {
     expect(await dataOf()).toStrictEqual(before);
   });
 
+  // Input: { stars: 4 } from STRANGER, who is neither the buyer nor the seller
+  // Expected status code: 403
+  // Expected behavior: database is unchanged
+  // Expected output: { error: 'Forbidden' }
   test(`Not A Party To The Deal: 403`, async () => {
     const deal = await dealWithRating(method);
     const before = await dataOf();
@@ -148,6 +168,10 @@ function sharedCases(method: Method): void {
     expect(await dataOf()).toStrictEqual(before);
   });
 
+  // Input: { stars: 4 } on an id with no deal, or an id that is not a valid ObjectId
+  // Expected status code: 404
+  // Expected behavior: database is unchanged
+  // Expected output: { error: 'Not Found' }
   test.each([
     { label: 'Unknown Deal', id: UNKNOWN_ID },
     { label: 'Malformed Id', id: 'nope' },
@@ -163,6 +187,10 @@ function sharedCases(method: Method): void {
     expect(await dataOf()).toStrictEqual(before);
   });
 
+  // Input: { stars: 4 } with a 300 character comment, a comment with surrounding spaces, or no comment
+  // Expected status code: 201 for POST, 200 for PUT
+  // Expected behavior: comment is stored trimmed, or as '' when omitted
+  // Expected output: { rating, otherUser } with the stored comment
   test.each([
     { label: 'Exactly 300 Characters', body: { stars: 4, comment: 'x'.repeat(300) }, comment: 'x'.repeat(300) },
     { label: 'Surrounding Whitespace Trimmed', body: { stars: 4, comment: '  fine  ' }, comment: 'fine' },
@@ -177,6 +205,10 @@ function sharedCases(method: Method): void {
     expect(await storedRatings(mongo.db)).toMatchObject([{ comment }]);
   });
 
+  // Input: { stars: 4, ratedUserId: STRANGER }
+  // Expected status code: 400
+  // Expected behavior: database is unchanged and STRANGER gets no reputation
+  // Expected output: { error: 'Invalid request', details: ['unsupported field "ratedUserId"'] }
   test('Unknown Field: 400', async () => {
     const deal = await dealWithRating(method);
     const before = await dataOf();
@@ -190,9 +222,14 @@ function sharedCases(method: Method): void {
   });
 }
 
+// Interface POST /api/deals/:id/ratings
 describe('Unmocked: POST /api/deals/:id/ratings', () => {
   sharedCases('POST');
 
+  // Input: { stars: 3, comment: 'Fine' } from the seller or the buyer, when the other party has one 5 star rating
+  // Expected status code: 201
+  // Expected behavior: rating is stored against the other party and their reputation becomes 8 stars from 2 ratings
+  // Expected output: { rating, otherUser: { id, score: 4, ratingCount: 2 } }
   test.each([
     { label: 'Seller Rates', sellerId: ME, buyerId: OTHER },
     { label: 'Buyer Rates', sellerId: OTHER, buyerId: ME },
@@ -220,6 +257,10 @@ describe('Unmocked: POST /api/deals/:id/ratings', () => {
     expect(await mongo.store.reputations.find(OTHER)).toMatchObject({ starSum: 8, ratingCount: 2 });
   });
 
+  // Input: { stars: 1 } from ME, who already rated this deal 5 stars
+  // Expected status code: 409
+  // Expected behavior: first rating and reputation are unchanged
+  // Expected output: { error: 'You already rated this deal' }
   test('Second Rating Of The Same Deal: 409', async () => {
     const deal = await dealWithRating('POST');
     await rate(app, 'POST', deal.id, { stars: 5, comment: 'First' });
@@ -233,6 +274,10 @@ describe('Unmocked: POST /api/deals/:id/ratings', () => {
     expect(await storedRatings(mongo.db)).toMatchObject([{ stars: 5, comment: 'First' }]);
   });
 
+  // Input: { stars: 5 } from ME, then { stars: 2 } from OTHER, on one deal
+  // Expected status code: 201
+  // Expected behavior: both ratings are stored and each party gets the other's stars
+  // Expected output: { rating, otherUser } for each request
   test('Both Parties Rate The Same Deal', async () => {
     const deal = await dealWithRating('POST');
 
@@ -251,9 +296,14 @@ describe('Unmocked: POST /api/deals/:id/ratings', () => {
   });
 });
 
+// Interface PUT /api/deals/:id/ratings
 describe('Unmocked: PUT /api/deals/:id/ratings', () => {
   sharedCases('PUT');
 
+  // Input: { stars: 5, comment: 'Better' } when ME rated this deal 3 stars
+  // Expected status code: 200
+  // Expected behavior: rating is replaced, createdAt is kept, and reputation changes by +2 stars with the count unchanged
+  // Expected output: { rating with updatedAt, otherUser: { id, score: 5, ratingCount: 1 } }
   test('Change 3 Stars To 5', async () => {
     const deal = await dealWithRating('PUT');
     const [seeded] = await storedRatings(mongo.db);
@@ -277,6 +327,10 @@ describe('Unmocked: PUT /api/deals/:id/ratings', () => {
     expect(await mongo.store.reputations.find(OTHER)).toMatchObject({ starSum: 5, ratingCount: 1 });
   });
 
+  // Input: { stars: 3, comment: 'New comment' } when ME rated this deal 3 stars
+  // Expected status code: 200
+  // Expected behavior: comment is replaced and reputation is unchanged
+  // Expected output: { rating, otherUser: { id, score: 3, ratingCount: 1 } }
   test('Same Stars With A New Comment', async () => {
     const deal = await dealWithRating('PUT');
     const before = await mongo.store.reputations.find(OTHER);
@@ -289,6 +343,10 @@ describe('Unmocked: PUT /api/deals/:id/ratings', () => {
     expect(await mongo.store.reputations.find(OTHER)).toStrictEqual(before);
   });
 
+  // Input: { stars: 4 } on a deal ME has not rated
+  // Expected status code: 404
+  // Expected behavior: database is unchanged
+  // Expected output: { error: 'You have not rated this deal' }
   test('Not Rated Yet: 404', async () => {
     const listing = await makeListing(mongo.store, ME);
     const deal = await makeDeal(mongo.store, { sellerId: ME, buyerId: OTHER }, { listingId: listing.id });
@@ -301,6 +359,10 @@ describe('Unmocked: PUT /api/deals/:id/ratings', () => {
     expect(await dataOf()).toStrictEqual(before);
   });
 
+  // Input: { stars: 5, comment: 'Hijacked' } from ME when only OTHER has rated the deal
+  // Expected status code: 404
+  // Expected behavior: OTHER's rating is unchanged
+  // Expected output: { error: 'You have not rated this deal' }
   test('Cannot Edit The Other Partys Rating', async () => {
     const listing = await makeListing(mongo.store, ME);
     const deal = await makeDeal(mongo.store, { sellerId: ME, buyerId: OTHER }, { listingId: listing.id });
@@ -314,6 +376,10 @@ describe('Unmocked: PUT /api/deals/:id/ratings', () => {
     expect(await dataOf()).toStrictEqual(before);
   });
 
+  // Input: { stars: 5 } and { stars: 4 } sent at the same time when ME rated this deal 3 stars
+  // Expected status code: 200
+  // Expected behavior: reputation equals the stored rating, whichever edit finished last
+  // Expected output: { rating, otherUser } for each request
   test('Two Edits At Once Keep The Score Consistent', async () => {
     const deal = await dealWithRating('PUT');
 

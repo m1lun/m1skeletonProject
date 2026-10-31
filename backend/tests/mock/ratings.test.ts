@@ -77,7 +77,13 @@ async function runFailure({ method, stars, install, storedStars, starSum }: Fail
   expect(reputation === null ? null : reputation.starSum).toBe(starSum);
 }
 
+// Interface POST /api/deals/:id/ratings
 describe('Mocked: POST /api/deals/:id/ratings', () => {
+  // Mocked behavior: the store method named in each row rejects with Error('MongoDB is unreachable')
+  // Input: { stars: 4 } from ME on a deal ME has not rated
+  // Expected status code: 500
+  // Expected behavior: the error is handled and the method is called once; if reputations.addRating fails the rating stays stored and no reputation is created
+  // Expected output: { error: 'Internal Server Error' }
   test.each<FailureCase>([
     {
       label: 'deals.findById',
@@ -106,7 +112,13 @@ describe('Mocked: POST /api/deals/:id/ratings', () => {
   ])('$label Throws: 500', runFailure);
 });
 
+// Interface PUT /api/deals/:id/ratings
 describe('Mocked: PUT /api/deals/:id/ratings', () => {
+  // Mocked behavior: the store method named in each row rejects with Error('MongoDB is unreachable')
+  // Input: { stars: 5 } from ME, or { stars: 3 } for reputations.find, when ME rated this deal 3 stars
+  // Expected status code: 500
+  // Expected behavior: the error is handled and the method is called once; if reputations.changeStars fails the rating has its new stars and the reputation is unchanged
+  // Expected output: { error: 'Internal Server Error' }
   test.each<FailureCase>([
     {
       label: 'deals.findById',
