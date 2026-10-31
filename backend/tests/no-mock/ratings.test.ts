@@ -391,8 +391,6 @@ describe('Unmocked: PUT /api/deals/:id/ratings', () => {
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
     const [finalRating] = await storedRatings(mongo.db);
-    const totals = await mongo.store.ratings.statsFor(OTHER);
-    expect(totals).toStrictEqual({ starSum: finalRating?.stars, ratingCount: 1 });
-    expect(await mongo.store.reputations.find(OTHER)).toMatchObject(totals);
+    expect(await mongo.store.reputations.find(OTHER)).toMatchObject({ starSum: finalRating?.stars, ratingCount: 1 });
   });
 });

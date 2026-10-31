@@ -97,7 +97,6 @@ export interface RatingCollection {
   insert(doc: Omit<Rating, 'id'>): Promise<Rating>;
   update(dealId: string, raterId: string, stars: number, comment: string, now: Date): Promise<RatingUpdate | null>;
   listByDeals(dealIds: string[]): Promise<Rating[]>;
-  statsFor(userId: string): Promise<{ starSum: number; ratingCount: number }>;
 }
 
 export interface ReputationCollection {

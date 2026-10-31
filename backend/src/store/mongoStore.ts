@@ -307,16 +307,6 @@ class MongoRatingCollection implements RatingCollection {
       .toArray();
     return toDocs<Rating>(found as unknown[]);
   }
-
-  async statsFor(userId: string): Promise<{ starSum: number; ratingCount: number }> {
-    const [totals] = await this.collection
-      .aggregate<{ starSum: number; ratingCount: number }>([
-        { $match: { ratedUserId: userId } },
-        { $group: { _id: null, starSum: { $sum: '$stars' }, ratingCount: { $sum: 1 } } },
-      ])
-      .toArray();
-    return { starSum: totals?.starSum ?? 0, ratingCount: totals?.ratingCount ?? 0 };
-  }
 }
 
 class MongoReputationCollection implements ReputationCollection {
