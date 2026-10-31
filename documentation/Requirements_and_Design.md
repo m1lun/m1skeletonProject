@@ -25,6 +25,7 @@
 | 2026-10-21 | 2, 3.1, 3.6, 4.1, 4.2, 5 | Restored offers, transactions, live updates and messaging as planned features, reversing the 2026-10-12 removal; requests mark each field hard or soft; added browsing and filtering to Feature 2 and screen mock-ups; marked the user profile store and travel times as planned; added the planned proposals, transactions and messages collections. |
 | 2026-10-21 | 3.7, 4.7 | Filled in the NFR values: 1 second at the 95th percentile with 1,000 candidate posts for feed ranking, the NFR test that measures it, and a 2-second routing timeout so the feed stays within 3 seconds. Justified the 3-second limit of the routing-service NFR. |
 | 2026-10-30 | 3.5, 5 | Posts have a required name of up to 80 characters, entered in the post form and shown as the post's heading with its category underneath. Added the name to Use Case 1 and to the requests and listings data model. |
+| 2026-10-31 | 3.1, 3.3, 3.4, 4.1, 4.2, 4.5, 5 | Added the Deals, Ratings and Reputation feature as built: the Deals tab, rating a deal, editing a rating, and the reputation score. Added the Deals component, its six interfaces, and the deals, ratings and reputations collections. |
 
 ---
 
@@ -48,6 +49,7 @@ The primary audience is buyers who know what they want and would rather be match
 2. **Two-Sided Matching and Recommended Feeds**: Users browse other users' open listings or requests, newest first, and narrow them by category, price and distance. For each of their own open posts they also get recommendations: hard-constraint filtering and soft-preference ranking produce a buyer feed of listings for each request and a seller feed of requests for each listing, with the distance to each. Addresses are picked through the Android Geocoder, and travel times will be computed with the OpenRouteService API *(planned)*.
 3. **Offers, Acceptance, Transactions, and Live Updates**: From a feed, a buyer expresses interest in a listing or a seller sends an offer on a request. The recipient accepts or declines. Accepting creates a transaction, reserves the listing and declines the other pending proposals on it. Every proposal and transaction change appears on the other user's open screen within seconds over a WebSocket connection; Firebase Cloud Messaging adds a background push only when the app is closed.
 4. **Messaging**: Buyers and sellers message each other in the app about a listing or a request, to ask about the item and arrange collection. New messages appear on the other user's open screen without refreshing.
+5. **Deals, Ratings and Reputation**: Users see their deals in a Deals tab, with the agreed price, the listing and request behind each deal, and the other user's score. Either side of a deal can rate the other from 1 to 5 stars with an optional comment, and can edit that rating later. A user's reputation is the average of the ratings they have received. Creating a deal is part of Feature 3 *(planned)*.
 
 Authentication is a baseline requirement of the app rather than a feature: users sign in with Google, and the backend verifies the Google ID token and issues its own session token.
 
@@ -59,8 +61,8 @@ Authentication is a baseline requirement of the app rather than a feature: users
 
 The use case diagram shows a single **User (Buyer or Seller)** actor because every signed-in account can act as both a buyer and a seller and has access to the same use cases; the two roles are described separately below because they post and receive different kinds of posts and proposals.
 
-1. **Buyer**: A signed-in user who posts item requests, reviews recommended listings, expresses interest in listings, responds to offers, and messages sellers.
-2. **Seller**: A signed-in user who posts listings with photos, reviews recommended buyer requests, sends offers on requests, responds to interest, and messages buyers. The same account can act as buyer and seller.
+1. **Buyer**: A signed-in user who posts item requests, reviews recommended listings, expresses interest in listings, responds to offers, messages sellers, and rates sellers after a deal.
+2. **Seller**: A signed-in user who posts listings with photos, reviews recommended buyer requests, sends offers on requests, responds to interest, messages buyers, and rates buyers after a deal. The same account can act as buyer and seller.
 3. **Google Authentication Service** (external): Verifies the user's identity at sign-in.
 4. **OpenRouteService** (external): Computes travel times between the user and recommended posts *(planned)*.
 5. **Firebase Cloud Messaging** (external): Delivers push notifications for new proposals, answers and messages when the app is closed *(planned)*.
@@ -89,6 +91,11 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 **Feature 4: Messaging** *(planned)*
 
 8. **Send and receive messages** ([Use Case 4](#uc4)): Buyers and sellers message each other about a listing or a request, and new messages appear live.
+
+**Feature 5: Deals, Ratings and Reputation**
+
+9. **View deals**: A user opens the Deals tab and sees their deals, newest first, as buyer or seller. Each deal shows its title, agreed price, date, the listing and request it came from, the other user's score, and both ratings. Tapping the listing or request opens it, even if it has since closed. A user with no deals sees "No deals yet". If the deals cannot load, the app shows an error with a way to retry.
+10. **Rate a deal**: A user taps "Rate" on a deal, picks 1 to 5 stars, optionally writes a comment of up to 300 characters, and taps "Submit". The other user's score updates on the card. Each user rates a deal once, with no time limit, and taps "Edit" to change their rating later. If the app says "You already rated this deal" or the server cannot be reached, the rating is not changed by that attempt.
 
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
 
@@ -355,10 +362,29 @@ Both screens are built and will be extended with the planned features: feed item
         3. WebSocket event `message.created`
             - **Purpose**: Deliver a new message to the other user's open app.
 
+6. **Deals**
+    - **Purpose**: Shows each user their deals, lets the two sides of a deal rate each other, and keeps each user's reputation score.
+    - **Rationale**: Kept separate from Posts because a deal links two users and outlives the posts behind it, which may be closed or deleted. Reputation is stored as a running total per user rather than computed from ratings on every read, because the deals list shows a score for every deal on a page; the alternative of averaging ratings per read was rejected because it would add a query for each deal.
+    - **Lifecycle and rules**: Deals have no route that creates them yet; the planned Transactions component will create them, and each deal needs a listing, a request or both. A listing or request can belong to only one deal. Only the buyer and seller of a deal can rate it, each once, with no time limit, and either can edit their own rating. Ratings are never deleted.
+    - **Interfaces**: All routes use the `/api` prefix and require an authenticated session. Failures return `{ error }`, and invalid input returns 400 with `{ error, details }`.
+        1. `GET /api/deals?limit=&before=`
+            - **Purpose**: Return the caller's deals, newest first, each with the caller's role, title, agreed price, listing and request summaries, the other user's score, and both ratings. `limit` is 1 to 50, default 20; `before` is the `nextCursor` of the previous page. A deleted post comes back as null. 400 for a bad or unknown parameter.
+        2. `POST /api/deals/:id/ratings`
+            - **Purpose**: Rate the other side of a deal from JSON `{ stars, comment }`: whole stars from 1 to 5, and an optional comment of up to 300 characters. Returns 201 with `{ rating, otherUser }`. Unknown fields return 400, a body over 4 KB returns 413, a caller outside the deal gets 403, an unknown deal returns 404, and a second rating returns 409.
+        3. `PUT /api/deals/:id/ratings`
+            - **Purpose**: Replace the caller's rating, with the same body and errors as `POST`. Returns 200 with `{ rating, otherUser }`, or 404 if the caller has not rated the deal.
+        4. `GET /api/users/:id/reputation`
+            - **Purpose**: Return `{ userId, score, ratingCount }` for any user. `score` is `starSum / ratingCount`, or null when nobody has rated them. The app does not call this route yet; it reads scores from the deals list.
+        5. `GET /api/feed/listings/:id`
+            - **Purpose**: Return one listing, open or closed, to any signed-in user, so a deal card can open its listing. 404 for a malformed or unknown id. The route sits under `/api/feed`, but the Deals tab is its only caller.
+        6. `GET /api/feed/requests/:id`
+            - **Purpose**: Return one request, open or closed, to any signed-in user, so a deal card can open its request. 404 for a malformed or unknown id. The route sits under `/api/feed`, but the Deals tab is its only caller.
+    - **Known limitation**: A rating and its reputation are written one after the other. If the reputation write fails, the rating stays stored and the user gets a 500, so that rating does not count towards the score, and nothing repairs it.
+
 ### **4.2. Databases**
 
 1. **MongoDB** (self-hosted in Docker on the cloud VM)
-    - **Purpose**: Stores requests, listings, options, custom fields, and sessions, and will store users *(planned)*. Photos for requests and listings are stored in the same database using GridFS (fs.files and fs.chunks), and each post keeps the ids of its photos. Geospatial index on post locations.
+    - **Purpose**: Stores requests, listings, options, custom fields, sessions, deals, ratings and reputations, and will store users *(planned)*. Photos for requests and listings are stored in the same database using GridFS (fs.files and fs.chunks), and each post keeps the ids of its photos. Geospatial index on post locations.
 
 ### **4.3. External Modules**
 
@@ -416,6 +442,7 @@ flowchart LR
         M[Matching]
         T[Transactions]
         MS[Messaging]
+        D[Deals]
     end
     DB[(MongoDB)]
     G[Google identity]
@@ -427,6 +454,7 @@ flowchart LR
     FE --> P
     FE --> M
     FE --> GEO
+    FE --> D
     FE <-.-> T
     FE <-.-> MS
     UA --> G
@@ -435,6 +463,8 @@ flowchart LR
     P --> DB
     M --> UA
     M --> DB
+    D --> UA
+    D --> DB
     M -.-> ORS
     T -.-> UA
     T -.-> DB
@@ -693,6 +723,9 @@ sequenceDiagram
 | proposals *(planned)* | type (interest, offer), senderId, recipientId, listingId, requestId (offers only), status (pending, accepted, declined, withdrawn), createdAt |
 | transactions *(planned)* | proposalId, buyerId, sellerId, listingId, requestId (if any), status (reserved, completed, cancelled), createdAt |
 | messages *(planned)* | proposalId, senderId, text, createdAt |
+| deals | listingId, requestId (either may be null, not both), sellerId, buyerId, agreedPrice, createdAt |
+| ratings | dealId, raterId, ratedUserId, stars (whole number 1 to 5), comment (up to 300 characters), createdAt, updatedAt (only after an edit) |
+| reputations | userId, starSum, ratingCount, updatedAt |
 
 Condition is one of five ordered levels: new, like new, good, fair, poor.
 
@@ -702,5 +735,10 @@ Condition is one of five ordered levels: new, like new, good, fair, poor.
 - Requests allow 0–10 photo IDs and listings 1–10. Actual upload size is at most 5 MiB per file. Post validation checks ID format/count; photo existence and ownership checks are not established by that validation.
 - Categories are normalized, extendable option values rather than a fixed list. Description is supported, up to 2,000 characters. The name, up to 80 characters, is the post's title; posts saved before names were added use their category as the name. Dimensions use cm and radius uses km; CAD remains the intended currency.
 - Unfilled optional editor rows are omitted. Existing post addresses and coordinates are saved with each post. Profile-based defaults are planned. Closed listings are excluded from the current open-listings feed.
+
+**Feature 5 data rules:**
+- A deal must have a listing, a request or both. Unique indexes allow one deal per listing and one per request; deals with a null post do not collide.
+- A unique index on dealId and raterId allows each user one rating per deal. The rated user is always the other side of the deal, taken from the deal rather than the request.
+- Each user has at most one reputation, created by their first rating. Adding a rating updates starSum and ratingCount in one atomic write, so simultaneous ratings all count, and editing a rating adds the star difference to starSum.
 
 Condition values remain, best to worst: new, like new, good, fair, poor.
