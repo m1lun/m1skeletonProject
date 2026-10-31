@@ -44,6 +44,7 @@ import org.junit.rules.ExternalResource
 typealias MainRule = AndroidComposeTestRule<ActivityScenarioRule<MainActivity>, MainActivity>
 
 const val TEST_CATEGORY = "e2e chair"
+const val TEST_NAME = "Test item"
 const val TEST_ADDRESS = "6335 Thunderbird Crescent, Vancouver"
 private const val WAIT_MS = 15_000L
 private const val SUGGESTION_WAIT_MS = 8_000L
@@ -145,7 +146,9 @@ fun MainRule.fillForm(
     price: String? = "150",
     photos: Int = if (form.photoRequired) 1 else 0,
     address: String? = TEST_ADDRESS,
+    name: String? = TEST_NAME,
 ) {
+    name?.let { type("Name *", it) }
     type("Category *", TEST_CATEGORY)
     address?.let { pickAddress(it) }
     price?.let { enterPrice(form, it) }
