@@ -22,8 +22,16 @@ data class FeedItem(
     val photoId: String?,
     val distanceKm: Double?,
     /** The post exactly as the backend returned it; used to open its detail screen. */
-    val raw: JSONObject
+    val raw: JSONObject,
+    /** Null when no travel time was asked for: when browsing, and after the first page of recommendations. */
+    val travel: Travel? = null
 )
+
+sealed interface Travel {
+    data class Minutes(val minutes: Int, val mode: String) : Travel
+    data object NoRoute : Travel
+    data object Unavailable : Travel
+}
 
 data class FeedPage(val items: List<FeedItem>, val nextCursor: String?)
 
@@ -57,7 +65,10 @@ class FeedApi(private val sessions: SessionManager) {
         }
         val paging = listOfNotNull("postId" to recommendedFor.id, cursor?.let { "cursor" to it })
         val body = get("/api/feed", params + paging)
-        return parsePage(body, "matches") { parseItem(it.getJSONObject("post"), it.getDouble("distanceKm")) }
+        val page = JSONObject(body)
+        return parsePage(body, "matches") {
+            parseItem(it.getJSONObject("post"), it.getDouble("distanceKm"), travelOf(it, page, firstPage = cursor == null))
+        }
     }
 
     suspend fun ownOpenPosts(mode: Mode): List<OwnPost> =
@@ -118,7 +129,19 @@ private fun parsePage(body: String, key: String, parse: (JSONObject) -> FeedItem
     return FeedPage(json.getJSONArray(key).objects().map(parse), nextCursor)
 }
 
-private fun parseItem(post: JSONObject, distanceKm: Double?): FeedItem {
+// Only the first page of recommendations asks the routing service for travel times.
+private fun travelOf(match: JSONObject, page: JSONObject, firstPage: Boolean): Travel? = when {
+    page.optBoolean("travelTimesAvailable") ->
+        if (match.isNull("travelMinutes")) {
+            Travel.NoRoute
+        } else {
+            Travel.Minutes(match.getInt("travelMinutes"), page.getString("travelMode"))
+        }
+    firstPage -> Travel.Unavailable
+    else -> null
+}
+
+private fun parseItem(post: JSONObject, distanceKm: Double?, travel: Travel? = null): FeedItem {
     val isRequest = post.has("requestFields")
     return FeedItem(
         id = post.getString("id"),
@@ -130,7 +153,8 @@ private fun parseItem(post: JSONObject, distanceKm: Double?): FeedItem {
         description = post.optString("description"),
         photoId = post.optJSONArray("photoIds")?.optString(0)?.takeIf { it.isNotEmpty() },
         distanceKm = distanceKm,
-        raw = post
+        raw = post,
+        travel = travel
     )
 }
 
