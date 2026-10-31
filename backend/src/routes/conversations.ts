@@ -25,10 +25,12 @@ const OPEN_FIELDS = ['postId', 'postKind'];
 const MESSAGE_FIELDS = ['text'];
 const MESSAGES_PAGE = { fallback: DEFAULT_MESSAGES_PAGE, max: MAX_MESSAGES_PAGE };
 
-// The fields of a listing or request the conversations list shows.
+// The fields of a listing or request the conversations list shows. Posts saved before posts had names
+// have no name, so they show their category, as the store's findById does.
 interface PostView {
   id?: string;
   name?: string;
+  category?: string;
   status?: string;
   photoIds?: string[];
 }
@@ -94,7 +96,7 @@ function conversationView(conversation: Conversation, me: string, lookups: Looku
     post:
       post === undefined
         ? null
-        : { id: conversation.postId, kind: conversation.postKind, name: post.name, status: post.status, photoId: post.photoIds?.[0] ?? null },
+        : { id: conversation.postId, kind: conversation.postKind, name: post.name ?? post.category, status: post.status, photoId: post.photoIds?.[0] ?? null },
     otherUser: lookups.userOf.get(other) ?? { id: other, firstName: '', lastName: '', pictureUrl: null },
     lastMessage: conversation.lastMessage,
     createdAt: conversation.createdAt,
@@ -157,8 +159,8 @@ export function createConversationsRouter(store: Store): Router {
     const others = [...new Set(conversations.map((c) => otherParticipant(c, me)))];
     const [users, listings, requests] = await Promise.all([
       store.users.findPublicByIds(others),
-      store.listings.findByIds(idsOfKind(conversations, 'listing'), ['name', 'status', 'photoIds'], true),
-      store.requests.findByIds(idsOfKind(conversations, 'request'), ['name', 'status', 'photoIds'], true),
+      store.listings.findByIds(idsOfKind(conversations, 'listing'), ['name', 'category', 'status', 'photoIds'], true),
+      store.requests.findByIds(idsOfKind(conversations, 'request'), ['name', 'category', 'status', 'photoIds'], true),
     ]);
     const lookups: Lookups = {
       userOf: new Map(users.map((user) => [user.id, user])),
