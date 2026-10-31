@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -153,18 +154,19 @@ private fun ConditionDropdown(selected: String, onSelect: (String) -> Unit, anyL
     ChoiceDropdown(selected = selected, options = options, onSelect = onSelect)
 }
 
-// A button showing the selected option's label; tapping it opens the list of options.
+// A button showing the selected option's label, or buttonText if given; tapping it opens the list of options.
 @Composable
 private fun ChoiceDropdown(
     selected: String,
     options: List<Pair<String, String>>,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
+    buttonText: String? = null,
 ) {
     var open by remember { mutableStateOf(false) }
     Box(modifier = modifier) {
         OutlinedButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth()) {
-            Text(options.firstOrNull { it.first == selected }?.second.orEmpty())
+            Text(buttonText ?: options.firstOrNull { it.first == selected }?.second.orEmpty())
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             options.forEach { (value, label) ->
@@ -430,21 +432,16 @@ private fun RequestControls(row: RowState, onChange: (RowState) -> Unit) {
                 ) { Text(stringResource(name)) }
             }
         }
-        // Only a soft field has an importance.
+        // Only a soft field has an importance; the empty space keeps the toggle the same width.
         if (row.hard) {
-            Text(
-                stringResource(R.string.field_must_have),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.weight(1f),
-            )
+            Spacer(Modifier.weight(1f))
         } else {
             ChoiceDropdown(
                 selected = row.importance.toString(),
-                options = (MIN_IMPORTANCE..MAX_IMPORTANCE).map {
-                    it.toString() to stringResource(R.string.editor_importance, it, MAX_IMPORTANCE)
-                },
+                options = (MIN_IMPORTANCE..MAX_IMPORTANCE).map { it.toString() to it.toString() },
                 onSelect = { onChange(row.copy(importance = it.toInt())) },
                 modifier = Modifier.weight(1f),
+                buttonText = stringResource(R.string.editor_importance, row.importance, MAX_IMPORTANCE),
             )
         }
     }
