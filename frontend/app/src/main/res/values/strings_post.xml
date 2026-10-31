@@ -42,6 +42,7 @@
     <!-- Post editor -->
     <string name="editor_edit_request">Edit request</string>
     <string name="editor_edit_listing">Edit listing</string>
+    <string name="editor_name">Name *</string>
     <string name="editor_category">Category *</string>
     <string name="editor_price">Price *</string>
     <string name="editor_condition">Condition *</string>
@@ -104,6 +105,7 @@
     <string name="summary_request_title">%1$s · ≤ $%2$s</string>
     <string name="summary_listing_title">%1$s · $%2$s</string>
     <string name="summary_hard_soft">%1$s hard · %2$s soft</string>
+    <string name="summary_category">%1$s · %2$s</string>
 
     <!-- Messages shown when a post can't be saved or loaded -->
     <string name="error_session_expired">Your session has expired. Sign in again.</string>
@@ -119,6 +121,7 @@
     <string name="error_duplicate_field">That field is already on this post</string>
     <string name="error_too_many_photos">At most %1$s photos</string>
     <string name="error_choose_category">Choose a category</string>
+    <string name="error_name_required">Enter a name</string>
     <string name="error_photo_required">Add at least one photo</string>
     <string name="error_price_required">Enter a price</string>
     <string name="error_field_required">%1$s is required</string>

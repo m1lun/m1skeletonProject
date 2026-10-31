@@ -149,9 +149,14 @@ private fun PhotoPager(photoIds: List<String>) {
 @Composable
 private fun DetailSummary(detail: PostDetail) {
     Text(
-        detail.category,
+        detail.name,
         style = MaterialTheme.typography.headlineLarge,
         fontWeight = FontWeight.Bold,
+    )
+    Text(
+        detail.category,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     detail.price?.let {
         Text(
