@@ -41,6 +41,8 @@ function start(store: Store): void {
           process.exitCode = 1;
         });
       });
+      // Live update streams never end on their own, so close() would wait for them forever.
+      server.closeAllConnections();
     });
   }
 }

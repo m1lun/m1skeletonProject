@@ -84,12 +84,12 @@ private fun JSONObject.optPost(key: String): ConversationPost? {
     return ConversationPost(post.getString("id"), post.getString("name"), post.getString("status") == "closed")
 }
 
-private fun parseProposal(json: JSONObject): Proposal = Proposal(
+internal fun parseProposal(json: JSONObject): Proposal = Proposal(
     proposerId = json.getString("proposerId"),
     price = json.getDouble("price"),
     note = json.getString("note"),
     status = ProposalStatus.valueOf(json.getString("status").uppercase())
 )
 
-private fun parseMessage(json: JSONObject): ChatMessage =
+internal fun parseMessage(json: JSONObject): ChatMessage =
     ChatMessage(id = json.getString("id"), senderId = json.getString("senderId"), text = json.getString("text"))

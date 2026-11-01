@@ -135,6 +135,10 @@ Either participant can propose a price. Accepting a proposal makes the deal: it 
 - `POST /api/conversations/:id/proposal/accept`: only the other participant. `201` with `{ "deal", "proposal" }`. `409` if there is no pending proposal, or a post is closed, deleted or already has a deal; `403` if it's your own proposal.
 - `POST /api/conversations/:id/proposal/decline`: only the other participant. `200` with the declined proposal; either side can then propose again. `409` if there is no pending proposal, `403` if it's your own.
 
+Live updates use Server-Sent Events, so they need no extra library.
+
+- `GET /api/events`: needs the session token like any other route, and the response stays open. The server writes `event: <type>` and `data: <JSON>` lines whenever something changes for you, plus a `: ping` comment every 25 seconds so idle connections are not dropped. Events: `message.created` (the new message, when the other participant sends one) and `proposal.updated` (`{ "conversationId", "proposal" }`, when the other participant proposes, accepts or declines). On reconnecting, reload what is on screen, since events sent while disconnected are not replayed.
+
 
 ### Option 1: Run locally
 

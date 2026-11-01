@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 
 import { BadRequestError } from '../errors';
+import { MESSAGE_CREATED, type EventHub } from '../events';
 import { isOneOf } from '../models/common';
 import {
   DEFAULT_MESSAGES_PAGE,
@@ -168,7 +169,7 @@ export async function findMyConversation(store: Store, req: Request, res: Respon
   return conversation;
 }
 
-export function createConversationsRouter(store: Store): Router {
+export function createConversationsRouter(store: Store, events: EventHub): Router {
   const router = Router();
 
   // POST /api/conversations — `{ postId, postKind, myPostId? }` opens the caller's conversation with the owner of
@@ -237,6 +238,7 @@ export function createConversationsRouter(store: Store): Router {
     const createdAt = new Date();
     const message = await store.messages.insert({ conversationId: conversation.id, senderId, text, createdAt });
     await store.conversations.recordMessage(conversation.id, { senderId, text, createdAt });
+    events.publish([otherParticipant(conversation, senderId)], MESSAGE_CREATED, message);
     res.status(201).json(message);
   }));
 

@@ -38,7 +38,6 @@ object MessagesTags {
     const val RETRY = "messages_retry"
     const val CONVERSATION_PREFIX = "messages_conversation_"
     const val BACK = "chat_back"
-    const val CHAT_REFRESH = "chat_refresh"
     const val LOAD_EARLIER = "chat_load_earlier"
     const val INPUT = "chat_input"
     const val SEND = "chat_send"
