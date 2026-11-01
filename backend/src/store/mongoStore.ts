@@ -135,6 +135,17 @@ class MongoPostCollection<T extends PostDoc & { name: string; category: string }
     return stored.map((d) => toPostDoc<T>(d));
   }
 
+  async listCategories(): Promise<string[]> {
+    const categories: unknown = await this.collection.distinct('category');
+    return categories as string[];
+  }
+
+  // Bypasses the validator because posts saved under older rules, such as before posts
+  // had names, would fail it even though only their category is changing.
+  async renameCategory(from: string, to: string): Promise<void> {
+    await this.collection.updateMany({ category: from }, { $set: { category: to } }, { bypassDocumentValidation: true });
+  }
+
   // Uses the { status, category } index.
   async listOpenInCategory(category: string, excludeOwnerId: string): Promise<T[]> {
     const found = await this.collection.find({ status: 'open', category, ownerId: { $ne: excludeOwnerId } }).toArray();
@@ -203,6 +214,10 @@ class MongoOptionCollection implements OptionCollection {
       })),
       { ordered: false },
     );
+  }
+
+  async remove(field: string, key: string): Promise<void> {
+    await this.collection.deleteOne({ field, key });
   }
 }
 

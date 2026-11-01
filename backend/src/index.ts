@@ -6,7 +6,7 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { errorMessage } from './errors';
 import { createMongoStore } from './store/mongoStore';
-import { seedOptions } from './store/seed';
+import { normaliseStoredCategories, seedOptions } from './store/seed';
 import type { Store } from './store/types';
 
 // Certificate paths are string literals so Codacy's
@@ -47,6 +47,7 @@ function start(store: Store): void {
 
 createMongoStore(env.mongoUri, env.mongoDb)
   .then(async (store) => {
+    await normaliseStoredCategories(store);
     await seedOptions(store);
     return store;
   })

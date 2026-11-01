@@ -44,6 +44,9 @@ export interface PostCollection<T extends PostDoc> {
   // Every open post in a category from everyone except excludeOwnerId: the
   // candidates the matching feed filters and ranks.
   listOpenInCategory(category: string, excludeOwnerId: string): Promise<T[]>;
+  // Every category in use, open or closed.
+  listCategories(): Promise<string[]>;
+  renameCategory(from: string, to: string): Promise<void>;
   // One query for a page of posts; only the named fields are returned.
   findByIds(ids: string[], fields: (keyof T)[], firstPhotoOnly?: boolean): Promise<Partial<T>[]>;
 }
@@ -54,6 +57,7 @@ export interface OptionCollection {
   ensure(option: Option): Promise<Option>;
   // Inserts every missing option in a single round trip; existing ones are untouched.
   ensureMany(options: Option[]): Promise<void>;
+  remove(field: string, key: string): Promise<void>;
 }
 
 export interface CustomFieldCollection {

@@ -77,3 +77,55 @@ export function isOneOf<T extends string>(list: readonly T[], value: string): va
 export function normaliseKey(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ');
 }
+
+// Words that only look plural, so they keep their trailing s.
+const NOT_PLURAL = new Set([
+  'atlas',
+  'canvas',
+  'clothes',
+  'cosmetics',
+  'electronics',
+  'jeans',
+  'lens',
+  'news',
+  'pants',
+  'scissors',
+  'series',
+  'shorts',
+  'species',
+  'sports',
+]);
+
+// Plurals the rules in singular would get wrong.
+const IRREGULAR_PLURALS = new Map([
+  ['buses', 'bus'],
+  ['cookies', 'cookie'],
+  ['knives', 'knife'],
+  ['movies', 'movie'],
+  ['shelves', 'shelf'],
+]);
+
+function singular(word: string): string {
+  const irregular = IRREGULAR_PLURALS.get(word);
+  if (irregular !== undefined) {
+    return irregular;
+  }
+  if (NOT_PLURAL.has(word) || word.length <= 3 || /(ss|us|is)$/.test(word)) {
+    return word;
+  }
+  if (word.length > 4 && /[^aeiou]ies$/.test(word)) {
+    return `${word.slice(0, -3)}y`;
+  }
+  if (/(ss|sh|ch|x|z)es$/.test(word)) {
+    return word.slice(0, -2);
+  }
+  return word.endsWith('s') ? word.slice(0, -1) : word;
+}
+
+// A normalised key with its last word made singular, so "Office Chairs" and "office chair"
+// are one category. Only simple plurals are handled; anything else is left as typed.
+export function normaliseCategory(text: string): string {
+  const key = normaliseKey(text);
+  const lastWord = key.lastIndexOf(' ') + 1;
+  return key.slice(0, lastWord) + singular(key.slice(lastWord));
+}

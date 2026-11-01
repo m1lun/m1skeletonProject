@@ -11,7 +11,7 @@ export interface Option {
 }
 
 export const DEFAULT_OPTIONS: Record<string, string[]> = {
-  category: ['furniture', 'electronics', 'clothing', 'books', 'sports', 'other'],
+  category: ['furniture', 'electronics', 'clothing', 'book', 'sports', 'other'],
   colour: ['black', 'white', 'grey', 'brown', 'blue', 'red', 'green', 'other'],
   brand: [],
 };
