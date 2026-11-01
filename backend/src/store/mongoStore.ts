@@ -136,7 +136,8 @@ class MongoPostCollection<T extends PostDoc & { name: string; category: string }
   }
 
   async listCategories(): Promise<string[]> {
-    return this.collection.distinct('category');
+    const categories: unknown = await this.collection.distinct('category');
+    return categories as string[];
   }
 
   // Bypasses the validator because posts saved under older rules, such as before posts
