@@ -18,6 +18,9 @@ export interface Weights {
 // Used until the viewer has saved preferences.
 export const DEFAULT_WEIGHTS: Weights = { price: 3, condition: 3, distance: 3, match: 3 };
 
+// How much a soft preference counts when it has no importance set, on the scale of 1 to 5.
+const DEFAULT_IMPORTANCE = 3;
+
 // The score when there is nothing to compare, such as a preferred brand the listing left blank.
 const NEUTRAL = 0.5;
 
@@ -104,7 +107,8 @@ function preferenceScore(field: RequestField, listing: Listing): number {
 }
 
 // The share of the buyer's soft preferences (brand, colour, size, custom fields) the
-// listing meets. Hard fields are left out: every candidate already meets them.
+// listing meets, each counted by its importance. Hard fields are left out: every
+// candidate already meets them.
 function matchScore(request: BuyerRequest, listing: Listing): number {
   const preferences = request.requestFields.filter(
     (field) => !field.hard && !SCORED_SEPARATELY.includes(field.key)
@@ -112,8 +116,9 @@ function matchScore(request: BuyerRequest, listing: Listing): number {
   if (preferences.length === 0) {
     return NEUTRAL;
   }
-  const total = preferences.reduce((sum, field) => sum + preferenceScore(field, listing), 0);
-  return total / preferences.length;
+  const importanceOf = (field: RequestField): number => field.importance ?? DEFAULT_IMPORTANCE;
+  const total = preferences.reduce((sum, field) => sum + importanceOf(field) * preferenceScore(field, listing), 0);
+  return total / preferences.reduce((sum, field) => sum + importanceOf(field), 0);
 }
 
 // Scores each candidate on price, condition, distance and match, from 0 to 1 except that
