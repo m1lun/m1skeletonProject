@@ -11,6 +11,7 @@ import { createListingsRouter } from './routes/listings';
 import { createPhotosRouter } from './routes/photos';
 import { createRatingsRouter, createReputationRouter, ratingBodyTooLarge } from './routes/ratings';
 import { createOptionsRouter } from './routes/options';
+import { createProposalsRouter } from './routes/proposals';
 import { createRequestsRouter } from './routes/requests';
 import { createUsersRouter } from './routes/users';
 import { endSession, refreshSession, requireAuth, startSession, type AuthResponse } from './sessions';
@@ -100,7 +101,7 @@ export function createApp({ sessions, store }: AppDeps): Express {
     app.use('/api/options', ...posts, createOptionsRouter(store));
     app.use('/api/custom-fields', ...posts, createCustomFieldsRouter(store));
     app.use('/api/photos', createPhotosRouter(store.photos));
-    app.use('/api/conversations', express.json({ limit: '16kb' }), requireAuth, createConversationsRouter(store), ratingBodyTooLarge);
+    app.use('/api/conversations', express.json({ limit: '16kb' }), requireAuth, createConversationsRouter(store), createProposalsRouter(store), ratingBodyTooLarge);
   }
 
   app.use((_req, res) => {

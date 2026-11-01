@@ -20,7 +20,7 @@ import {
   POST_STATUSES,
   RESERVED_KEYS,
 } from './common';
-import { MAX_MESSAGE_LENGTH, POST_KINDS } from './conversation';
+import { MAX_MESSAGE_LENGTH, MAX_NOTE_LENGTH, POST_KINDS, PROPOSAL_STATUSES } from './conversation';
 
 // Every listed property is required unless it is named in `optional`.
 function object(properties: Record<string, Document>, optional: string[] = [], rules: Document = {}): Document {
@@ -197,9 +197,16 @@ export const conversationSchema = object({
   buyerId: text(),
   postKind: { enum: [...POST_KINDS] },
   lastMessage: { anyOf: [{ bsonType: 'null' }, object({ senderId: text(), text: messageText, createdAt: date })] },
+  proposal: object({
+    proposerId: text(),
+    price: { bsonType: 'number', minimum: 0 },
+    note: { bsonType: 'string', maxLength: MAX_NOTE_LENGTH },
+    status: { enum: [...PROPOSAL_STATUSES] },
+    createdAt: date,
+  }),
   createdAt: date,
   updatedAt: date,
-});
+}, ['proposal']);
 
 export const messageSchema = object({
   conversationId: text(),

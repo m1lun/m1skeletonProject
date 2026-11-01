@@ -41,7 +41,7 @@ interface Lookups {
   requestOf: Map<string, PostView>;
 }
 
-function bodyFields(body: unknown, allowed: string[]): { fields: Body; errors: string[] } {
+export function bodyFields(body: unknown, allowed: string[]): { fields: Body; errors: string[] } {
   if (!isObject(body)) {
     return { fields: {}, errors: ['Request body must be a JSON object'] };
   }
@@ -113,6 +113,7 @@ function conversationView(conversation: Conversation, me: string, lookups: Looku
     request: postView(conversation.requestId, lookups.requestOf),
     otherUser: lookups.userOf.get(other) ?? { id: other, firstName: '', lastName: '', pictureUrl: null },
     lastMessage: conversation.lastMessage,
+    proposal: conversation.proposal ?? null,
     createdAt: conversation.createdAt,
     updatedAt: conversation.updatedAt,
   };
@@ -154,7 +155,7 @@ function dealParties(postKind: PostKind, post: PostDoc, me: string, myPostId: st
 }
 
 // The caller's conversation. Sends the 404 or 403 itself and returns null when there is none.
-async function findMyConversation(store: Store, req: Request, res: Response): Promise<Conversation | null> {
+export async function findMyConversation(store: Store, req: Request, res: Response): Promise<Conversation | null> {
   const conversation = await store.conversations.findById(String(req.params.id));
   if (conversation === null) {
     res.status(404).json({ error: 'Not Found' });
