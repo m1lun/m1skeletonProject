@@ -18,8 +18,19 @@ export interface Weights {
 // Used until the viewer has saved preferences.
 export const DEFAULT_WEIGHTS: Weights = { price: 3, condition: 3, distance: 3, match: 3 };
 
+// How much a soft preference counts when it has no importance set, on the scale of 1 to 5.
+const DEFAULT_IMPORTANCE = 3;
+
 // The score when there is nothing to compare, such as a preferred brand the listing left blank.
 const NEUTRAL = 0.5;
+
+// The lowest a price or condition score goes for missing a soft requirement. Hard
+// requirements never get here, since satisfies has already filtered out what misses them.
+const MINIMUM_SOFT_SCORE = -0.5;
+
+// What each step below a soft minimum condition costs, so poor against a minimum of new
+// reaches MINIMUM_SOFT_SCORE.
+const CONDITION_STEP_PENALTY = -MINIMUM_SOFT_SCORE / (CONDITIONS.length - 1);
 
 // Request fields with their own part of the score, so they are left out of the match part.
 const SCORED_SEPARATELY = ['price', 'condition', 'radiuskm'];
@@ -61,20 +72,24 @@ function clamp(score: number): number {
 }
 
 // Cheaper relative to the buyer's maximum is better: free scores 1, the maximum scores 0.
+// Over a soft maximum the score keeps falling, down to MINIMUM_SOFT_SCORE at 50% over.
 function priceScore(request: BuyerRequest, listing: Listing): number {
   const maximum = requestValue(request, 'price');
   if (typeof maximum !== 'number') {
     return NEUTRAL;
   }
   if (maximum === 0) {
-    return listing.price === 0 ? 1 : 0;
+    return listing.price === 0 ? 1 : MINIMUM_SOFT_SCORE;
   }
-  return clamp(1 - listing.price / maximum);
+  return Math.max(MINIMUM_SOFT_SCORE, 1 - listing.price / maximum);
 }
 
-// New scores 1, poor scores 0.
-function conditionScore(listing: Listing): number {
-  return 1 - conditionIndex(listing.condition) / (CONDITIONS.length - 1);
+// New scores 1, poor scores 0, less a penalty for each step below a soft minimum.
+function conditionScore(request: BuyerRequest, listing: Listing): number {
+  const have = conditionIndex(listing.condition);
+  const minimum = conditionIndex(requestValue(request, 'condition'));
+  const stepsBelow = minimum === -1 ? 0 : Math.max(0, have - minimum);
+  return 1 - have / (CONDITIONS.length - 1) - stepsBelow * CONDITION_STEP_PENALTY;
 }
 
 // Nearer is better: the same spot scores 1, the edge of the buyer's radius scores 0.
@@ -92,7 +107,8 @@ function preferenceScore(field: RequestField, listing: Listing): number {
 }
 
 // The share of the buyer's soft preferences (brand, colour, size, custom fields) the
-// listing meets. Hard fields are left out: every candidate already meets them.
+// listing meets, each counted by its importance. Hard fields are left out: every
+// candidate already meets them.
 function matchScore(request: BuyerRequest, listing: Listing): number {
   const preferences = request.requestFields.filter(
     (field) => !field.hard && !SCORED_SEPARATELY.includes(field.key)
@@ -100,12 +116,14 @@ function matchScore(request: BuyerRequest, listing: Listing): number {
   if (preferences.length === 0) {
     return NEUTRAL;
   }
-  const total = preferences.reduce((sum, field) => sum + preferenceScore(field, listing), 0);
-  return total / preferences.length;
+  const importanceOf = (field: RequestField): number => field.importance ?? DEFAULT_IMPORTANCE;
+  const total = preferences.reduce((sum, field) => sum + importanceOf(field) * preferenceScore(field, listing), 0);
+  return total / preferences.reduce((sum, field) => sum + importanceOf(field), 0);
 }
 
-// Scores each candidate from 0 to 1 on price, condition, distance and match, combines
-// the four with the viewer's weights, and orders the best first. A pair scores the same
+// Scores each candidate on price, condition, distance and match, from 0 to 1 except that
+// missing a soft price or condition goes below 0, combines the four with the viewer's
+// weights, and orders the best first. A pair scores the same
 // in both feeds; only the viewer's weights differ. Ties go to the nearer, then the newer post.
 export function rank<T extends Post>(source: Post, candidates: T[], weights: Weights): RankedMatch<T>[] {
   const share = normaliseWeights(weights);
@@ -115,7 +133,7 @@ export function rank<T extends Post>(source: Post, candidates: T[], weights: Wei
       const km = distanceKm(request.location, listing.location);
       const score =
         share.price * priceScore(request, listing) +
-        share.condition * conditionScore(listing) +
+        share.condition * conditionScore(request, listing) +
         share.distance * distanceScore(km, request) +
         share.match * matchScore(request, listing);
       return { post, score, distanceKm: km };
