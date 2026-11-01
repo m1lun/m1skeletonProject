@@ -232,5 +232,17 @@ private fun priceText(item: FeedItem): String {
 private fun detailsText(item: FeedItem): String? {
     val condition = item.condition?.let { stringResource(R.string.feed_condition, it) }
     val distance = item.distanceKm?.let { stringResource(R.string.feed_distance, it) }
-    return listOfNotNull(condition, distance).joinToString(" · ").ifEmpty { null }
+    val travel = item.travel?.let { travelText(it) }
+    return listOfNotNull(condition, distance, travel).joinToString(" · ").ifEmpty { null }
+}
+
+@Composable
+private fun travelText(travel: Travel): String = when (travel) {
+    is Travel.Minutes -> when (travel.mode) {
+        "bike" -> stringResource(R.string.feed_travel_bike, travel.minutes)
+        "drive" -> stringResource(R.string.feed_travel_drive, travel.minutes)
+        else -> stringResource(R.string.feed_travel_walk, travel.minutes)
+    }
+    Travel.NoRoute -> stringResource(R.string.feed_no_route)
+    Travel.Unavailable -> stringResource(R.string.feed_travel_unavailable)
 }

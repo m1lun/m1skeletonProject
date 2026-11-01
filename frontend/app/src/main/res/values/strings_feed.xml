@@ -6,6 +6,11 @@
     <string name="feed_budget">Up to %1$s</string>
     <string name="feed_any_budget">Any budget</string>
     <string name="feed_distance">%1$.1f km away</string>
+    <string name="feed_travel_walk">%1$d min walk</string>
+    <string name="feed_travel_bike">%1$d min by bike</string>
+    <string name="feed_travel_drive">%1$d min drive</string>
+    <string name="feed_no_route">No route available</string>
+    <string name="feed_travel_unavailable">Travel time unavailable</string>
     <string name="btn_retry">Retry</string>
     <string name="btn_refresh">Refresh</string>
     <string name="feed_filters">Filters</string>

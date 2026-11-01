@@ -150,13 +150,13 @@ export function createFeedRouter(store: Store): Router {
     // Only the first page asks for travel times, to stay within the routing service's
     // daily cap. If it fails, the feed is still returned, without them.
     const minutes =
-      offset === 0
-        ? await travelTimes(source.location, page.map((match) => match.post.location), DEFAULT_TRAVEL_MODE).catch(
-            () => []
-          )
-        : [];
+      offset === 0 ? await travelTimes(source.location, page.map((match) => match.post.location), DEFAULT_TRAVEL_MODE) : [];
+    // When travel times are available, a null travelMinutes means there is no route to that post.
+    const travelTimesAvailable = page.length > 0 && minutes.length === page.length;
     res.json({
       matches: page.map((match, index) => ({ ...match, travelMinutes: minutes.at(index) ?? null })),
+      travelMode: DEFAULT_TRAVEL_MODE,
+      travelTimesAvailable,
       nextCursor: end < ranked.length ? String(end) : null,
     });
   }));
