@@ -1,6 +1,7 @@
 import express, { type Express, type Response } from 'express';
 
 import { errorHandler, errorMessage } from './errors';
+import { EventHub } from './events';
 import { verifyGoogleIdToken } from './googleAuth';
 import { isText } from './routes/checks';
 import { createConversationsRouter } from './routes/conversations';
@@ -14,7 +15,7 @@ import { createOptionsRouter } from './routes/options';
 import { createProposalsRouter } from './routes/proposals';
 import { createRequestsRouter } from './routes/requests';
 import { createUsersRouter } from './routes/users';
-import { endSession, refreshSession, requireAuth, startSession, type AuthResponse } from './sessions';
+import { currentUser, endSession, refreshSession, requireAuth, startSession, type AuthResponse } from './sessions';
 import type { SessionRepo, Store } from './store/types';
 
 export interface AppDeps {
@@ -101,7 +102,19 @@ export function createApp({ sessions, store }: AppDeps): Express {
     app.use('/api/options', ...posts, createOptionsRouter(store));
     app.use('/api/custom-fields', ...posts, createCustomFieldsRouter(store));
     app.use('/api/photos', createPhotosRouter(store.photos));
-    app.use('/api/conversations', express.json({ limit: '16kb' }), requireAuth, createConversationsRouter(store), createProposalsRouter(store), ratingBodyTooLarge);
+    const events = new EventHub();
+    // GET /api/events — the caller's live updates as Server-Sent Events; the response stays open.
+    app.get('/api/events', requireAuth, (_req, res) => {
+      events.open(currentUser(res).id, res);
+    });
+    app.use(
+      '/api/conversations',
+      express.json({ limit: '16kb' }),
+      requireAuth,
+      createConversationsRouter(store, events),
+      createProposalsRouter(store, events),
+      ratingBodyTooLarge,
+    );
   }
 
   app.use((_req, res) => {

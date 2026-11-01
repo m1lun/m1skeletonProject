@@ -2,7 +2,8 @@ import { Router } from 'express';
 import type { Response } from 'express';
 
 import { BadRequestError } from '../errors';
-import { MAX_NOTE_LENGTH, type Conversation, type Proposal } from '../models/conversation';
+import { PROPOSAL_UPDATED, type EventHub } from '../events';
+import { MAX_NOTE_LENGTH, otherParticipant, type Conversation, type Proposal } from '../models/conversation';
 import type { Deal } from '../models/deal';
 import type { Listing } from '../models/listing';
 import type { BuyerRequest } from '../models/request';
@@ -86,11 +87,17 @@ async function closePosts(store: Store, posts: DealPosts, now: Date): Promise<vo
   ]);
 }
 
+// Tells the other participant's open chat that the proposal changed.
+function publishProposal(events: EventHub, res: Response, conversation: Conversation, proposal: Proposal): void {
+  const other = otherParticipant(conversation, currentUser(res).id);
+  events.publish([other], PROPOSAL_UPDATED, { conversationId: conversation.id, proposal });
+}
+
 function sendPostGone(res: Response): void {
   res.status(409).json({ error: 'This post is no longer available' });
 }
 
-export function createProposalsRouter(store: Store): Router {
+export function createProposalsRouter(store: Store, events: EventHub): Router {
   const router = Router();
 
   // POST /api/conversations/:id/proposal — `{ price, note? }` proposes a price to the other participant.
@@ -106,6 +113,7 @@ export function createProposalsRouter(store: Store): Router {
       res.status(409).json({ error: 'A proposal is already pending or accepted' });
       return;
     }
+    publishProposal(events, res, conversation, proposal);
     res.status(201).json(proposal);
   }));
 
@@ -133,7 +141,9 @@ export function createProposalsRouter(store: Store): Router {
       return;
     }
     await Promise.all([closePosts(store, posts, now), store.conversations.setProposalStatus(conversation.id, 'accepted')]);
-    res.status(201).json({ deal, proposal: { ...proposal, status: 'accepted' } });
+    const accepted: Proposal = { ...proposal, status: 'accepted' };
+    publishProposal(events, res, conversation, accepted);
+    res.status(201).json({ deal, proposal: accepted });
   }));
 
   // POST /api/conversations/:id/proposal/decline — turns down the pending proposal; either side can then propose again.
@@ -147,7 +157,9 @@ export function createProposalsRouter(store: Store): Router {
       return;
     }
     await store.conversations.setProposalStatus(conversation.id, 'declined');
-    res.json({ ...proposal, status: 'declined' });
+    const declined: Proposal = { ...proposal, status: 'declined' };
+    publishProposal(events, res, conversation, declined);
+    res.json(declined);
   }));
 
   return router;
