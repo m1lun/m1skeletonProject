@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -35,6 +36,8 @@ import com.example.cpen321application.deals.DealsViewModel
 import com.example.cpen321application.feed.FeedTab
 import com.example.cpen321application.feed.FeedViewModel
 import com.example.cpen321application.feed.ownPostOf
+import com.example.cpen321application.messages.MessagesTab
+import com.example.cpen321application.messages.MessagesViewModel
 import com.example.cpen321application.post.AppTab
 import com.example.cpen321application.post.Mode
 import com.example.cpen321application.post.PostDetailScreen
@@ -53,6 +56,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: PostViewModel by viewModels()
     private val feedViewModel: FeedViewModel by viewModels()
     private val dealsViewModel: DealsViewModel by viewModels()
+    private val messagesViewModel: MessagesViewModel by viewModels()
     private val profileViewModel: ProfileViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -132,6 +136,7 @@ class MainActivity : ComponentActivity() {
             }
             viewModel.tab == AppTab.POSTS -> PostScreen(viewModel, innerPadding)
             viewModel.tab == AppTab.DEALS -> DealsTab(dealsViewModel, ::signOut, innerPadding, viewModel::open)
+            viewModel.tab == AppTab.MESSAGES -> MessagesTab(messagesViewModel, ::signOut, innerPadding)
             else -> ProfileTab(profileViewModel, ::signOut, innerPadding) {
                 viewModel.selectMode(it)
                 viewModel.tab = AppTab.POSTS
@@ -159,5 +164,6 @@ private fun AppTab.icon(): ImageVector = when (this) {
     AppTab.FEED -> Icons.Filled.Home
     AppTab.POSTS -> Icons.AutoMirrored.Filled.List
     AppTab.DEALS -> Icons.Filled.ShoppingCart
+    AppTab.MESSAGES -> Icons.Filled.Email
     AppTab.PROFILE -> Icons.Filled.Person
 }
