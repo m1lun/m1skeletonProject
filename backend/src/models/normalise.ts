@@ -1,4 +1,4 @@
-import { normaliseKey, type PostField } from './common';
+import { normaliseCategory, normaliseKey, type PostField } from './common';
 import type { Listing } from './listing';
 import type { BuyerRequest } from './request';
 
@@ -29,7 +29,7 @@ type NewPost<T> = Omit<T, 'id'>;
 function tidyPost<T extends { category: string; description: string; address: string }>(doc: T): T {
   return {
     ...doc,
-    category: normaliseKey(doc.category),
+    category: normaliseCategory(doc.category),
     description: doc.description.trim(),
     address: doc.address.trim(),
   };

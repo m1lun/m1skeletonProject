@@ -1,4 +1,4 @@
-import { normaliseKey } from '../models/common';
+import { normaliseCategory } from '../models/common';
 import type { Listing } from '../models/listing';
 import type { BuyerRequest } from '../models/request';
 import { distanceKm } from '../matching/distance';
@@ -18,7 +18,7 @@ function parseCategory(value: unknown, errors: string[]): string | undefined {
     errors.push('category must not be empty');
     return undefined;
   }
-  return normaliseKey(value);
+  return normaliseCategory(value);
 }
 
 function parseNumber(name: string, value: unknown, min: number, max: number, errors: string[]): number | undefined {

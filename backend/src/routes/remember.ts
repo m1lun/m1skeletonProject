@@ -1,4 +1,4 @@
-import { FIELD_TYPES, isOneOf, normaliseKey, type PostField } from '../models/common';
+import { FIELD_TYPES, isOneOf, normaliseCategory, normaliseKey, type PostField } from '../models/common';
 import type { Option } from '../models/option';
 import type { Store } from '../store/types';
 
@@ -7,9 +7,11 @@ const OPTION_FIELDS = ['brand', 'colour'];
 
 // An option created from a value a user typed, so it is offered to everyone next time.
 export function newOption(field: string, text: string, ownerId: string): Option {
-  const label = text.trim().replace(/\s+/g, ' ');
+  const fieldKey = normaliseKey(field);
+  // A category's option is the category as posts save it, so it is only listed once.
+  const label = fieldKey === 'category' ? normaliseCategory(text) : text.trim().replace(/\s+/g, ' ');
   return {
-    field: normaliseKey(field),
+    field: fieldKey,
     key: normaliseKey(label),
     label,
     builtin: false,
