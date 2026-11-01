@@ -1,6 +1,7 @@
 package com.example.cpen321application.messages
 
 const val MAX_MESSAGE_LENGTH = 1000
+const val MAX_NOTE_LENGTH = 300
 
 data class ConversationPost(val id: String, val name: String, val isClosed: Boolean)
 
@@ -10,8 +11,16 @@ data class Conversation(
     val otherUserName: String,
     val listing: ConversationPost?,
     val request: ConversationPost?,
-    val lastMessage: String?
+    val lastMessage: String?,
+    val proposal: Proposal?
 )
+
+enum class ProposalStatus { PENDING, ACCEPTED, DECLINED }
+
+data class Proposal(val proposerId: String, val price: Double, val note: String, val status: ProposalStatus)
+
+// A proposal change the server turned down, e.g. 409 when the post was sold meanwhile; its message is shown as is.
+class ProposalRejectedException(message: String) : Exception(message)
 
 data class ChatMessage(val id: String, val senderId: String, val text: String)
 

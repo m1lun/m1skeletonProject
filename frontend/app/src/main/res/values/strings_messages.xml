@@ -12,4 +12,15 @@
     <string name="messages_hint">Message</string>
     <string name="messages_send">Send</string>
     <string name="messages_send_failed">Could not send the message. Try again.</string>
+    <string name="proposal_propose">Propose a price</string>
+    <string name="proposal_price">Price ($)</string>
+    <string name="proposal_note">Note (optional)</string>
+    <string name="proposal_send">Propose</string>
+    <string name="proposal_yours">You proposed %1$s</string>
+    <string name="proposal_theirs">They proposed %1$s</string>
+    <string name="proposal_waiting">Waiting for their answer</string>
+    <string name="proposal_accepted">Accepted: the deal is in your Deals tab</string>
+    <string name="proposal_declined">Declined</string>
+    <string name="proposal_accept">Accept</string>
+    <string name="proposal_decline">Decline</string>
 </resources>

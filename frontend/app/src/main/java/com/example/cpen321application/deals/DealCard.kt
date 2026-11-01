@@ -164,4 +164,4 @@ private fun scoreText(user: OtherUser): String =
 
 private fun starsText(stars: Int): String = "★".repeat(stars) + "☆".repeat(MAX_STARS - stars)
 
-private fun money(amount: Double): String = NumberFormat.getCurrencyInstance(Locale.CANADA).format(amount)
+internal fun money(amount: Double): String = NumberFormat.getCurrencyInstance(Locale.CANADA).format(amount)
