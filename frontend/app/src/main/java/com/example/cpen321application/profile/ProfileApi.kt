@@ -3,6 +3,7 @@ package com.example.cpen321application.profile
 import com.example.cpen321application.auth.SessionManager
 import com.example.cpen321application.post.Mode
 import java.io.IOException
+import java.net.URLEncoder
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -25,8 +26,16 @@ data class Profile(
         get() = "$firstName $lastName".trim().ifEmpty { email }
 }
 
+// The average stars others gave the user (null until someone rates them) and how many ratings that is.
+data class Reputation(val score: Double?, val ratingCount: Int)
+
 class ProfileApi(private val sessions: SessionManager) {
     suspend fun me(): Profile = parseProfile(JSONObject(get("/api/users/me")))
+
+    suspend fun reputation(userId: String): Reputation {
+        val json = JSONObject(get("/api/users/${URLEncoder.encode(userId, "UTF-8")}/reputation"))
+        return Reputation(if (json.isNull("score")) null else json.getDouble("score"), json.getInt("ratingCount"))
+    }
 
     // How many listings (selling) or requests (buying) the user has, open or closed.
     suspend fun countPosts(mode: Mode): Int = JSONArray(get("/api/${mode.path}")).length()
