@@ -14,6 +14,7 @@ enum class AppTab(@StringRes val label: Int) {
     FEED(R.string.tab_feed),
     POSTS(R.string.tab_posts),
     DEALS(R.string.tab_deals),
+    MESSAGES(R.string.tab_messages),
     PROFILE(R.string.tab_profile),
 }
 

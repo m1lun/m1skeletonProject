@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tab_messages">Messages</string>
+    <string name="messages_title">Messages</string>
+    <string name="messages_empty">No conversations yet</string>
+    <string name="messages_no_messages">No messages yet. Say hi!</string>
+    <string name="messages_unknown_user">Unknown user</string>
+    <string name="messages_listing">Listing: %1$s</string>
+    <string name="messages_request">Request: %1$s</string>
+    <string name="messages_post_closed">(closed)</string>
+    <string name="messages_load_earlier">Load earlier messages</string>
+    <string name="messages_hint">Message</string>
+    <string name="messages_send">Send</string>
+    <string name="messages_send_failed">Could not send the message. Try again.</string>
+</resources>
