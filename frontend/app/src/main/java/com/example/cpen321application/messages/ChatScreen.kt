@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -52,7 +51,7 @@ fun ChatScreen(chat: ChatState, viewModel: MessagesViewModel, innerPadding: Padd
     val onPropose = if (canPropose(chat.conversation)) ({ proposing = true }) else null
     // The bottom bar's padding already covers part of the keyboard, so it is consumed before imePadding.
     Column(modifier = Modifier.fillMaxSize().padding(innerPadding).consumeWindowInsets(innerPadding).imePadding()) {
-        ChatHeader(chat.conversation, viewModel::closeChat, viewModel::refreshChat, onPropose)
+        ChatHeader(chat.conversation, viewModel::closeChat, onPropose)
         HorizontalDivider()
         Box(modifier = Modifier.weight(1f)) {
             ChatMessages(chat, viewModel::refreshChat, viewModel::loadEarlier)
@@ -76,7 +75,7 @@ fun ChatScreen(chat: ChatState, viewModel: MessagesViewModel, innerPadding: Padd
 
 @Composable
 // onPropose is null while a proposal is pending or accepted, which hides the deal button.
-private fun ChatHeader(conversation: Conversation, onBack: () -> Unit, onRefresh: () -> Unit, onPropose: (() -> Unit)?) {
+private fun ChatHeader(conversation: Conversation, onBack: () -> Unit, onPropose: (() -> Unit)?) {
     Row(modifier = Modifier.fillMaxWidth().padding(all = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onBack, modifier = Modifier.testTag(MessagesTags.BACK)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.btn_back))
@@ -89,9 +88,6 @@ private fun ChatHeader(conversation: Conversation, onBack: () -> Unit, onRefresh
             IconButton(onClick = it, modifier = Modifier.testTag(ProposalTags.PROPOSE)) {
                 Icon(Icons.Filled.ShoppingCart, contentDescription = stringResource(R.string.proposal_propose))
             }
-        }
-        IconButton(onClick = onRefresh, modifier = Modifier.testTag(MessagesTags.CHAT_REFRESH)) {
-            Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.btn_refresh))
         }
     }
 }

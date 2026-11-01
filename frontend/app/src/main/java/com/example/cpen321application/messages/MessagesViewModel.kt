@@ -10,8 +10,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.cpen321application.R
 import com.example.cpen321application.auth.SessionExpiredException
 import com.example.cpen321application.auth.SessionManager
+import com.example.cpen321application.live.LiveEvent
+import com.example.cpen321application.live.liveEvents
 import java.io.IOException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import org.json.JSONException
 
@@ -37,8 +40,10 @@ data class ChatState(
 )
 
 class MessagesViewModel(app: Application) : AndroidViewModel(app) {
-    private val api = MessagesApi(SessionManager.get(app))
+    private val sessions = SessionManager.get(app)
+    private val api = MessagesApi(sessions)
     private var chatJob: Job? = null
+    private var liveJob: Job? = null
 
     var inbox by mutableStateOf(InboxState())
         private set
@@ -58,11 +63,50 @@ class MessagesViewModel(app: Application) : AndroidViewModel(app) {
     fun openChat(conversation: Conversation) {
         chat = ChatState(conversation)
         refreshChat()
+        listenWhileChatOpen()
     }
 
     fun closeChat() {
         chatJob?.cancel()
+        liveJob?.cancel()
         chat = null
+    }
+
+    // The first connection follows the load in openChat; after a reconnect the chat reloads to catch what it missed.
+    private fun listenWhileChatOpen() {
+        liveJob?.cancel()
+        liveJob = viewModelScope.launch {
+            var reconnecting = false
+            liveEvents(sessions)
+                .catch { if (it is SessionExpiredException) signedOut = true else throw it }
+                .collect { event ->
+                    if (event.type != LiveEvent.CONNECTED) {
+                        applyLiveEvent(event)
+                    } else if (reconnecting) {
+                        refreshChat()
+                    }
+                    reconnecting = true
+                }
+        }
+    }
+
+    // The other user's new message or proposal change, if it is for the open chat.
+    private fun applyLiveEvent(event: LiveEvent) {
+        try {
+            val id = event.data.getString("conversationId")
+            when (event.type) {
+                LiveEvent.MESSAGE_CREATED -> {
+                    val message = parseMessage(event.data)
+                    updateChat(id) { if (it.messages.any { m -> m.id == message.id }) it else it.copy(messages = listOf(message) + it.messages) }
+                }
+                LiveEvent.PROPOSAL_UPDATED -> {
+                    val proposal = parseProposal(event.data.getJSONObject("proposal"))
+                    updateChat(id) { it.copy(conversation = it.conversation.copy(proposal = proposal)) }
+                }
+            }
+        } catch (e: JSONException) {
+            Log.w(TAG, "Unexpected live event: ${event.type}", e)
+        }
     }
 
     fun refreshChat() = loadMessages(before = null)
