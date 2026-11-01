@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.cpen321application.R
+import com.example.cpen321application.deals.money
 
 object MessagesTags {
     const val REFRESH = "messages_refresh"
@@ -111,12 +112,21 @@ private fun ConversationCard(conversation: Conversation, onOpen: (Conversation) 
         Column(modifier = Modifier.padding(all = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(text = displayName(conversation), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             PostLines(conversation)
-            Text(
-                text = conversation.lastMessage ?: stringResource(R.string.messages_no_messages),
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            val pending = conversation.proposal?.takeIf { it.status == ProposalStatus.PENDING }
+            pending?.let {
+                val title = if (it.proposerId == conversation.otherUserId) R.string.proposal_theirs else R.string.proposal_yours
+                Text(text = stringResource(title, money(it.price)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            }
+            // A pending proposal's note stands in for a first message, until there is one.
+            val preview = conversation.lastMessage ?: pending?.note?.takeIf { it.isNotBlank() }
+            if (preview != null || pending == null) {
+                Text(
+                    text = preview ?: stringResource(R.string.messages_no_messages),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

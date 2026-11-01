@@ -19,6 +19,13 @@ class MessagesApi(private val sessions: SessionManager) {
         return MessagesPage(json.getJSONArray("messages").objects().map(::parseMessage), nextCursor)
     }
 
+    // The id of the user's conversation about the post, which is only created if there isn't one yet.
+    suspend fun open(target: OfferTarget): String {
+        val body = JSONObject().put("postId", target.postId).put("postKind", target.postKind)
+        target.myPostId?.let { body.put("myPostId", it) }
+        return JSONObject(proposalRequest("/api/conversations", body)).getString("id")
+    }
+
     suspend fun send(conversationId: String, text: String): ChatMessage {
         val body = JSONObject().put("text", text)
         return parseMessage(JSONObject(request("POST", "/api/conversations/$conversationId/messages", body)))

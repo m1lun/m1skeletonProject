@@ -36,6 +36,8 @@ data class ChatState(
     val proposalError: String? = null
 )
 
+data class OfferState(val isSending: Boolean = false, val error: String? = null)
+
 class MessagesViewModel(app: Application) : AndroidViewModel(app) {
     private val api = MessagesApi(SessionManager.get(app))
     private var chatJob: Job? = null
@@ -45,6 +47,11 @@ class MessagesViewModel(app: Application) : AndroidViewModel(app) {
     var chat by mutableStateOf<ChatState?>(null)
         private set
     var signedOut by mutableStateOf(false)
+        private set
+
+    // The post the open post screen can send an offer on: null when it wasn't opened from the feed.
+    var offerTarget by mutableStateOf<OfferTarget?>(null)
+    var offer by mutableStateOf(OfferState())
         private set
 
     fun refreshInbox() {
@@ -66,6 +73,43 @@ class MessagesViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refreshChat() = loadMessages(before = null)
+
+    fun clearOfferError() {
+        offer = offer.copy(error = null)
+    }
+
+    // Starts the conversation with the offer and opens it, then onSent leaves the post. If the conversation
+    // already has a pending offer, this one isn't sent: the chat opens with the server's reason and that offer.
+    fun sendOffer(target: OfferTarget, price: Double, note: String, onSent: () -> Unit) {
+        if (offer.isSending) return
+        viewModelScope.launch {
+            offer = OfferState(isSending = true)
+            var rejection: String? = null
+            var notSent: String? = null
+            val conversation = call("send offer") {
+                try {
+                    val id = api.open(target)
+                    try {
+                        api.propose(id, price, note)
+                    } catch (e: ProposalRejectedException) {
+                        notSent = e.message
+                    }
+                    api.conversations().firstOrNull { it.id == id }
+                } catch (e: ProposalRejectedException) {
+                    rejection = e.message
+                    null
+                }
+            }
+            if (conversation == null) {
+                offer = OfferState(error = rejection ?: getApplication<Application>().getString(R.string.error_unreachable))
+            } else {
+                offer = OfferState()
+                openChat(conversation)
+                updateChat(conversation.id) { it.copy(proposalError = notSent) }
+                onSent()
+            }
+        }
+    }
 
     fun loadEarlier() {
         chat?.nextCursor?.let { loadMessages(before = it) }

@@ -23,4 +23,5 @@
     <string name="proposal_declined">Declined</string>
     <string name="proposal_accept">Accept</string>
     <string name="proposal_decline">Decline</string>
+    <string name="message_post">Message</string>
 </resources>

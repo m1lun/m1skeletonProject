@@ -29,6 +29,7 @@
 | 2026-10-31 | 3.1, 3.3, 3.4, 4.1, 4.2, 4.5, 5 | Added the Deals, Ratings and Reputation feature as built: the Deals tab, rating a deal, editing a rating, and the reputation score. Added the Deals component, its five interfaces, and the deals, ratings and reputations collections. |
 | 2026-10-31 | 2, 3.1-3.6, 4.1, 4.3, 4.5, 4.6, 5 | Removed offers, acceptance, transactions and live updates. Deals, Ratings and Reputation is now Feature 3, Use Case 2 is now Rate a Deal, and the Deals component replaces Transactions. Redrew the use case diagram. |
 | 2026-10-31 | 3.1 | Feature 3: deals are now recorded when a user accepts a proposed price in a conversation, so recording a deal is no longer planned on the back end. |
+| 2026-11-01 | 3.5, 3.6 | Connected the feed to Messaging: Use Case 4 now starts from the "Message" button on a post, which sends the first price proposal and opens the conversation. |
 
 ---
 
@@ -203,7 +204,7 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 **Primary actor(s)**: Buyer, Seller
 
 **Main success scenario**:
-1. From a proposal, the user opens the conversation with the other user.
+1. On another user's post opened from the feed or recommendations, the user taps "Message", enters a price and an optional note, and taps "Propose", which opens the conversation with the other user. The other user sees the price and note in their messages and can accept or decline.
 2. The app shows the earlier messages.
 3. The user types a message and taps "Send".
 4. The system saves the message and delivers it to the other user, where it appears on their open screen within 2 seconds, or as a push notification if the app is closed.
@@ -259,7 +260,7 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 
     ![New request](images/mockup_new_request.png)
 
-Both screens are built and will be extended with the planned features: posts will link to their messages. The design keeps the same bottom-tab layout (Feed, My Posts, Profile).
+Both screens are built. A post opened from the feed or recommendations links to its messages with a "Message" button. The design keeps the same bottom-tab layout (Feed, My Posts, Profile).
 
 ### **3.7. Non-Functional Requirements**
 

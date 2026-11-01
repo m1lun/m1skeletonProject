@@ -68,9 +68,12 @@ fun ChatScreen(chat: ChatState, viewModel: MessagesViewModel, innerPadding: Padd
         MessageInput(chat.isSending, viewModel::send)
     }
     if (proposing) {
-        ProposeDialog(chat, onPropose = { price, note -> viewModel.propose(price, note) { proposing = false } }) {
-            proposing = false
-        }
+        ProposeDialog(
+            isBusy = chat.isProposing,
+            error = chat.proposalError,
+            onPropose = { price, note -> viewModel.propose(price, note) { proposing = false } },
+            onDismiss = { proposing = false },
+        )
     }
 }
 
