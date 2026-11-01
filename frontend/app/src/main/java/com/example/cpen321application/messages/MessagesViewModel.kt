@@ -102,12 +102,12 @@ class MessagesViewModel(app: Application) : AndroidViewModel(app) {
             }
             if (conversation == null) {
                 offer = OfferState(error = rejection ?: getApplication<Application>().getString(R.string.error_unreachable))
-                return@launch
+            } else {
+                offer = OfferState()
+                openChat(conversation)
+                updateChat(conversation.id) { it.copy(proposalError = notSent) }
+                onSent()
             }
-            offer = OfferState()
-            openChat(conversation)
-            updateChat(conversation.id) { it.copy(proposalError = notSent) }
-            onSent()
         }
     }
 
