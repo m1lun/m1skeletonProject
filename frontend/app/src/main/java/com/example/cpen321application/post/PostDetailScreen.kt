@@ -47,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,7 +55,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cpen321application.R
 
-/** readOnly shows another user's post (opened from the Feed) without the owner's actions. */
+object PostDetailTags {
+    const val MESSAGE = "post_detail_message"
+}
+
+/**
+ * readOnly shows another user's post (opened from the Feed) without the owner's actions.
+ * onMessage, if set, offers to start a conversation about an open post.
+ */
 @Composable
 fun PostDetailScreen(
     post: PostSummary,
@@ -63,6 +71,7 @@ fun PostDetailScreen(
     padding: PaddingValues,
     readOnly: Boolean = false,
     onBack: () -> Unit = { viewModel.selected = null },
+    onMessage: (() -> Unit)? = null,
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
 
@@ -87,6 +96,14 @@ fun PostDetailScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            if (onMessage != null && post.status == STATUS_OPEN) {
+                Button(
+                    onClick = onMessage,
+                    modifier = Modifier.fillMaxWidth().height(48.dp).testTag(PostDetailTags.MESSAGE),
+                ) {
+                    Text(stringResource(R.string.message_post))
+                }
             }
             if (!readOnly && post.status == STATUS_OPEN) {
                 Button(

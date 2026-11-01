@@ -86,9 +86,27 @@ private fun AnswerButtons(isBusy: Boolean, onAccept: () -> Unit, onDecline: () -
     }
 }
 
+// The first offer on a post, sent from the post screen; leaves for the chat once it is sent.
 @Composable
-internal fun ProposeDialog(chat: ChatState, onPropose: (Double, String) -> Unit, onDismiss: () -> Unit) {
-    var price by rememberSaveable { mutableStateOf("") }
+fun OfferDialog(target: OfferTarget, viewModel: MessagesViewModel, onSent: () -> Unit, onDismiss: () -> Unit) {
+    ProposeDialog(
+        isBusy = viewModel.offer.isSending,
+        error = viewModel.offer.error,
+        initialPrice = target.suggestedPrice,
+        onPropose = { price, note -> viewModel.sendOffer(target, price, note, onSent) },
+        onDismiss = onDismiss,
+    )
+}
+
+@Composable
+internal fun ProposeDialog(
+    isBusy: Boolean,
+    error: String?,
+    onPropose: (Double, String) -> Unit,
+    onDismiss: () -> Unit,
+    initialPrice: String = "",
+) {
+    var price by rememberSaveable { mutableStateOf(initialPrice) }
     var note by rememberSaveable { mutableStateOf("") }
     val parsedPrice = price.toDoubleOrNull()?.takeIf { it >= 0 }
     AlertDialog(
@@ -110,13 +128,13 @@ internal fun ProposeDialog(chat: ChatState, onPropose: (Double, String) -> Unit,
                     label = { Text(text = stringResource(R.string.proposal_note)) },
                     modifier = Modifier.fillMaxWidth().testTag(ProposalTags.NOTE),
                 )
-                chat.proposalError?.let { Text(text = it, color = MaterialTheme.colorScheme.error) }
+                error?.let { Text(text = it, color = MaterialTheme.colorScheme.error) }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = { parsedPrice?.let { onPropose(it, note) } },
-                enabled = parsedPrice != null && !chat.isProposing,
+                enabled = parsedPrice != null && !isBusy,
                 modifier = Modifier.testTag(ProposalTags.SEND),
             ) { Text(text = stringResource(R.string.proposal_send)) }
         },

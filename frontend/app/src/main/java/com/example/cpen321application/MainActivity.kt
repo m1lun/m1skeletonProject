@@ -24,7 +24,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
@@ -33,16 +37,22 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.cpen321application.auth.SessionManager
 import com.example.cpen321application.deals.DealsTab
 import com.example.cpen321application.deals.DealsViewModel
+import com.example.cpen321application.feed.FeedItem
 import com.example.cpen321application.feed.FeedTab
 import com.example.cpen321application.feed.FeedViewModel
+import com.example.cpen321application.feed.OwnPost
 import com.example.cpen321application.feed.ownPostOf
+import com.example.cpen321application.feed.plain
 import com.example.cpen321application.messages.MessagesTab
 import com.example.cpen321application.messages.MessagesViewModel
+import com.example.cpen321application.messages.OfferDialog
+import com.example.cpen321application.messages.OfferTarget
 import com.example.cpen321application.post.AppTab
 import com.example.cpen321application.post.Mode
 import com.example.cpen321application.post.PostDetailScreen
 import com.example.cpen321application.post.PostEditorScreen
 import com.example.cpen321application.post.PostScreen
+import com.example.cpen321application.post.PostSummary
 import com.example.cpen321application.post.PostViewModel
 import com.example.cpen321application.profile.ProfileTab
 import com.example.cpen321application.profile.ProfileViewModel
@@ -121,21 +131,18 @@ class MainActivity : ComponentActivity() {
         val selected = viewModel.selected
         val openPost = viewModel.openPost
         when {
-            openPost != null -> PostDetailScreen(
-                openPost,
-                viewModel.openPostMode,
-                viewModel,
-                innerPadding,
-                readOnly = true,
-                onBack = viewModel::closeOpenPost,
-            )
+            openPost != null -> OpenPost(openPost, innerPadding)
             viewModel.editing -> PostEditorScreen(viewModel, innerPadding)
             selected != null -> PostDetailScreen(selected, viewModel.mode, viewModel, innerPadding)
             viewModel.tab == AppTab.FEED -> FeedTab(feedViewModel, ::signOut, innerPadding) {
+                messagesViewModel.offerTarget = offerTargetOf(it, feedViewModel.query.recommendedFor)
                 viewModel.open(it.raw, if (it.isRequest) Mode.BUYING else Mode.SELLING)
             }
             viewModel.tab == AppTab.POSTS -> PostScreen(viewModel, innerPadding)
-            viewModel.tab == AppTab.DEALS -> DealsTab(dealsViewModel, ::signOut, innerPadding, viewModel::open)
+            viewModel.tab == AppTab.DEALS -> DealsTab(dealsViewModel, ::signOut, innerPadding) { raw, mode ->
+                messagesViewModel.offerTarget = null
+                viewModel.open(raw, mode)
+            }
             viewModel.tab == AppTab.MESSAGES -> MessagesTab(messagesViewModel, ::signOut, innerPadding)
             else -> ProfileTab(profileViewModel, ::signOut, innerPadding) {
                 viewModel.selectMode(it)
@@ -143,7 +150,50 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // Another user's post. One opened from the feed can start a conversation, with an offer as its first step.
+    @Composable
+    private fun OpenPost(post: PostSummary, innerPadding: PaddingValues) {
+        val target = messagesViewModel.offerTarget
+        var offering by rememberSaveable { mutableStateOf(false) }
+        LaunchedEffect(messagesViewModel.signedOut) {
+            if (messagesViewModel.signedOut) signOut()
+        }
+        PostDetailScreen(
+            post,
+            viewModel.openPostMode,
+            viewModel,
+            innerPadding,
+            readOnly = true,
+            onBack = viewModel::closeOpenPost,
+            onMessage = target?.let {
+                {
+                    messagesViewModel.clearOfferError()
+                    offering = true
+                }
+            },
+        )
+        if (offering && target != null) {
+            OfferDialog(
+                target,
+                messagesViewModel,
+                onSent = {
+                    offering = false
+                    viewModel.closeOpenPost()
+                    viewModel.tab = AppTab.MESSAGES
+                },
+                onDismiss = { offering = false },
+            )
+        }
+    }
 }
+
+private fun offerTargetOf(item: FeedItem, recommendedFor: OwnPost?) = OfferTarget(
+    postId = item.id,
+    postKind = if (item.isRequest) "request" else "listing",
+    myPostId = recommendedFor?.id,
+    suggestedPrice = item.price?.let(::plain).orEmpty(),
+)
 
 @Composable
 private fun AppNavigationBar(viewModel: PostViewModel) {
