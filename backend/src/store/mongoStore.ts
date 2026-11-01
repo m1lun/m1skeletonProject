@@ -9,6 +9,8 @@ import {
   type Conversation,
   type LastMessage,
   type Message,
+  type Proposal,
+  type ProposalStatus,
 } from '../models/conversation';
 import { DEALS_COLLECTION, assertHasPost, type Deal } from '../models/deal';
 import { normaliseListing, normaliseRequest } from '../models/normalise';
@@ -412,6 +414,19 @@ class MongoConversationCollection implements ConversationCollection {
       { _id: new ObjectId(id) },
       { $set: { lastMessage: message, updatedAt: message.createdAt } },
     );
+  }
+
+  // The check is in the filter, so two proposals sent at once can't both be saved.
+  async propose(id: string, proposal: Proposal): Promise<boolean> {
+    const result = await this.collection.updateOne(
+      { _id: new ObjectId(id), 'proposal.status': { $nin: ['pending', 'accepted'] } },
+      { $set: { proposal, updatedAt: proposal.createdAt } },
+    );
+    return result.matchedCount === 1;
+  }
+
+  async setProposalStatus(id: string, status: ProposalStatus): Promise<void> {
+    await this.collection.updateOne({ _id: new ObjectId(id) }, { $set: { 'proposal.status': status, updatedAt: new Date() } });
   }
 }
 

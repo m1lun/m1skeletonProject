@@ -1,5 +1,5 @@
 import type { GeoPoint } from '../models/common';
-import type { Conversation, LastMessage, Message } from '../models/conversation';
+import type { Conversation, LastMessage, Message, Proposal, ProposalStatus } from '../models/conversation';
 import type { CustomField } from '../models/customField';
 import type { Deal } from '../models/deal';
 import type { Listing } from '../models/listing';
@@ -114,6 +114,9 @@ export interface ConversationCollection {
   // Newest activity first.
   listByUser(userId: string): Promise<Conversation[]>;
   recordMessage(id: string, message: LastMessage): Promise<void>;
+  // Saves the proposal unless the current one is pending or accepted; false if it is.
+  propose(id: string, proposal: Proposal): Promise<boolean>;
+  setProposalStatus(id: string, status: ProposalStatus): Promise<void>;
 }
 
 export interface MessageCollection {

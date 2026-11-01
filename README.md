@@ -129,6 +129,12 @@ Conversations are between a post's owner and one user who messaged them about it
 - `GET /api/conversations/:id/messages?limit=30&before=<nextCursor>`: messages, newest first: `{ "messages": [{ "id", "conversationId", "senderId", "text", "createdAt" }], "nextCursor" }`. `limit` is 1 to 50 (default 30); `nextCursor` is `null` on the last page.
 - `POST /api/conversations/:id/messages`: body `{ "text" }`, 1 to 1000 characters after trimming. `201` with the saved message.
 
+Either participant can propose a price. Accepting a proposal makes the deal: it gets the conversation's `listingId`, `requestId`, `sellerId` and `buyerId`, the proposed price as `agreedPrice`, and closes those posts. A conversation's current proposal is in `GET /api/conversations` as `proposal` (`{ "proposerId", "price", "note", "status": "pending" | "accepted" | "declined", "createdAt" }`, or `null`).
+
+- `POST /api/conversations/:id/proposal`: body `{ "price", "note"? }`, price at least 0, note up to 300 characters. `201` with the proposal. `409` while one is pending or once one was accepted.
+- `POST /api/conversations/:id/proposal/accept`: only the other participant. `201` with `{ "deal", "proposal" }`. `409` if there is no pending proposal, or a post is closed, deleted or already has a deal; `403` if it's your own proposal.
+- `POST /api/conversations/:id/proposal/decline`: only the other participant. `200` with the declined proposal; either side can then propose again. `409` if there is no pending proposal, `403` if it's your own.
+
 
 ### Option 1: Run locally
 
