@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -47,13 +48,16 @@ private val BUBBLE_MAX_WIDTH = 280.dp
 @Composable
 fun ChatScreen(chat: ChatState, viewModel: MessagesViewModel, innerPadding: PaddingValues) {
     BackHandler(onBack = viewModel::closeChat)
+    var proposing by rememberSaveable { mutableStateOf(false) }
+    val onPropose = if (canPropose(chat.conversation)) ({ proposing = true }) else null
     // The bottom bar's padding already covers part of the keyboard, so it is consumed before imePadding.
     Column(modifier = Modifier.fillMaxSize().padding(innerPadding).consumeWindowInsets(innerPadding).imePadding()) {
-        ChatHeader(chat.conversation, viewModel::closeChat, viewModel::refreshChat)
+        ChatHeader(chat.conversation, viewModel::closeChat, viewModel::refreshChat, onPropose)
         HorizontalDivider()
         Box(modifier = Modifier.weight(1f)) {
             ChatMessages(chat, viewModel::refreshChat, viewModel::loadEarlier)
         }
+        ProposalSection(chat, viewModel, showError = !proposing)
         if (chat.sendFailed) {
             Text(
                 text = stringResource(R.string.messages_send_failed),
@@ -63,10 +67,16 @@ fun ChatScreen(chat: ChatState, viewModel: MessagesViewModel, innerPadding: Padd
         }
         MessageInput(chat.isSending, viewModel::send)
     }
+    if (proposing) {
+        ProposeDialog(chat, onPropose = { price, note -> viewModel.propose(price, note) { proposing = false } }) {
+            proposing = false
+        }
+    }
 }
 
 @Composable
-private fun ChatHeader(conversation: Conversation, onBack: () -> Unit, onRefresh: () -> Unit) {
+// onPropose is null while a proposal is pending or accepted, which hides the deal button.
+private fun ChatHeader(conversation: Conversation, onBack: () -> Unit, onRefresh: () -> Unit, onPropose: (() -> Unit)?) {
     Row(modifier = Modifier.fillMaxWidth().padding(all = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onBack, modifier = Modifier.testTag(MessagesTags.BACK)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.btn_back))
@@ -74,6 +84,11 @@ private fun ChatHeader(conversation: Conversation, onBack: () -> Unit, onRefresh
         Column(modifier = Modifier.weight(1f)) {
             Text(text = displayName(conversation), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             PostLines(conversation)
+        }
+        onPropose?.let {
+            IconButton(onClick = it, modifier = Modifier.testTag(ProposalTags.PROPOSE)) {
+                Icon(Icons.Filled.ShoppingCart, contentDescription = stringResource(R.string.proposal_propose))
+            }
         }
         IconButton(onClick = onRefresh, modifier = Modifier.testTag(MessagesTags.CHAT_REFRESH)) {
             Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.btn_refresh))

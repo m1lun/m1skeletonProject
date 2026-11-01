@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cpen321application.R
 import com.example.cpen321application.auth.SessionExpiredException
 import com.example.cpen321application.auth.SessionManager
 import java.io.IOException
@@ -30,7 +31,9 @@ data class ChatState(
     val isLoading: Boolean = false,
     val loadFailed: Boolean = false,
     val isSending: Boolean = false,
-    val sendFailed: Boolean = false
+    val sendFailed: Boolean = false,
+    val isProposing: Boolean = false,
+    val proposalError: String? = null
 )
 
 class MessagesViewModel(app: Application) : AndroidViewModel(app) {
@@ -78,6 +81,42 @@ class MessagesViewModel(app: Application) : AndroidViewModel(app) {
             val message = call("send message") { api.send(id, text.trim()) }
             updateChat(id) { it.copy(messages = listOfNotNull(message) + it.messages, isSending = false, sendFailed = message == null) }
             if (message != null) onSent()
+        }
+    }
+
+    // onDone closes the propose dialog, so a proposal that failed stays there to try again.
+    fun propose(price: Double, note: String, onDone: () -> Unit) =
+        changeProposal("propose", { api.propose(it, price, note) }, onDone)
+
+    fun acceptProposal() = changeProposal("accept proposal", api::accept)
+
+    fun declineProposal() = changeProposal("decline proposal", api::decline)
+
+    // Saves the server's new proposal on the chat. A refusal shows the server's reason, any other failure "unreachable".
+    private fun changeProposal(what: String, action: suspend (String) -> Proposal, onDone: () -> Unit = {}) {
+        val current = chat ?: return
+        if (current.isProposing) return
+        val id = current.conversation.id
+        viewModelScope.launch {
+            updateChat(id) { it.copy(isProposing = true, proposalError = null) }
+            var rejection: String? = null
+            val proposal = call(what) {
+                try {
+                    action(id)
+                } catch (e: ProposalRejectedException) {
+                    rejection = e.message
+                    null
+                }
+            }
+            val unreachable = getApplication<Application>().getString(R.string.error_unreachable)
+            updateChat(id) {
+                if (proposal == null) {
+                    it.copy(isProposing = false, proposalError = rejection ?: unreachable)
+                } else {
+                    it.copy(conversation = it.conversation.copy(proposal = proposal), isProposing = false)
+                }
+            }
+            if (proposal != null) onDone()
         }
     }
 
