@@ -44,7 +44,7 @@ fun liveEvents(sessions: SessionManager): Flow<LiveEvent> = callbackFlow {
                 connection?.let { readEvents(it) { event -> trySend(event) } }
             } catch (e: SessionExpiredException) {
                 close(e)
-                return@launch
+                break
             } catch (e: IOException) {
                 Log.w(TAG, "Live updates dropped, reconnecting", e)
             }
