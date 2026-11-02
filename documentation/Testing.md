@@ -10,6 +10,7 @@
 | 2026-10-31 | 2, 3, 4 | Matched the document to the course template: the back-end APIs are section 2, non-functional requirements section 3, and the front-end specification moved from section 2 to section 4. Added the first back-end specification, for the Deals component: where each interface's tests are, how to run them, the coverage reports, and why some coverage is below 100%. |
 | 2026-10-30 | 2 | The condition is now picked from a dropdown, so `createsPostWithOptionalFields` opens the condition dropdown before picking "Fair" or "Like New". |
 | 2026-10-31 | 2 | Removed the note that no route creates a deal, since accepting a proposal now records one. |
+| 2026-11-01 | 4 | Use Case 1 is now Create Post, after the use cases were split in the Requirements and Design. The table maps the tests to its steps 1–7 and failures 2a, 5a–5d and 6a; the edit, close, reopen and delete tests now cover the Edit, Close, Reopen and Delete post use cases instead of formal steps. |
 
 ---
 
@@ -131,8 +132,8 @@ _To be added with the non-functional requirement tests._
 
 | **Test class** | **Use cases** |
 | -------------- | ------------- |
-| [`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt) | [Use Case 1: Manage Posts](Requirements_and_Design.md#uc1), steps 1–7 |
-| [`ManagePostsTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/ManagePostsTest.kt) | [Use Case 1: Manage Posts](Requirements_and_Design.md#uc1), steps 1–2 and 8–9 |
+| [`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt) | [Use Case 1: Create Post](Requirements_and_Design.md#uc1), steps 1–7 |
+| [`ManagePostsTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/ManagePostsTest.kt) | [Use Case 1: Create Post](Requirements_and_Design.md#uc1), steps 1–2 and failure 2a. Its other tests cover the Edit post, Close post, Reopen post and Delete post use cases ([Section 3.4](Requirements_and_Design.md#34-use-case-description)), which have no formal specification. |
 
 Shared test steps are in `support/PostRobot.kt`, and the differences between the request and listing forms are in `support/PostForm.kt`.
 
@@ -140,7 +141,7 @@ Shared test steps are in `support/PostRobot.kt`, and the differences between the
 
 - **Stand-alone tests.** Every post a test creates uses the category `e2e chair`. Before and after each test, `deleteTestPosts()` deletes every post in that category through the back-end API, so each test starts from an empty state and a failed test leaves nothing behind. The tester's posts in other categories are never touched. Tests that need an existing post create it through the UI first (`createPost`).
 - **Both post types.** Requests and listings share the same screens, so both test classes are parameterized over `PostForm` and run every test once for requests (`[REQUEST]`) and once for listings (`[LISTING]`).
-- **No mocking.** The tests talk to the real back-end. For failure scenarios 2a, 6a and 8a ("the network or server is unavailable"), the test switches on the emulator's airplane mode, and switches it off again in `@After` even if the test fails.
+- **No mocking.** The tests talk to the real back-end. For failure scenarios 2a and 6a ("the network or server is unavailable"), the test switches on the emulator's airplane mode, and switches it off again in `@After` even if the test fails.
 - **Results checked on the server.** When a scenario says nothing is saved, the test asks the back-end with `testPosts()` and checks the list is empty, instead of trusting the screen.
 - **System UI.** The Android photo picker is not part of the app, so it is driven with UI Automator. `TestPhotos` adds small JPEGs to the emulator's gallery before each test and deletes them afterwards.
 
@@ -161,7 +162,7 @@ Shared test steps are in `support/PostRobot.kt`, and the differences between the
 
 ### 4.2. Tests
 
-- **Use Case 1: Manage Posts** ([`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt) and [`ManagePostsTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/ManagePostsTest.kt), each test run once as `[REQUEST]` and once as `[LISTING]`)
+- **Use Case 1: Create Post** ([`CreatePostTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/CreatePostTest.kt) and [`ManagePostsTest.kt`](../frontend/app/src/androidTest/java/com/example/cpen321application/e2e/ManagePostsTest.kt), each test run once as `[REQUEST]` and once as `[LISTING]`)
 
   - **Expected Behaviors:**
 
@@ -186,12 +187,6 @@ Shared test steps are in `support/PostRobot.kt`, and the differences between the
     | 6a. The network or server is unavailable when the post is submitted. | (`showsErrorWhenServerIsUnreachable`) Fill the form, turn on airplane mode, and tap the create button. |
     | 6a1. The app shows "Could not reach the server. Check your connection." and the form keeps what the user entered. | Check that "Could not reach the server" is shown.<br>Turn off airplane mode and check that the form, with its create button, is still on screen. |
     | 7. The app saves the post and shows it in My Posts. | (`createsPostAndShowsItInMyPosts`) Check that "My requests (" or "My listings (" is shown with exactly one "e2e chair" post, and that "Test item" is shown.<br>(`createsPostWithOptionalFields` also checks on the back-end that the description, condition, Hard radius, dimensions, brand, colour and material were saved.) |
-    | 8. The user opens one of their posts, or its ⋮ menu, and either edits it and taps "Save changes", taps "Close" or "Reopen", or taps "Delete" and confirms. | Create a post through the UI (steps 1–7), then:<br>**Edit** (`editsPost`): tap "More options" on the post, tap "Edit", check that "Edit request" or "Edit listing" is shown, replace the price with "175", and tap "Save changes".<br>**Close and reopen** (`closesAndReopensPost`): tap "More options" and "Close", then "More options" and "Reopen".<br>**Delete** (`deletesPost`): tap "More options", tap "Delete", and confirm "Delete".<br>**From the detail screen** (`managesPostFromItsDetailScreen`): tap the post, then tap "Close", "Reopen", "Edit" (replace the price with "175" and tap "Save changes"), and "Delete" and confirm. |
-    | 8a. The network or server is unavailable when a post is saved, closed, reopened or deleted. | Turn on airplane mode, then:<br>**Close** (`keepsPostWhenServerIsUnreachable`): tap "More options" and "Close".<br>**Save** (`keepsPostWhenEditCannotBeSaved`): open "Edit", replace the price with "175", and tap "Save changes".<br>**Reopen** (`keepsPostClosedWhenReopenFails`): close the post first, then tap "More options" and "Reopen".<br>**Delete** (`keepsPostWhenDeleteFails`): tap "More options", tap "Delete", and confirm. |
-    | 8a1. The app shows "Could not reach the server. Check your connection." and the post is unchanged. | Check that "Could not reach the server" is shown and turn off airplane mode. Then:<br>**Close:** check that the post still shows "Open".<br>**Save:** tap "Back" and check that "175" is not shown.<br>**Reopen:** check that the post still shows "Closed".<br>**Delete:** check that exactly one "e2e chair" post is still listed. |
-    | 8b. An edit makes a field invalid. | (`rejectsInvalidEditAndKeepsPost`) Tap "More options" on the post, tap "Edit", clear "Category \*", and tap "Save changes". |
-    | 8b1. The app shows an error message, such as "Choose a category", and the post is unchanged. | Check that "Choose a category" is shown.<br>Tap "Back" and check that exactly one "e2e chair" post is still listed. |
-    | 9. The app shows the updated post, or removes the deleted post from the list. | **Edit:** check that "My requests (" or "My listings (" is shown, tap the post, and check that "175" is shown.<br>**Close and reopen:** check that the post shows "Closed", then "Open".<br>**Delete:** check that no "e2e chair" post is listed.<br>**From the detail screen:** check "Closed", "Open" and "175" after each action, and that no "e2e chair" post is listed after deleting. |
 
   - **Test Logs:**
     ```
