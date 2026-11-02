@@ -30,16 +30,17 @@
 | 2026-10-31 | 2, 3.1-3.6, 4.1, 4.3, 4.5, 4.6, 5 | Removed offers, acceptance, transactions and live updates. Deals, Ratings and Reputation is now Feature 3, Use Case 2 is now Rate a Deal, and the Deals component replaces Transactions. Redrew the use case diagram. |
 | 2026-10-31 | 3.1 | Feature 3: deals are now recorded when a user accepts a proposed price in a conversation, so recording a deal is no longer planned on the back end. |
 | 2026-11-01 | 3.5, 3.6 | Connected the feed to Messaging: Use Case 4 now starts from the "Message" button on a post, which sends the first price proposal and opens the conversation. |
+| 2026-11-01 | 2, 3.1–3.5, 4.1–4.6, 5 | Following TA feedback, split combined use cases into one goal each (Section 3.4 and the use case diagram) and narrowed the formal use cases to match: Create Post, Rate a Deal, View Recommendations for a Post, Send a Message and Filter Feed. Described Messaging as built: conversations, messages, price proposals that record a deal when accepted, and live updates through Server-Sent Events. Used one term for each idea: deal, proposal, recommendation, hard requirement, soft preference, backend and frontend. Removed the planned ranking preferences use case and the planned Firebase Cloud Messaging push notifications, which are not built. |
 
 ---
 
 ## 2. Project Description
 
-**Match Market** is an Android app, "the marketplace where buyers post too". Traditional marketplaces are one-way: sellers post and buyers hunt, re-running the same searches across several sites for days, while sellers never see who is already looking for what they own. Match Market makes the marketplace two-sided. A buyer posts a persistent *request* once, with a category and fields such as maximum price, minimum condition, size, search radius, brand and colour, marking each field as a must-have (hard requirement) or a preference (soft requirement). Sellers post *listings* with photos, and can browse buyer requests that fit what they have.
+**Match Market** is an Android app, "the marketplace where buyers post too". Traditional marketplaces are one-way: sellers post and buyers hunt, re-running the same searches across several sites for days, while sellers never see who is already looking for what they own. Match Market makes the marketplace two-sided. A buyer posts a persistent *request* once, with a category and fields such as maximum price, minimum condition, size, search radius, brand and colour, marking each field as a hard requirement (a must-have) or a soft preference. Sellers post *listings* with photos, and can browse buyer requests that fit what they have.
 
-The app matches both sides automatically, like a dating app for second-hand goods. Buyers and sellers fill in the same structured fields, listings that break a buyer's hard requirements are filtered out, and the remaining matches are ranked by how well they fit the buyer's soft preferences. Users see how far away each match is, and the travel time to the first page of matches, and can also browse and filter all open posts.
+The app matches both sides automatically, like a dating app for second-hand goods. Buyers and sellers fill in the same structured fields, listings that break a buyer's hard requirements are filtered out, and the remaining recommendations are ranked by how well they fit the buyer's soft preferences. Users see how far away each recommendation is, and the travel time for the first page of recommendations, and can also browse and filter all open posts.
 
-When a buyer and a seller agree on a sale, it is recorded as a deal. Both users see their deals in the Deals tab, rate each other from 1 to 5 stars, and build a reputation score that the other side can see. Buyers and sellers will also be able to message each other about a post to discuss the item and arrange collection.
+Buyers and sellers message each other about a post to discuss the item and arrange collection, and either side can propose a price. When the other side accepts it, the sale is recorded as a deal. Both users see their deals in the Deals tab, rate each other from 1 to 5 stars, and build a reputation score that the other side can see.
 
 The primary audience is buyers who know what they want and would rather be matched to it than scroll listings until one appears. The secondary audience is sellers with a specific item to move, who want it in front of the right buyer quickly. One account can act as both buyer and seller.
 
@@ -50,15 +51,15 @@ The primary audience is buyers who know what they want and would rather be match
 ### **3.1. List of Features**
 
 1. **Buyer Requests and Seller Listings**: Signed-in users create persistent buyer requests and seller listings, view their own posts, edit them, close and reopen them, and delete them. Listings include 1–10 item photos and requests may include up to 10 reference photos. Closed posts stay in the owner's list and are excluded from the feeds.
-2. **Two-Sided Matching and Recommended Feeds**: Users browse other users' open listings or requests, newest first, and narrow them by category, price and distance. For each of their own open posts they also get recommendations: hard-constraint filtering and soft-preference ranking produce a buyer feed of listings for each request and a seller feed of requests for each listing, with the distance to each. Addresses are picked through the Android Geocoder, and travel times are computed with the OpenRouteService API.
-3. **Deals, Ratings and Reputation**: Users see their deals in a Deals tab, with the agreed price, the listing and request behind each deal, and the other user's score. Either side of a deal can rate the other from 1 to 5 stars with an optional comment, and can edit that rating later. A user's reputation is the average of the ratings they have received. A deal is recorded when one user accepts the other user's proposed price in a conversation; accepting from the app is planned.
-4. **Messaging**: Buyers and sellers message each other in the app about a listing or a request, to ask about the item and arrange collection. New messages appear on the other user's open screen without refreshing.
+2. **Two-Sided Matching and Recommended Feeds**: Users browse other users' open listings or requests, newest first, and narrow them by category, price and distance. For each of their own open posts they also get recommendations: hard-requirement filtering and soft-preference ranking produce a buyer feed of listings for each request and a seller feed of requests for each listing, with the distance to each. Addresses are picked through the Android Geocoder, and travel times are computed with the OpenRouteService API.
+3. **Deals, Ratings and Reputation**: Users see their deals in a Deals tab, with the agreed price, the listing and request behind each deal, and the other user's score. Either side of a deal can rate the other from 1 to 5 stars with an optional comment, and can edit that rating later. A user's reputation is the average of the ratings they have received. A deal is recorded when one user accepts the other user's proposed price in a conversation (Feature 4).
+4. **Messaging**: Buyers and sellers message each other in the app about a listing or a request, to ask about the item and arrange collection. Either side can propose a price, which the other side accepts or declines; accepting records the deal (Feature 3) and closes the posts. New messages and proposal changes appear in the other user's open conversation without refreshing.
 
 Authentication is a baseline requirement of the app rather than a feature: users sign in with Google, and the backend verifies the Google ID token and issues its own session token.
 
 ### **3.2. Use Case Diagram**
 
-![Use case diagram](images/UseCaseDiagram.png)
+![Use case diagram](images/UseCaseCP2.drawio.png)
 
 ### **3.3. Actors Description**
 
@@ -68,9 +69,10 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 2. **Seller**: A signed-in user who posts listings with photos, reviews recommended buyer requests, messages buyers, and rates buyers after a deal. The same account can act as buyer and seller.
 3. **Google Authentication Service** (external): Verifies the user's identity at sign-in.
 4. **OpenRouteService** (external): Computes travel times between the user and recommended posts.
-5. **Firebase Cloud Messaging** (external): Delivers push notifications for new messages when the app is closed *(planned)*.
 
 ### **3.4. Use Case Description**
+
+Each use case covers one goal. The five marked with a link have a formal specification in Section 3.5, and the use case diagram shows which use cases extend or include others.
 
 **Authentication** (baseline requirement, not counted as a feature)
 
@@ -78,29 +80,43 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 
 **Feature 1: Buyer Requests and Seller Listings**
 
-2. **Manage posts** ([Use Case 1](#uc1)): A user creates a buyer request or a seller listing, and later edits, closes, reopens or deletes their own posts.
+2. **Create post** ([Use Case 1](#uc1)): A user creates a buyer request or a seller listing.
+3. **View my posts**: A user opens My Posts and sees their own open and closed requests or listings.
+4. **Edit post**: A user changes the fields of one of their posts and saves it. Closed posts can also be edited.
+5. **Close post**: A user closes one of their open posts, which removes it from the feeds and recommendations but keeps it in My Posts.
+6. **Reopen post**: A user reopens one of their closed posts, which shows it in the feeds and recommendations again.
+7. **Delete post**: A user deletes one of their posts permanently, after confirming.
 
 **Feature 2: Two-Sided Matching and Recommended Feeds**
 
-3. **View recommendations for a post** ([Use Case 3](#uc3)): A user sees the posts that match one of their open posts, ranked by how well they fit, with the distance to each and the travel time to the first page. Once built, the user will be able to set the radius, travel mode and importance weights used for the ranking.
-4. **Browse and filter feed** ([Use Case 5](#uc5)): A user browses other users' open posts, newest first, and narrows them by category, price or distance.
+8. **View recommendations for a post** ([Use Case 3](#uc3)): A user sees the posts that fit one of their open posts, ranked by how well they fit, with the distance to each and the travel time for the first page.
+9. **Browse feed**: A user scrolls through other users' open posts, newest first.
+10. **Filter feed** ([Use Case 5](#uc5)): A user narrows the feed by category, price or distance.
+11. **View a post**: A user opens another user's post from the feed or the recommendations to see its details and photos.
 
 **Feature 3: Deals, Ratings and Reputation**
 
-5. **View deals**: A user opens the Deals tab and sees their deals, newest first, as buyer or seller. Each deal shows its title, agreed price, date, the listing and request it came from, the other user's score, and both ratings. Tapping the listing or request opens it, even if it has since closed. A user with no deals sees "No deals yet".
-6. **Rate a deal** ([Use Case 2](#uc2)): A user rates the other side of a deal from 1 to 5 stars with an optional comment, and can edit that rating later. The other user's score updates on the card.
+12. **View deals**: A user opens the Deals tab and sees their deals, newest first, as buyer or seller. Each deal shows its title, agreed price, date, the listing and request it came from, the other user's score, and both ratings. Tapping the listing or request opens it, even if it has since closed. A user with no deals sees "No deals yet".
+13. **Rate a deal** ([Use Case 2](#uc2)): A user rates the other side of a deal from 1 to 5 stars with an optional comment. The other user's score updates on the card.
+14. **Edit a rating**: A user changes the stars or comment of a rating they gave earlier, and the other user's score updates.
+15. **Create deal**: When a user accepts a proposal, the system records the deal between the two users at the proposed price and closes the listing and request. It is part of Accept a proposal and is never started on its own.
 
-**Feature 4: Messaging** *(planned)*
+**Feature 4: Messaging**
 
-7. **Send and receive messages** ([Use Case 4](#uc4)): Buyers and sellers message each other about a listing or a request, and new messages appear live.
+16. **Start a conversation**: On another user's open post, a user taps "Message" and sends a proposal (a price with an optional note), and the conversation with the post's owner opens. A post opened from the recommendations for one of the user's posts also links that post to the conversation.
+17. **View conversations**: A user opens the Messages tab and sees their conversations, newest activity first, each with the other user, the listing and request, and the last message.
+18. **Send a message** ([Use Case 4](#uc4)): A user sends a message in a conversation, and it appears in the other user's open conversation without refreshing.
+19. **Send a proposal**: A user proposes a price, with an optional note, in a conversation that has no pending or accepted proposal. The proposal appears in the other user's open conversation without refreshing.
+20. **Accept a proposal**: A user accepts the other user's pending proposal. This includes Create deal: the deal is recorded at that price, both posts are closed, and the deal appears in both users' Deals tabs.
+21. **Decline a proposal**: A user declines the other user's pending proposal, after which either user can propose again.
 
 ### **3.5. Formal Use Case Specifications (5 Most Major Use Cases)**
 
 <a name="uc1"></a>
 
-#### Use Case 1: Manage Posts
+#### Use Case 1: Create Post
 
-**Description**: A user creates a buyer request or a seller listing, then views, edits, closes, reopens or deletes their own posts.
+**Description**: A user creates a buyer request or a seller listing, which then appears in their My Posts.
 
 **Primary actor(s)**: Buyer, Seller
 
@@ -114,8 +130,6 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
     - For a listing: a price, a condition and 1–10 photos, and optionally a brand, colour, size, description and custom fields.
 6. The user taps "Create request" or "Create listing".
 7. The app saves the post and shows it in My Posts.
-8. The user opens one of their posts, or its ⋮ menu, and either edits it and taps "Save changes", taps "Close" or "Reopen", or taps "Delete" and confirms.
-9. The app shows the updated post, or removes the deleted post from the list.
 
 **Failure scenario(s)**:
 - 2a. The network or server is unavailable when the posts are loaded.
@@ -130,25 +144,21 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
     - 5d1. The photo picker only lets the user select as many photos as are still allowed, and the app disables adding photos once there are 10.
 - 6a. The network or server is unavailable when the post is submitted.
     - 6a1. The app shows "Could not reach the server. Check your connection." and the form keeps what the user entered.
-- 8a. The network or server is unavailable when a post is saved, closed, reopened or deleted.
-    - 8a1. The app shows "Could not reach the server. Check your connection." and the post is unchanged.
-- 8b. An edit makes a field invalid.
-    - 8b1. The app shows an error message, such as "Choose a category", and the post is unchanged.
 
 <a name="uc2"></a>
 
 #### Use Case 2: Rate a Deal
 
-**Description**: A user rates the other side of one of their deals from 1 to 5 stars with an optional comment, or edits a rating they gave earlier. The other user's score updates.
+**Description**: A user rates the other side of one of their deals from 1 to 5 stars with an optional comment. The other user's score updates.
 
 **Primary actor(s)**: Buyer, Seller
 
 **Main success scenario**:
 1. The user opens the Deals tab.
-2. The app shows the user's deals, newest first, with "Rate" on each deal they have not rated and "Edit" on each deal they have.
-3. The user taps "Rate" or "Edit".
+2. The app shows the user's deals, newest first, with "Rate" on each deal they have not rated yet.
+3. The user taps "Rate" on a deal.
 4. The app shows the stars and an optional comment field.
-5. The user picks 1 to 5 stars, optionally writes a comment, and taps "Submit" or "Save".
+5. The user picks 1 to 5 stars, optionally writes a comment, and taps "Submit".
 6. The system saves the rating and updates the other user's score.
 7. The app shows the rating and the other user's new score on the deal.
 
@@ -166,7 +176,7 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 
 #### Use Case 3: View Recommendations for a Post
 
-**Description**: A user sees the posts that match one of their own open posts (listings for a request, requests for a listing), ranked by how well they fit, and can change the preferences used for the ranking.
+**Description**: A user sees the posts that fit one of their own open posts (listings for a request, requests for a listing), ranked by how well they fit.
 
 **Primary actor(s)**: Buyer, Seller
 
@@ -174,10 +184,9 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
 1. The user opens one of their open posts and taps "See recommendations", or picks the post under "Recommended for" in the feed filters.
 2. The app shows "Recommended for: <post>".
 3. The system takes other users' open posts in the same category and keeps those that meet the request's hard requirements: within the request's radius (10 km if none was set) and every field the buyer marked Hard. Any feed filters (Use Case 5) also apply.
-4. The system scores each remaining post on price, condition, distance and preference match, weights the scores by the user's importance settings (3 each until the user saves preferences), and orders the best first.
-5. The system requests travel times for the first 20 results from OpenRouteService, by walking until the user can choose a travel mode.
+4. The system scores each remaining post on price, condition, distance and preference match, weights the four scores equally, and orders the best first.
+5. The system requests walking travel times for the first 20 results from OpenRouteService.
 6. The app shows the ranked list, 20 at a time; each item shows its price or budget, its condition (listings), and its distance, plus its travel time on the first page, such as "12 min walk".
-7. *(Planned)* The user opens preferences, sets a default search radius (1–50 km), a travel mode (walk, bike or drive) and the importance (0–5) of price, condition, distance and preference match, and taps "Save"; the recommendations re-rank with them.
 
 **Failure scenario(s)**:
 - 1a. The user has no open posts.
@@ -192,63 +201,66 @@ The use case diagram shows a single **User (Buyer or Seller)** actor because eve
     - 5b1. The app shows "No route available" for that item.
 - 6a. The network or server is unavailable.
     - 6a1. The app shows "Couldn't load the feed. Check your connection and try again." and a "Retry" button.
-- 7a. *(Planned)* The network or server is unavailable when the preferences are saved.
-    - 7a1. The app shows "Could not reach the server. Check your connection." and the preferences are unchanged.
 
 <a name="uc4"></a>
 
-#### Use Case 4: Send and Receive Messages *(planned)*
+#### Use Case 4: Send a Message
 
-**Description**: Two users connected by an interest or an offer message each other in the app to discuss the item and arrange collection, and new messages appear live.
+**Description**: A user sends a message in one of their conversations, and it appears in the other user's open conversation without refreshing.
 
 **Primary actor(s)**: Buyer, Seller
 
 **Main success scenario**:
-1. On another user's post opened from the feed or recommendations, the user taps "Message", enters a price and an optional note, and taps "Propose", which opens the conversation with the other user. The other user sees the price and note in their messages and can accept or decline.
-2. The app shows the earlier messages.
-3. The user types a message and taps "Send".
-4. The system saves the message and delivers it to the other user, where it appears on their open screen within 2 seconds, or as a push notification if the app is closed.
-5. The other user's reply appears on the user's screen without refreshing.
+1. The user opens the Messages tab.
+2. The app shows the user's conversations, newest activity first, each with the other user, the listing and request, and the last message.
+3. The user taps a conversation.
+4. The app shows its messages with the newest at the bottom, 30 at a time, with "Load earlier messages" when there are older ones.
+5. The user types a message of up to 1000 characters and taps "Send".
+6. The system saves the message, and the app shows it on the right and clears the message box.
+7. The message appears in the other user's open conversation without refreshing.
 
 **Failure scenario(s)**:
-- 1a. The proposal was declined or withdrawn.
-    - 1a1. The conversation can be read but not added to.
-- 3a. The message is empty.
-    - 3a1. "Send" is disabled.
-- 4a. The network or server is unavailable.
-    - 4a1. The message is marked as not sent and the user can retry.
-- 5a. The connection is lost.
-    - 5a1. Missed messages appear when the user reconnects.
+- 2a. The network or server is unavailable when the conversations are loaded.
+    - 2a1. The app shows "Could not reach the server. Check your connection." and a "Retry" button.
+- 4a. The network or server is unavailable when the messages are loaded.
+    - 4a1. The app shows "Could not reach the server. Check your connection." and a "Retry" button.
+- 5a. The message is empty or only spaces.
+    - 5a1. "Send" is disabled.
+- 6a. The network or server is unavailable when the message is sent.
+    - 6a1. The app shows "Could not send the message. Try again." and the message stays in the message box.
+- 7a. The other user's connection to the server was lost.
+    - 7a1. Their app reconnects within a few seconds and reloads the conversation, which then shows the message.
 
 <a name="uc5"></a>
 
-#### Use Case 5: Browse and Filter Feed
+#### Use Case 5: Filter Feed
 
-**Description**: A user browses other users' open posts, newest first, and narrows them by category, price or distance.
+**Description**: A user narrows the feed of other users' open posts by category, price or distance.
 
 **Primary actor(s)**: Buyer, Seller
 
 **Main success scenario**:
 1. The user opens the Feed tab and chooses "I'm buying" (listings) or "I'm selling" (requests).
-2. The app shows other users' open posts of that kind, newest first, 20 at a time.
-3. The user scrolls, and the app loads more posts.
-4. The user taps "Filters" and sets any of: category, minimum and maximum price ("Min budget" and "Max budget" for requests), and "Near address" with "Within (km)".
-5. The user taps "Apply", and the list reloads with only the matching posts; "Clear" removes the filters.
-6. The user taps a post to see its details.
+2. The app shows other users' open posts of that kind, newest first.
+3. The user taps "Filters" and sets any of: category, minimum and maximum price ("Min budget" and "Max budget" for requests), and "Near address", picked from the suggestions, with "Within (km)".
+4. The user taps "Apply".
+5. The app reloads the list with only the posts that pass the filters; "Clear" removes the filters.
 
 **Failure scenario(s)**:
-- 2a. No posts match.
-    - 2a1. The app shows "Nothing here yet. Try changing the filters or check back soon." and a "Refresh" button.
-- 2b. The network or server is unavailable.
-    - 2b1. The app shows "Couldn't load the feed. Check your connection and try again." and a "Retry" button.
-- 4a. A price is not a number of 0 or more.
-    - 4a1. The app shows "Enter a number of 0 or more".
-- 4b. The minimum is more than the maximum.
-    - 4b1. The app shows "Min must not be more than max".
-- 4c. A distance is set without an address.
-    - 4c1. The app shows "Pick an address to filter by distance".
-- 4d. The distance is outside 0–100 km.
-    - 4d1. The app shows "Enter a distance from 0 to 100".
+- 2a. The network or server is unavailable.
+    - 2a1. The app shows "Couldn't load the feed. Check your connection and try again." and a "Retry" button.
+- 3a. A price is not a number of 0 or more.
+    - 3a1. The app shows "Enter a number of 0 or more".
+- 3b. The minimum is more than the maximum.
+    - 3b1. The app shows "Min must not be more than max".
+- 3c. A distance is set without an address.
+    - 3c1. The app shows "Pick an address to filter by distance".
+- 3d. The distance is outside 0–100 km.
+    - 3d1. The app shows "Enter a distance from 0 to 100".
+- 5a. No posts pass the filters.
+    - 5a1. The app shows "Nothing here yet. Try changing the filters or check back soon." and a "Refresh" button.
+- 5b. The network or server is unavailable.
+    - 5b1. The app shows "Couldn't load the feed. Check your connection and try again." and a "Retry" button.
 
 ### **3.6. Screen Mock-ups**
 
@@ -267,13 +279,13 @@ Both screens are built. A post opened from the feed or recommendations links to 
 <a name="nfr1"></a>
 
 1. **Performance: Feed ranking latency**
-    - **Description**: The feed returns the first page of ranked matches for a post within 1 second for 95% of requests, with 1,000 open candidate posts in the same category, not counting the travel-time lookup. Section 4.7 describes how it is measured.
+    - **Description**: The feed returns the first page of ranked recommendations for a post within 1 second for 95% of requests, with 1,000 open candidate posts in the same category, not counting the travel-time lookup. Section 4.7 describes how it is measured.
     - **Justification**: Recommendations are the core of the app, so the feed must load quickly. 1 second is the limit for a user's flow of thought to stay uninterrupted ([Nielsen Norman Group, "Response Times: The 3 Important Limits"](https://www.nngroup.com/articles/response-times-3-important-limits/)), and 1,000 open posts in one category is several times more than we expect from a student community.
 
 <a name="nfr2"></a>
 
 2. **Reliability: Graceful degradation without the routing service**
-    - **Description**: If the external routing service fails, times out or is rate-limited, the feed still returns the ranked matches within 3 seconds, without travel times, and shows that travel time is unavailable.
+    - **Description**: If the external routing service fails, times out or is rate-limited, the feed still returns the ranked recommendations within 3 seconds, without travel times, and shows that travel time is unavailable.
     - **Justification**: Prevents third-party service failures from disrupting core functionality. 3 seconds is the 1-second feed target in NFR 1 plus the 2-second routing timeout in Section 4.7, and stays well under the 10-second limit for keeping a user's attention.
 
 ---
@@ -298,7 +310,7 @@ Both screens are built. A post opened from the feed or recommendations links to 
         5. `DELETE /api/requests/:id` and `DELETE /api/listings/:id`
             - **Purpose**: Permanently delete an owned post. Returns status 204.
         6. `POST /api/photos`
-            - **Purpose**: Upload 1–10 photos using multipart form data. Accepted MIME types are JPEG, PNG, WebP and GIF, with a current limit of 5 MiB per photo. Returns the uploaded photo IDs.
+            - **Purpose**: Upload 1–10 photos using multipart form data. Accepted MIME types are JPEG, PNG, WebP and GIF, with a current limit of 5 MB per photo. Returns the uploaded photo IDs.
         7. `GET /api/photos/:id`
             - **Purpose**: Retrieve a photo from GridFS. This endpoint is currently public.
         8. Options and custom fields
@@ -309,7 +321,7 @@ Both screens are built. A post opened from the feed or recommendations links to 
     - **Rationale**: Isolated from storage and HTTP so the team-written logic can be tested through the feed's interface tests; alternative of database-only filtering was rejected because ranking needs weighted scoring.
     - **Interfaces**:
         1. `GET /api/feed?postId=<id>&limit=&cursor=&category=&minPrice=&maxPrice=&lat=&lng=&radiusKm=`
-            - **Purpose**: Return the feed for the user's own request or listing, with travel times for the first page: each match has travelMinutes, and the response has travelMode and travelTimesAvailable, which is false when the routing service did not answer. The post type decides the direction: a request returns listings, a listing returns requests. Every parameter except postId, limit and cursor is an optional temporary filter. A value looser than the saved requirement is ignored, and an unsupported parameter returns 400. Returns 403 for another user's post and 409 for a closed post. The planned minCondition filter (request feeds only) and sort=best|nearest|cheapest are not implemented yet.
+            - **Purpose**: Return the feed for the user's own request or listing, with travel times for the first page: each recommendation has travelMinutes, and the response has travelMode and travelTimesAvailable, which is false when the routing service did not answer. The post type decides the direction: a request returns listings, a listing returns requests. Every parameter except postId, limit and cursor is an optional temporary filter. A value looser than the saved requirement is ignored, and an unsupported parameter returns 400. Returns 403 for another user's post and 409 for a closed post. The planned minCondition filter (request feeds only) and sort=best|nearest|cheapest are not implemented yet.
         2. `GET /api/feed/listings` and `GET /api/feed/requests`
             - **Purpose**: Return other users' open posts, newest first, with the same filters; `before` pages through them.
         3. `boolean satisfies(Request request, Listing listing)`
@@ -319,7 +331,7 @@ Both screens are built. A post opened from the feed or recommendations links to 
         5. `List<Duration> travelTimes(Location origin, List<Location> destinations, TravelMode mode)`
             - **Purpose**: Get travel times from the external routing service for one page of results; returns empty when it is unavailable.
 
-3. **Users & Auth**
+3. **Users and Auth**
     - **Purpose**: Verifies Google sign-in and issues session tokens. Storing each user's profile, location and preferences is planned.
     - **Rationale**: Keeps identity and per-user settings in one place so Posts and Matching only depend on a user id; alternative of storing settings on each post was rejected because settings apply across all of a user's posts.
     - **Interfaces**:
@@ -337,7 +349,7 @@ Both screens are built. A post opened from the feed or recommendations links to 
 4. **Deals**
     - **Purpose**: Shows each user their deals, lets the two sides of a deal rate each other, and keeps each user's reputation score.
     - **Rationale**: Kept separate from Posts because a deal links two users and outlives the posts behind it, which may be closed or deleted. Reputation is stored as a running total per user rather than computed from ratings on every read, because the deals list shows a score for every deal on a page; the alternative of averaging ratings per read was rejected because it would add a query for each deal.
-    - **Lifecycle and rules**: No route creates a deal yet, so recording a deal from the app is planned. Each deal needs a listing, a request or both. A listing or request can belong to only one deal. Only the buyer and seller of a deal can rate it, each once, with no time limit, and either can edit their own rating. Ratings are never deleted.
+    - **Lifecycle and rules**: Deals are recorded by Messaging when a user accepts a proposal (`POST /api/conversations/:id/proposal/accept`). Each deal needs a listing, a request or both. A listing or request can belong to only one deal. Only the buyer and seller of a deal can rate it, each once, with no time limit, and either can edit their own rating. Ratings are never deleted.
     - **Interfaces**: All routes use the `/api` prefix and require an authenticated session. Failures return `{ error }`, and invalid input returns 400 with `{ error, details }`.
         1. `GET /api/deals?limit=&before=`
             - **Purpose**: Return the caller's deals, newest first, each with the caller's role, title, agreed price, listing and request summaries, the other user's score, and both ratings. `limit` is 1 to 50, default 20; `before` is the `nextCursor` of the previous page. A deleted post comes back as null. 400 for a bad or unknown parameter.
@@ -350,21 +362,32 @@ Both screens are built. A post opened from the feed or recommendations links to 
         5. `GET /api/feed/requests/:id`
             - **Purpose**: Return one request, open or closed, to any signed-in user, so a deal card can open its request. 404 for a malformed or unknown id. The route sits under `/api/feed`, but the Deals tab is its only caller.
 
-5. **Messaging** *(planned)*
-    - **Purpose**: Stores and delivers the messages between the two users of a proposal.
-    - **Rationale**: Separate from Transactions so conversations can grow without changing proposal logic; alternative of a general chat between any two users was rejected because messages are only needed once users are connected by a proposal.
-    - **Interfaces**:
-        1. `GET /api/proposals/:id/messages`
-            - **Purpose**: Retrieve the conversation for a proposal the user is part of, oldest first; 403 otherwise.
-        2. `POST /api/proposals/:id/messages`
-            - **Purpose**: Send a non-empty message. Returns the message with status 201; 409 if the proposal was declined or withdrawn, which makes the conversation read-only.
-        3. WebSocket event `message.created`
-            - **Purpose**: Deliver a new message to the other user's open app.
+5. **Messaging**
+    - **Purpose**: Conversations between two users about a post, their messages, price proposals that record a deal when accepted, and live updates to the open app.
+    - **Rationale**: A conversation has the same listingId, requestId, sellerId and buyerId as a deal, so accepting a proposal copies them into the deal instead of trusting the request body; the alternative of a general chat between any two users was rejected because every conversation is about a post. Live updates use Server-Sent Events rather than WebSockets because they only flow from the backend to the app: sending already uses the routes below, and the stream reuses the same session token and `requireAuth` without a new library.
+    - **Lifecycle and rules**: There is one conversation per post and user who started it, so tapping "Message" on the same post again opens the existing conversation. A conversation started from the recommendations for one of the user's posts also links that post, and its posts never change. Only its two users can read or write it. One proposal can be pending at a time, and none can be made once one is accepted. Only the other user can accept or decline a proposal. Accepting records the deal at the proposed price and closes the listing and request; it fails if either post is closed, deleted or already in a deal.
+    - **Interfaces**: All routes use the `/api` prefix and require an authenticated session. Only the conversation's two users can use the routes under `/api/conversations/:id` (403 for anyone else, 404 if it does not exist). Invalid input returns 400 with `{ error, details }`.
+        1. `POST /api/conversations`
+            - **Purpose**: Open the caller's conversation about another user's post from JSON `{ postId, postKind, myPostId? }`, where `myPostId` is the caller's own post of the other kind it was recommended for. Returns 201 with the new conversation, or 200 with the existing one, unchanged. 404 if a post does not exist, 400 if the post is the caller's own, 403 if `myPostId` is not the caller's, 409 if a post is closed.
+        2. `GET /api/conversations`
+            - **Purpose**: Return the caller's conversations, newest activity first, each with its listing and request, the other user, the last message and the current proposal.
+        3. `GET /api/conversations/:id/messages?limit=&before=`
+            - **Purpose**: Return a conversation's messages, newest first. `limit` is 1 to 50, default 30; `before` is the `nextCursor` of the previous page.
+        4. `POST /api/conversations/:id/messages`
+            - **Purpose**: Send a message from JSON `{ text }`, 1 to 1000 characters after trimming. Returns 201 with the message and sends `message.created` to the other user.
+        5. `POST /api/conversations/:id/proposal`
+            - **Purpose**: Propose a price from JSON `{ price, note? }`: a price of at least 0 and a note of up to 300 characters. Returns 201 with the proposal and sends `proposal.updated` to the other user. 409 while a proposal is pending or once one was accepted.
+        6. `POST /api/conversations/:id/proposal/accept`
+            - **Purpose**: Accept the other user's pending proposal: records the deal and closes both posts. Returns 201 with `{ deal, proposal }` and sends `proposal.updated`. 403 for the caller's own proposal; 409 if no proposal is pending, or a post is closed, deleted or already in a deal.
+        7. `POST /api/conversations/:id/proposal/decline`
+            - **Purpose**: Decline the other user's pending proposal, after which either user can propose again. Returns 200 with the proposal and sends `proposal.updated`. 403 for the caller's own proposal; 409 if no proposal is pending.
+        8. `GET /api/events`
+            - **Purpose**: The caller's live updates as Server-Sent Events. The response stays open, and the backend writes a `message.created` or `proposal.updated` event whenever the other user acts, plus a heartbeat every 25 seconds. Events sent while the app is disconnected are not replayed, so the app reloads the open conversation after it reconnects.
 
 ### **4.2. Databases**
 
 1. **MongoDB** (self-hosted in Docker on the cloud VM)
-    - **Purpose**: Stores requests, listings, options, custom fields, sessions, deals, ratings and reputations, and will store users *(planned)*. Photos for requests and listings are stored in the same database using GridFS (fs.files and fs.chunks), and each post keeps the ids of its photos. Geospatial index on post locations.
+    - **Purpose**: Stores requests, listings, options, custom fields, sessions, deals, ratings, reputations, conversations and messages, and will store users *(planned)*. Photos for requests and listings are stored in the same database using GridFS (fs.files and fs.chunks), and each post keeps the ids of its photos. Geospatial index on post locations.
 
 ### **4.3. External Modules**
 
@@ -374,17 +397,15 @@ Both screens are built. A post opened from the feed or recommendations links to 
     - **Purpose**: Provides address suggestions and coordinates in the current frontend. The implemented lookup uses the Android 13+ callback API; the older-version path returns no suggestions.
 3. **OpenRouteService**
     - **Purpose**: Travel times between the user's post and the first page of recommended posts, from its matrix API, for walking, cycling or driving. The backend needs an `ORS_API_KEY`; without it the feed is returned without travel times.
-4. **Firebase Cloud Messaging** *(planned)*
-    - **Purpose**: Push notifications for new messages when the app is closed. Messaging sends them; live updates in the open app use WebSocket events instead.
 
 ### **4.4. Frameworks and Libraries**
 
 1. **Jetpack Compose and Kotlin** (frontend)
     - **Purpose**: Native Android UI.
     - **Reason**: Required by the project.
-2. **OkHttp** (frontend)
-    - **Purpose**: REST calls to the backend.
-    - **Reason**: Already in the project.
+2. **HttpURLConnection** (frontend)
+    - **Purpose**: REST calls to the backend and the live updates stream.
+    - **Reason**: Part of Android, so no extra library is needed.
 3. **Android Credential Manager / Google ID** (frontend)
     - **Purpose**: Google Sign-In.
     - **Reason**: Existing sign-in code is built on it.
@@ -411,12 +432,12 @@ Both screens are built. A post opened from the feed or recommendations links to 
 
 ### **4.5. Dependencies Diagram**
 
-Every back-end route except `/health` calls `requireAuth` in Users and Auth. Dashed links are planned: Messaging is not built yet. The two-way links are the planned WebSocket events, which the back-end sends to the app.
+Every backend route except `/health` calls `requireAuth` in Users and Auth. The two-way link between the frontend and Messaging is the live updates stream, which the backend writes to while the app keeps it open. Messaging records deals through the Deals component's store when a proposal is accepted.
 
 ```mermaid
 flowchart LR
-    FE[Front-end Android app]
-    subgraph BE["Back-end"]
+    FE[Frontend Android app]
+    subgraph BE["Backend"]
         UA[Users and Auth]
         P[Posts]
         M[Matching]
@@ -427,14 +448,13 @@ flowchart LR
     G[Google identity]
     GEO[Android Geocoder]
     ORS[OpenRouteService]
-    FCM[Firebase Cloud Messaging]
 
     FE --> UA
     FE --> P
     FE --> M
     FE --> GEO
     FE --> D
-    FE <-.-> MS
+    FE <--> MS
     UA --> G
     UA --> DB
     P --> UA
@@ -444,19 +464,19 @@ flowchart LR
     D --> UA
     D --> DB
     M --> ORS
-    MS -.-> UA
-    MS -.-> DB
-    MS -.-> FCM
+    MS --> UA
+    MS --> DB
+    MS --> D
 ```
 
 ### **4.6. Use Case Sequence Diagram (5 Most Major Use Cases)**
 
-1. [**Manage Posts**](#uc1)
+1. [**Create Post**](#uc1)
 
 ```mermaid
 sequenceDiagram
     actor U as User
-    participant FE as Front-end
+    participant FE as Frontend
     participant GEO as Android Geocoder
     participant P as Posts
     participant DB as MongoDB
@@ -491,26 +511,11 @@ sequenceDiagram
         activate DB
         deactivate DB
         P--)FE: 201 post
+        FE--)U: show the post in My Posts
     else a field is missing or invalid
         P--)FE: 400 with the error messages
         FE--)U: show the error message
     end
-    deactivate P
-    U->>FE: Edit, close or reopen a post
-    FE->>P: PATCH /api/requests/:id or /api/listings/:id (fields or status)
-    activate P
-    P->>DB: update the post
-    activate DB
-    deactivate DB
-    P--)FE: 200 updated post
-    deactivate P
-    U->>FE: Delete a post and confirm
-    FE->>P: DELETE /api/requests/:id or /api/listings/:id
-    activate P
-    P->>DB: delete the post
-    activate DB
-    deactivate DB
-    P--)FE: 204
     deactivate P
 ```
 
@@ -519,7 +524,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor U as User
-    participant FE as Front-end
+    participant FE as Frontend
     participant D as Deals
     participant DB as MongoDB
     Note over U,FE: Precondition: the user is signed in and has a deal
@@ -532,61 +537,32 @@ sequenceDiagram
     deactivate DB
     D--)FE: 200 deals
     deactivate D
-    alt the user rates the deal for the first time
-        U->>FE: Tap "Rate", pick stars, write an optional comment, tap "Submit"
-        FE->>D: POST /api/deals/:id/ratings (stars, comment)
-        activate D
-        D->>DB: find the deal
-        activate DB
-        DB--)D: deal
+    U->>FE: Tap "Rate", pick stars, write an optional comment, tap "Submit"
+    FE->>D: POST /api/deals/:id/ratings (stars, comment)
+    activate D
+    D->>DB: find the deal
+    activate DB
+    DB--)D: deal
+    deactivate DB
+    D->>DB: insert rating
+    activate DB
+    alt the user has not rated this deal
+        DB--)D: rating
         deactivate DB
-        D->>DB: insert rating
+        D->>DB: add the stars to the other user's reputation
         activate DB
-        alt the user has not rated this deal
-            DB--)D: rating
-            deactivate DB
-            D->>DB: add the stars to the other user's reputation
-            activate DB
-            DB--)D: reputation
-            deactivate DB
-            D--)FE: 201 rating and the other user's score
-            FE--)U: Show the rating and the new score
-        else the user already rated this deal
-            activate DB
-            DB--)D: duplicate key error
-            deactivate DB
-            D--)FE: 409
-            FE--)U: Show "You already rated this deal"
-        end
-        deactivate D
-    else the user edits their rating
-        U->>FE: Tap "Edit", change the stars or comment, tap "Save"
-        FE->>D: PUT /api/deals/:id/ratings (stars, comment)
-        activate D
-        D->>DB: find the deal
-        activate DB
-        DB--)D: deal
+        DB--)D: reputation
         deactivate DB
-        D->>DB: update the user's rating
+        D--)FE: 201 rating and the other user's score
+        FE--)U: Show the rating and the new score
+    else the user already rated this deal
         activate DB
-        alt the user has rated this deal
-            DB--)D: previous rating
-            deactivate DB
-            D->>DB: add the star difference to the other user's reputation, or read it if the stars are the same
-            activate DB
-            DB--)D: reputation
-            deactivate DB
-            D--)FE: 200 rating and the other user's score
-            FE--)U: Show the rating and the new score
-        else the user has not rated this deal
-            activate DB
-            DB--)D: no rating
-            deactivate DB
-            D--)FE: 404
-            FE--)U: Show the error message
-        end
-        deactivate D
+        DB--)D: duplicate key error
+        deactivate DB
+        D--)FE: 409
+        FE--)U: Show "You already rated this deal"
     end
+    deactivate D
 ```
 
 3. [**View Recommendations for a Post**](#uc3)
@@ -594,7 +570,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor U as User
-    participant FE as Front-end
+    participant FE as Frontend
     participant M as Matching
     participant DB as MongoDB
     participant ORS as OpenRouteService
@@ -622,54 +598,63 @@ sequenceDiagram
         activate ORS
         ORS--)M: durations
         deactivate ORS
-        M--)FE: 200 ranked matches with distances, and the cursor for the next page
+        M--)FE: 200 ranked recommendations with distances, and the cursor for the next page
         FE--)U: "Recommended for" list
     end
     deactivate M
 ```
 
-4. [**Send and Receive Messages**](#uc4) *(planned)*
+4. [**Send a Message**](#uc4)
 
 ```mermaid
 sequenceDiagram
     actor U as User
-    participant FE as Front-end
+    participant FE as Frontend
     participant MS as Messaging
     participant DB as MongoDB
-    participant FCM as Firebase Cloud Messaging
-    participant O as Other user's front-end
-    Note over U,FE: Precondition: the user is signed in and has a proposal with the other user
-    U->>FE: Open the conversation from the proposal
-    FE->>MS: GET /api/proposals/:id/messages
+    participant O as Other user's frontend
+    Note over U,FE: Precondition: the user is signed in and has a conversation
+    Note over MS,O: The other user's app keeps GET /api/events open while their conversation is on screen
+    U->>FE: Open the Messages tab
+    FE->>MS: GET /api/conversations
     activate MS
-    MS->>DB: find the proposal's messages
+    MS->>DB: find the user's conversations, their posts and the other users
+    activate DB
+    DB--)MS: conversations
+    deactivate DB
+    MS--)FE: 200 conversations
+    deactivate MS
+    U->>FE: Tap a conversation
+    FE->>MS: GET /api/conversations/:id/messages
+    activate MS
+    MS->>DB: find the newest messages
     activate DB
     DB--)MS: messages
     deactivate DB
-    MS--)FE: 200 messages
+    MS--)FE: 200 messages and the cursor for older ones
     deactivate MS
     U->>FE: Type a message, tap "Send"
-    FE->>MS: POST /api/proposals/:id/messages (text)
+    FE->>MS: POST /api/conversations/:id/messages (text)
     activate MS
-    alt the proposal is pending or accepted
-        MS->>DB: insert message
+    alt the text is 1 to 1000 characters
+        MS->>DB: insert the message and update the conversation's last message
         activate DB
         deactivate DB
         MS--)FE: 201 message
-        MS-)O: message.created (message) over WebSocket
-        MS-)FCM: push notification of the message to the other user, if their app is closed
-    else the proposal was declined or withdrawn
-        MS--)FE: 409 conversation is read-only
+        FE--)U: show the message on the right
+        MS-)O: message.created (message) on the events stream
+    else the text is invalid
+        MS--)FE: 400 with the error message
     end
     deactivate MS
 ```
 
-5. [**Browse and Filter Feed**](#uc5)
+5. [**Filter Feed**](#uc5)
 
 ```mermaid
 sequenceDiagram
     actor U as User
-    participant FE as Front-end
+    participant FE as Frontend
     participant GEO as Android Geocoder
     participant M as Matching
     participant DB as MongoDB
@@ -714,8 +699,8 @@ sequenceDiagram
         - Target ranking latency: 1 second at the 95th percentile, not counting the travel-time lookup.
         - Measurement environment: a backend Jest NFR test in `backend/tests/nfr/`, run with `scripts/run-backend-nfr-tests.sh`, that sends 100 `GET /api/feed?postId=<id>` requests through Supertest. It measures the backend's response time only, without the phone's network.
 2. **Graceful degradation without the routing service**
-    - **Implementation**: The feed requests travel times only for the first page of matches, in one OpenRouteService matrix request with a timeout of 2 seconds (`ROUTING_TIMEOUT_MS` in `matching/travelTime.ts`). If the service fails, times out or is rate-limited, the feed returns the ranked matches with `travelTimesAvailable: false`, and the app shows "Travel time unavailable". The timeout lets the feed meet the 3-second response target in Section 3.7.
-    - **Implementation status**: Matching on main filters candidates and ranks them before pagination. `backend/tests/nfr/routingFallback.test.ts` checks NFR 2: with a routing service that never answers, the feed returns its ranked matches in about 2 seconds, under the 3-second limit. NFR 1 is not measured yet.
+    - **Implementation**: The feed requests travel times only for the first page of recommendations, in one OpenRouteService matrix request with a timeout of 2 seconds (`ROUTING_TIMEOUT_MS` in `matching/travelTime.ts`). If the service fails, times out or is rate-limited, the feed returns the ranked recommendations with `travelTimesAvailable: false`, and the app shows "Travel time unavailable". The timeout lets the feed meet the 3-second response target in Section 3.7.
+    - **Implementation status**: Matching on main filters candidates and ranks them before pagination. `backend/tests/nfr/routingFallback.test.ts` checks NFR 2: with a routing service that never answers, the feed returns its ranked recommendations in about 2 seconds, under the 3-second limit. NFR 1 is not measured yet.
 
 ---
 
@@ -729,7 +714,8 @@ sequenceDiagram
 | options | field, key, label, builtin, createdBy |
 | customFields | ownerId, key, label, type (text, number, bool) |
 | sessions | tokenHash, familyId, userId, expiresAt, usedAt |
-| messages *(planned)* | proposalId, senderId, text, createdAt |
+| conversations | listingId, requestId (either may be null, not both), sellerId, buyerId, postKind (the post that was tapped: listing or request), lastMessage {senderId, text, createdAt} or null, proposal {proposerId, price, note (up to 300 characters), status (pending, accepted, declined), createdAt} (absent until the first proposal), createdAt, updatedAt |
+| messages | conversationId, senderId, text (1 to 1000 characters), createdAt |
 | deals | listingId, requestId (either may be null, not both), sellerId, buyerId, agreedPrice, createdAt |
 | ratings | dealId, raterId, ratedUserId, stars (whole number 1 to 5), comment (up to 300 characters), createdAt, updatedAt (only after an edit) |
 | reputations | userId, starSum, ratingCount, updatedAt |
@@ -739,9 +725,14 @@ Condition is one of five ordered levels: new, like new, good, fair, poor.
 **Feature 1 data rules:**
 - The backend obtains ownerId from the authenticated session. New posts start open. Closing retains a record; the current API also supports reopening and permanent deletion.
 - Both post types require name, category, address and coordinates. Requests require a built-in price field. Listings require non-negative top-level price, a valid condition and at least one photo ID. Request price, radius and size cannot be negative. The 1–50 km radius rule is not enforced by the inspected request-field validation; it must not be claimed as completed validation.
-- Requests allow 0–10 photo IDs and listings 1–10. Actual upload size is at most 5 MiB per file. Post validation checks ID format/count; photo existence and ownership checks are not established by that validation.
+- Requests allow 0–10 photo IDs and listings 1–10. Actual upload size is at most 5 MB per file. Post validation checks ID format/count; photo existence and ownership checks are not established by that validation.
 - Categories are normalized, extendable option values rather than a fixed list. Description is supported, up to 2,000 characters. The name, up to 80 characters, is the post's title; posts saved before names were added use their category as the name. Dimensions use cm and radius uses km; CAD remains the intended currency.
 - Unfilled optional editor rows are omitted. Existing post addresses and coordinates are saved with each post. Profile-based defaults are planned. Closed listings are excluded from the current open-listings feed.
+
+**Feature 4 data rules:**
+- A conversation has the same listingId, requestId, sellerId and buyerId as a deal, taken from the posts rather than the request body. Partial unique indexes allow one conversation per tapped post and the user who started it.
+- lastMessage is copied from the newest message, so the conversations list needs one query instead of one per conversation.
+- A new proposal is saved in one atomic update that only matches when the current proposal is not pending or accepted, so two proposals sent at once cannot both be saved.
 
 **Feature 3 data rules:**
 - A deal must have a listing, a request or both. Unique indexes allow one deal per listing and one per request; deals with a null post do not collide.
